@@ -55,3 +55,9 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Ignore pyenv python version file
+.python-version
+
+# Ignore local vimrc file
+.lvimrc
