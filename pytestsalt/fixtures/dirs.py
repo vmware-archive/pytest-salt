@@ -71,6 +71,18 @@ def conf_dir(tests_tempdir):
 
 
 @pytest.fixture(scope='session')
+def cli_conf_dir(tests_tempdir):
+    '''
+    Fixture which returns the salt configuration directory path.
+    Creates the directory if it does not yet exist.
+    '''
+    dirpath = os.path.join(tests_tempdir, 'conf-cli')
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
+    return dirpath
+
+
+@pytest.fixture(scope='session')
 def master_config_includes_dir(conf_dir):
     '''
     Fixture which returns the salt master configuration includes directory path.
