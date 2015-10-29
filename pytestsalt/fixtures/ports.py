@@ -35,3 +35,19 @@ def master_return_port():
     Returns an unused localhost port for the master return interface
     '''
     return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def cli_master_publish_port():
+    '''
+    Returns an unused localhost port for the master publish interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def cli_master_return_port():
+    '''
+    Returns an unused localhost port for the master return interface
+    '''
+    return get_unused_localhost_port()
