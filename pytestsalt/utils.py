@@ -25,6 +25,3 @@ def get_unused_localhost_port():
     port = usock.getsockname()[1]
     usock.close()
     return port
-
-
-#class
