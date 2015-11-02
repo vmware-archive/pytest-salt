@@ -246,3 +246,18 @@ def pytest_addoption(parser):
         action='store_true',
         help='Don\'t remove the pytest salt temporary directory.'
     )
+
+
+def pytest_report_header(config):
+    '''
+    return a string to be displayed as header info for terminal reporting.
+    '''
+    tests_tmpdir = config.getoption('--tests-temp-dir')
+    tests_confdir = os.path.join(tests_tmpdir, 'conf')
+    tests_cli_confdir = os.path.join(tests_tmpdir, 'conf-cli')
+    return [
+        'pytest salt dirs:',
+        '       tests temp dir: {0}'.format(tests_tmpdir),
+        '      salt config dir: {0}'.format(tests_confdir),
+        '  salt cli config dir: {0}'.format(tests_cli_confdir)
+    ]
