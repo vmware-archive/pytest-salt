@@ -21,12 +21,12 @@ import signal
 import logging
 import functools
 import subprocess
+import multiprocessing
 
 # Import salt libs
 import salt.master
 import salt.minion
 import salt.log.setup
-import salt.utils.process as process
 import salt.utils.timed_subprocess as timed_subprocess
 from salt.exceptions import SaltDaemonNotRunning, TimedProcTimeoutError
 
@@ -37,122 +37,120 @@ log = logging.getLogger(__name__)
 
 
 @pytest.yield_fixture(scope='session')
-def _process_manager():
-    '''
-    Yields a salt process manager
-    '''
-    # Initialize Salt's multiprocessing logging queue
-    salt.log.setup.setup_multiprocessing_logging_listener()
-
-    # Initialize the process manager
-    manager = process.ProcessManager(name='Pytest-Salt-ProcessManager')
-
-    # Yield the manager instance
-    yield manager
-
-    # Start the manager
-    manager.run()
-
-
-@pytest.yield_fixture(scope='session')
-def process_manager(_process_manager):
+def mp_logging_setup():
     '''
     Returns the salt process manager from _process_manager.
 
     We need these two functions to properly shutdown the process manager
     '''
-    yield _process_manager
-
-    log.warning('stop process manager')
-    _process_manager.stop_restarting()
-    _process_manager.send_signal_to_processes(signal.SIGTERM)
-    _process_manager.kill_children()
+    log.warning('starting multiprocessing logging')
+    salt.log.setup.setup_multiprocessing_logging_listener()
+    log.warning('multiprocessing logging started')
+    yield
+    log.warning('stopping multiprocessing logging')
     salt.log.setup.shutdown_multiprocessing_logging()
     salt.log.setup.shutdown_multiprocessing_logging_listener()
+    log.warning('multiprocessing logging stopped')
 
 
-@pytest.fixture(scope='session')
-def salt_master(process_manager, master_config, minion_config):
+@pytest.yield_fixture(scope='session')
+def salt_master(mp_logging_setup, master_config, minion_config):
     '''
     Returns a running salt-master
     '''
-    master_process = process_manager.add_process(
-        SaltMaster,
-        args=(master_config, minion_config)
-    )
+    log.warning('Starting salt-master')
+    master_process = SaltMaster(master_config, minion_config)
+    master_process.start()
     try:
         master_process.wait_until_running(timeout=5)
     except SaltDaemonNotRunning as exc:
         pytest.skip(str(exc))
-    log.info('The pytest salt-master is running and accepting connections')
-    return master_process
+    log.warning('The pytest salt-master is running and accepting connections')
+    yield master_process
+    log.warning('Stopping salt-master')
+    os.kill(master_process.pid, signal.SIGTERM)
+    master_process.join()
+    master_process.terminate()
+    log.warning('salt-master stopped')
 
 
-@pytest.fixture(scope='session')
-def salt_minion(process_manager, minion_config, salt_master):
+@pytest.yield_fixture(scope='session')
+def salt_minion(mp_logging_setup, minion_config, salt_master):
     '''
     Returns a running salt-minion
     '''
-    minion_process = process_manager.add_process(
-        SaltMinion,
-        args=(minion_config,)
-    )
+    log.warning('Starting salt-minion')
+    minion_process = SaltMinion(minion_config)
+    minion_process.start()
     try:
         minion_process.wait_until_running(timeout=5)
     except SaltDaemonNotRunning as exc:
         pytest.skip(str(exc))
-    log.info('The pytest salt-minion is running and accepting commands')
-    return minion_process
+    log.warning('The pytest salt-minion is running and accepting commands')
+    yield minion_process
+    log.warning('Stopping salt-minion')
+    os.kill(minion_process.pid, signal.SIGTERM)
+    minion_process.join()
+    minion_process.terminate()
+    log.warning('salt-minion stopped')
 
 
 @pytest.yield_fixture(scope='session')
-def cli_salt_master(request, process_manager, cli_conf_dir, cli_master_config, cli_minion_config):
+def cli_salt_master(request, mp_logging_setup, cli_conf_dir, cli_master_config, cli_minion_config):
     '''
     Returns a running salt-master
     '''
-    master_process = process_manager.add_process(
-        SaltCliMaster,
-        args=(cli_conf_dir, request.config.getoption('--cli-bin-dir'),
-              cli_master_config['pidfile'], cli_minion_config['pidfile'])
-    )
-
+    log.warning('Starting CLI salt-master')
+    master_process = SaltCliMaster(cli_conf_dir,
+                                   request.config.getoption('--cli-bin-dir'))
+    master_process.start()
     # Allow the subprocess to start
-    time.sleep(1)
+    time.sleep(1.5)
     if master_process.is_alive():
         try:
             master_process.wait_until_running(timeout=10)
         except TimedProcTimeoutError as exc:
             pytest.skip(str(exc))
-            del process_manager._process_map[master_process.pid]
-        log.info('The pytest salt-master is running and accepting connections')
+        log.warning('The pytest CLI salt-master is running and accepting connections')
         yield master_process
     else:
         pytest.skip('The pytest salt-master has failed to start')
+    log.warning('Stopping CLI salt-master')
+    os.kill(master_process.pid, signal.SIGTERM)
+    master_process.join()
+    master_process.terminate()
+    log.warning('CLI salt-master stopped')
 
 
-@pytest.fixture(scope='session')
-def cli_salt_minion(request, process_manager, cli_conf_dir, cli_salt_master, cli_minion_config):
+@pytest.yield_fixture(scope='session')
+def cli_salt_minion(request, mp_logging_setup, cli_conf_dir, cli_salt_master, cli_minion_config):
     '''
     Returns a running salt-minion
     '''
-    minion_process = process_manager.add_process(
-        SaltCliMinion,
-        args=(cli_conf_dir, request.config.getoption('--cli-bin-dir'))
-    )
+    log.warning('Starting CLI salt-master')
+    minion_process = SaltCliMinion(cli_conf_dir,
+                                   request.config.getoption('--cli-bin-dir'))
+    minion_process.start()
     # Allow the subprocess to start
     time.sleep(0.5)
     if minion_process.is_alive():
         try:
             minion_process.wait_until_running(timeout=5)
         except TimedProcTimeoutError as exc:
-            del process_manager._process_map[minion_process.pid]
             pytest.skip(str(exc))
-        log.info('The pytest salt-minion is running and accepting commands')
-        return minion_process
-    log.info('The pytest salt-minion has failed to start')
+        log.warning('The pytest CLI salt-minion is running and accepting commands')
+        yield minion_process
+    else:
+        log.warning('The pytest salt-minion has failed to start')
+        pytest.skip('The pytest salt-minion has failed to start')
+    log.warning('Stopping CLI salt-minion')
+    os.kill(minion_process.pid, signal.SIGTERM)
+    minion_process.join()
+    minion_process.terminate()
+    log.warning('CLI salt-minion stopped')
 
 
-class SaltMinion(process.MultiprocessingProcess):
+class SaltMinion(multiprocessing.Process):
     '''
     Multiprocessing process for running a salt-minion
     '''
@@ -189,21 +187,21 @@ class SaltMaster(SaltMinion):
         self.master.start()
 
 
-class SaltCliScriptBase(process.MultiprocessingProcess):
+class SaltCliScriptBase(multiprocessing.Process):
 
     cli_script_name = None
 
-    def __init__(self, config_dir, bin_dir_path, script_pidfile):
+    def __init__(self, config_dir, bin_dir_path):
         super(SaltCliScriptBase, self).__init__()
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
-        self.script_pidfile = script_pidfile
         self.proc = None
 
     def get_script_path(self, scrip_name):
         return os.path.join(self.bin_dir_path, scrip_name)
 
     def _on_signal(self, pid, signum, sigframe):
+        log.warning('received signal: %s', signum)
         # escalate the signal
         os.kill(pid, signum)
 
@@ -219,8 +217,6 @@ class SaltCliScriptBase(process.MultiprocessingProcess):
         log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
         proc = subprocess.Popen(
             proc_args,
-            #stdout=timed_subprocess.subprocess.PIPE,
-            #stderr=timed_subprocess.subprocess.PIPE,
         )
         signal.signal(signal.SIGINT, functools.partial(self._on_signal, proc.pid))
         signal.signal(signal.SIGTERM, functools.partial(self._on_signal, proc.pid))
@@ -244,8 +240,6 @@ class SaltCliMinion(SaltCliScriptBase):
         log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
         proc = timed_subprocess.TimedProc(
             proc_args,
-            #stdout=timed_subprocess.subprocess.PIPE,
-            #stderr=timed_subprocess.subprocess.PIPE,
             with_communicate=True
         )
         proc.wait(timeout)
@@ -256,25 +250,18 @@ class SaltCliMaster(SaltCliMinion):
 
     cli_script_name = 'salt-master'
 
-    def __init__(self, config_dir, bin_dir_path, script_pidfile, minion_pidfile):
-        super(SaltCliMaster, self).__init__(config_dir, bin_dir_path, script_pidfile)
-        self.minion_pidile = minion_pidfile
-
     def wait_until_running(self, timeout=None):
         proc_args = [
             self.get_script_path('salt-minion'),
             '-c',
             self.config_dir,
             '--disable-keepalive',
-            #'-l',
-            #'error'
+            '-l',
+            'error'
         ]
         log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
         minion_subprocess = subprocess.Popen(
             proc_args,
-            #stdout=timed_subprocess.subprocess.PIPE,
-            #stderr=timed_subprocess.subprocess.PIPE,
-            #close_fds=True
         )
         # Let's let the minion start
         time.sleep(2)
@@ -282,10 +269,13 @@ class SaltCliMaster(SaltCliMinion):
             super(SaltCliMaster, self).wait_until_running(timeout=timeout)
             log.warning('Terminating minion after successful salt-call')
             os.kill(minion_subprocess.pid, signal.SIGTERM)
-            minion_subprocess.terminate()
+            minion_subprocess.send_signal(signal.SIGTERM)
+            minion_subprocess.communicate()
         except TimedProcTimeoutError:
             log.warning('Terminating minion after failed salt-call')
             os.kill(minion_subprocess.pid, signal.SIGTERM)
+            minion_subprocess.send_signal(signal.SIGTERM)
+            minion_subprocess.communicate()
             minion_subprocess.terminate()
             raise
         except Exception as exc:
