@@ -14,10 +14,10 @@
 # Import python libs
 from __future__ import absolute_import
 
-# Import 3rd-party libs
-import pytest
+
+def test_salt_master_running(salt_master):
+    assert salt_master.is_alive()
 
 
-@pytest.mark.usefixtures('salt_master')
-def test_salt_master_running(process_manager):
-    assert process_manager
+def test_cli_salt_master_running(cli_salt_master):
+    assert cli_salt_master.is_alive()
