@@ -101,7 +101,7 @@ def cli_salt_master(request, mp_logging_setup, cli_conf_dir, cli_master_config, 
     Returns a running salt-master
     '''
     log.warning('Starting CLI salt-master')
-    master_process = SaltCliMaster(cli_conf_dir,
+    master_process = SaltCliMaster(cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'))
     master_process.start()
     # Allow the subprocess to start
@@ -128,7 +128,7 @@ def cli_salt_minion(request, mp_logging_setup, cli_conf_dir, cli_salt_master, cl
     Returns a running salt-minion
     '''
     log.warning('Starting CLI salt-master')
-    minion_process = SaltCliMinion(cli_conf_dir,
+    minion_process = SaltCliMinion(cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'))
     minion_process.start()
     # Allow the subprocess to start

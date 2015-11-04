@@ -14,72 +14,58 @@
 
 # Import Python libs
 from __future__ import absolute_import
-import os
-import shutil
 import logging
-import tempfile
 
 # Import 3rd-party libs
 import pytest
 
+pytest_plugins = ('tempdir', 'logging')
 
 log = logging.getLogger(__name__)
 
-if os.uname()[0] == 'Darwin':
-    SYS_TMP_DIR = '/tmp'
-else:
-    SYS_TMP_DIR = os.environ.get('TMPDIR', tempfile.gettempdir())
 
-PYTESTSALT_TESTS_TEMPDIR = os.path.join(SYS_TMP_DIR, 'pytest-salt-tmp')
-
-
-@pytest.yield_fixture(scope='session')
-def tests_tempdir(request):
+def pytest_tempdir_basename():
     '''
-    Yield a known temporary directory which can be left untouched at the
-    end of the test suite execution for debugging puroses
+    An alternate way to define the predictable temporary directory.
+    By default returns ``None`` and get's the basename either from the INI file or
+    from the CLI passed option
     '''
-    tests_tempdir_path = request.config.getoption('--tests-temp-dir')
+    return 'pytest-salt-tmp'
 
-    # The tests tempdir is always wiped on start if it exists
-    if os.path.exists(tests_tempdir_path):
-        log.debug('Removing stale salt tests temporary directory: %s', tests_tempdir_path)
-        shutil.rmtree(tests_tempdir_path)
 
-    # Recreate the directory
-    os.makedirs(tests_tempdir_path)
-    yield tests_tempdir_path
-
-    # Teardown code
-    if request.config.getoption('--no-clean') is True:
-        log.debug('The salt tests temporary directory is left untouched')
-    else:
-        log.debug('Removing the salt tests temporary directory')
-        shutil.rmtree(tests_tempdir_path)
+def pytest_report_header(config):
+    '''
+    return a string to be displayed as header info for terminal reporting.
+    '''
+    tests_confdir = config._tempdir.join('conf').strpath
+    tests_cli_confdir = config._tempdir.join('conf-cli').strpath
+    return [
+        'pytest salt dirs:',
+        '      salt config dir: {0}'.format(tests_confdir),
+        '  salt cli config dir: {0}'.format(tests_cli_confdir)
+    ]
 
 
 @pytest.fixture(scope='session')
-def conf_dir(tests_tempdir):
+def conf_dir(tempdir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(tests_tempdir, 'conf')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = tempdir.join('conf')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
-def cli_conf_dir(tests_tempdir):
+def cli_conf_dir(tempdir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(tests_tempdir, 'conf-cli')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = tempdir.join('conf-cli')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -88,10 +74,9 @@ def master_config_includes_dir(conf_dir):
     Fixture which returns the salt master configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(conf_dir, 'master.d')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = conf_dir.join('master.d')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -100,10 +85,9 @@ def minion_config_includes_dir(conf_dir):
     Fixture which returns the salt minion configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(conf_dir, 'minion.d')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = conf_dir.join('minion.d')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -112,10 +96,9 @@ def cloud_config_includes_dir(conf_dir):
     Fixture which returns the salt-cloud configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(conf_dir, 'cloud.conf.d')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = conf_dir.join('cloud.conf.d')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -124,10 +107,9 @@ def cloud_profiles_config_includes_dir(conf_dir):
     Fixture which returns the salt-cloud profiles configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(conf_dir, 'cloud.profiles.d')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = conf_dir.join('cloud.profiles.d')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -136,22 +118,20 @@ def cloud_providers_config_includes_dir(conf_dir):
     Fixture which returns the salt-cloud providers configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(conf_dir, 'cloud.providers.d')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = conf_dir.join('cloud.providers.d')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
-def integration_files_dir(tests_tempdir):
+def integration_files_dir(tempdir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(tests_tempdir, 'integration-files')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = tempdir.join('integration-files')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -160,10 +140,9 @@ def state_tree_root_dir(integration_files_dir):
     Fixture which returns the salt state tree root directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(integration_files_dir, 'state-tree')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = integration_files_dir.join('state-tree')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -172,10 +151,9 @@ def pillar_tree_root_dir(integration_files_dir):
     Fixture which returns the salt pillar tree root directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(integration_files_dir, 'pillar-tree')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = integration_files_dir.join('pillar-tree')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -184,10 +162,9 @@ def base_env_state_tree_root_dir(state_tree_root_dir):
     Fixture which returns the salt base environment state tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(state_tree_root_dir, 'base')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = state_tree_root_dir.join('base')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -196,10 +173,9 @@ def prod_env_state_tree_root_dir(state_tree_root_dir):
     Fixture which returns the salt prod environment state tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(state_tree_root_dir, 'prod')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = state_tree_root_dir.join('prod')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -208,10 +184,9 @@ def base_env_pillar_tree_root_dir(pillar_tree_root_dir):
     Fixture which returns the salt base environment pillar tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(pillar_tree_root_dir, 'base')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
+    dirpath = pillar_tree_root_dir.join('base')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
@@ -220,44 +195,6 @@ def prod_env_pilar_tree_root_dir(pillar_tree_root_dir):
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = os.path.join(pillar_tree_root_dir, 'prod')
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-    return dirpath
-
-
-def pytest_addoption(parser):
-    '''
-    Add pytest salt plugin dirs related options
-    '''
-    saltparser = parser.getgroup('Salt Plugin Options')
-    saltparser.addoption(
-        '--tests-temp-dir',
-        default=PYTESTSALT_TESTS_TEMPDIR,
-        help=('Temporary directory which will be used as a root for all '
-              'of salt required directories, runtime generated configuration, '
-              'state tree, etc... Default: \'{0}\' ATTENTION: If the provided '
-              'path exists when starting the tests suite, THE PATH WILL BE '
-              'WIPED!!! '.format(PYTESTSALT_TESTS_TEMPDIR))
-    )
-    saltparser.addoption(
-        '--no-clean',
-        default=False,
-        action='store_true',
-        help='Don\'t remove the pytest salt temporary directory.'
-    )
-
-
-def pytest_report_header(config):
-    '''
-    return a string to be displayed as header info for terminal reporting.
-    '''
-    tests_tmpdir = config.getoption('--tests-temp-dir')
-    tests_confdir = os.path.join(tests_tmpdir, 'conf')
-    tests_cli_confdir = os.path.join(tests_tmpdir, 'conf-cli')
-    return [
-        'pytest salt dirs:',
-        '       tests temp dir: {0}'.format(tests_tmpdir),
-        '      salt config dir: {0}'.format(tests_confdir),
-        '  salt cli config dir: {0}'.format(tests_cli_confdir)
-    ]
+    dirpath = pillar_tree_root_dir.join('prod')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
