@@ -50,6 +50,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         'pytest >= 2.8.1',
+        'pytest-logging',
+        'pytest-tempdir'
     ],
     setup_requires=[
         'salt>=2015.8.0',
