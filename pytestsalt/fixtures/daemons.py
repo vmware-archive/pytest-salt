@@ -52,7 +52,7 @@ def get_log_level_name(verbosity):
                               HANDLED_LEVELS.get(verbosity > 6 and 6 or 2))
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture
 def mp_logging_setup():
     '''
     Returns the salt process manager from _process_manager.
@@ -69,12 +69,14 @@ def mp_logging_setup():
     log.warning('multiprocessing logging stopped')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture
 def salt_master(mp_logging_setup, master_config, minion_config):
     '''
     Returns a running salt-master
     '''
     log.warning('Starting salt-master')
+    log.trace('Starting salt-master')
+    log.garbage('\n\nStarting salt-master\n\n')
     master_process = SaltMaster(master_config, minion_config)
     master_process.start()
     try:
@@ -90,7 +92,7 @@ def salt_master(mp_logging_setup, master_config, minion_config):
     log.warning('salt-master stopped')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture
 def salt_minion(mp_logging_setup, minion_config, salt_master):
     '''
     Returns a running salt-minion
@@ -111,7 +113,7 @@ def salt_minion(mp_logging_setup, minion_config, salt_master):
     log.warning('salt-minion stopped')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture
 def cli_salt_master(request, mp_logging_setup, cli_conf_dir, cli_master_config, cli_minion_config):
     '''
     Returns a running salt-master
@@ -147,13 +149,157 @@ def cli_salt_master(request, mp_logging_setup, cli_conf_dir, cli_master_config, 
     log.warning('CLI salt-master stopped')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture
 def cli_salt_minion(request, mp_logging_setup, cli_conf_dir, cli_salt_master, cli_minion_config):
     '''
     Returns a running salt-minion
     '''
     log.warning('Starting CLI salt-master')
     minion_process = SaltCliMinion(cli_conf_dir.strpath,
+                                   request.config.getoption('--cli-bin-dir'),
+                                   verbosity=request.config.getoption('-v'))
+    minion_process.start()
+    # Allow the subprocess to start
+    time.sleep(0.5)
+    if minion_process.is_alive():
+        try:
+            retcode = minion_process.wait_until_running(timeout=5)
+            if not retcode:
+                os.kill(minion_process.pid, signal.SIGTERM)
+                minion_process.join()
+                minion_process.terminate()
+                pytest.skip('The pytest salt-minion has failed to start')
+        except TimedProcTimeoutError as exc:
+            os.kill(minion_process.pid, signal.SIGTERM)
+            minion_process.join()
+            minion_process.terminate()
+            pytest.skip(str(exc))
+        log.warning('The pytest CLI salt-minion is running and accepting commands')
+        yield minion_process
+    else:
+        log.warning('The pytest salt-minion has failed to start')
+        pytest.skip('The pytest salt-minion has failed to start')
+    log.warning('Stopping CLI salt-minion')
+    os.kill(minion_process.pid, signal.SIGTERM)
+    minion_process.join()
+    minion_process.terminate()
+    log.warning('CLI salt-minion stopped')
+
+
+@pytest.yield_fixture(scope='session')
+def session_mp_logging_setup():
+    '''
+    Returns the salt process manager from _process_manager.
+
+    We need these two functions to properly shutdown the process manager
+    '''
+    log.warning('starting multiprocessing logging')
+    salt.log.setup.setup_multiprocessing_logging_listener()
+    log.warning('multiprocessing logging started')
+    yield
+    log.warning('stopping multiprocessing logging')
+    salt.log.setup.shutdown_multiprocessing_logging()
+    salt.log.setup.shutdown_multiprocessing_logging_listener()
+    log.warning('multiprocessing logging stopped')
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_master(session_mp_logging_setup,
+                        session_master_config,
+                        session_minion_config):
+    '''
+    Returns a running salt-master
+    '''
+    log.warning('Starting salt-master')
+    log.trace('Starting salt-master')
+    log.garbage('\n\nStarting salt-master\n\n')
+    master_process = SaltMaster(session_master_config, session_minion_config)
+    master_process.start()
+    try:
+        master_process.wait_until_running(timeout=5)
+    except SaltDaemonNotRunning as exc:
+        pytest.skip(str(exc))
+    log.warning('The pytest salt-master is running and accepting connections')
+    yield master_process
+    log.warning('Stopping salt-master')
+    os.kill(master_process.pid, signal.SIGTERM)
+    master_process.join()
+    master_process.terminate()
+    log.warning('salt-master stopped')
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_minion(session_mp_logging_setup, session_minion_config, session_salt_master):
+    '''
+    Returns a running salt-minion
+    '''
+    log.warning('Starting salt-minion')
+    minion_process = SaltMinion(session_minion_config)
+    minion_process.start()
+    try:
+        minion_process.wait_until_running(timeout=5)
+    except SaltDaemonNotRunning as exc:
+        pytest.skip(str(exc))
+    log.warning('The pytest salt-minion is running and accepting commands')
+    yield minion_process
+    log.warning('Stopping salt-minion')
+    os.kill(minion_process.pid, signal.SIGTERM)
+    minion_process.join()
+    minion_process.terminate()
+    log.warning('salt-minion stopped')
+
+
+@pytest.yield_fixture(scope='session')
+def session_cli_salt_master(request,
+                            session_mp_logging_setup,
+                            session_cli_conf_dir,
+                            session_cli_master_config,
+                            session_cli_minion_config):
+    '''
+    Returns a running salt-master
+    '''
+    log.warning('Starting CLI salt-master')
+    master_process = SaltCliMaster(session_cli_conf_dir.strpath,
+                                   request.config.getoption('--cli-bin-dir'),
+                                   verbosity=request.config.getoption('-v'))
+    master_process.start()
+    # Allow the subprocess to start
+    time.sleep(1.5)
+    if master_process.is_alive():
+        try:
+            retcode = master_process.wait_until_running(timeout=10)
+            if not retcode:
+                os.kill(master_process.pid, signal.SIGTERM)
+                master_process.join()
+                master_process.terminate()
+                pytest.skip('The pytest salt-master has failed to start')
+        except TimedProcTimeoutError as exc:
+            os.kill(master_process.pid, signal.SIGTERM)
+            master_process.join()
+            master_process.terminate()
+            pytest.skip(str(exc))
+        log.warning('The pytest CLI salt-master is running and accepting connections')
+        yield master_process
+    else:
+        pytest.skip('The pytest salt-master has failed to start')
+    log.warning('Stopping CLI salt-master')
+    os.kill(master_process.pid, signal.SIGTERM)
+    master_process.join()
+    master_process.terminate()
+    log.warning('CLI salt-master stopped')
+
+
+@pytest.yield_fixture(scope='session')
+def session_cli_salt_minion(request,
+                            session_mp_logging_setup,
+                            session_cli_conf_dir,
+                            session_cli_salt_master,
+                            session_cli_minion_config):
+    '''
+    Returns a running salt-minion
+    '''
+    log.warning('Starting CLI salt-master')
+    minion_process = SaltCliMinion(session_cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
                                    verbosity=request.config.getoption('-v'))
     minion_process.start()
