@@ -21,7 +21,7 @@ import pytest
 from pytestsalt.utils import get_unused_localhost_port
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def master_publish_port():
     '''
     Returns an unused localhost port for the master publish interface
@@ -29,7 +29,7 @@ def master_publish_port():
     return get_unused_localhost_port()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def master_return_port():
     '''
     Returns an unused localhost port for the master return interface
@@ -37,7 +37,7 @@ def master_return_port():
     return get_unused_localhost_port()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def cli_master_publish_port():
     '''
     Returns an unused localhost port for the master publish interface
@@ -45,8 +45,40 @@ def cli_master_publish_port():
     return get_unused_localhost_port()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def cli_master_return_port():
+    '''
+    Returns an unused localhost port for the master return interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_publish_port():
+    '''
+    Returns an unused localhost port for the master publish interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_return_port():
+    '''
+    Returns an unused localhost port for the master return interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_cli_master_publish_port():
+    '''
+    Returns an unused localhost port for the master publish interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_cli_master_return_port():
     '''
     Returns an unused localhost port for the master return interface
     '''
