@@ -23,6 +23,11 @@ pytest_plugins = ('tempdir', 'catchlog')
 
 log = logging.getLogger(__name__)
 
+ROOT_DIR = 'root'
+CLI_ROOT_DIR = 'cli-root'
+SESSION_ROOT_DIR = 'session-root'
+SESSION_CLI_ROOT_DIR = 'session-cli-root'
+
 
 def pytest_tempdir_basename():
     '''
@@ -37,37 +42,65 @@ def pytest_report_header(config):
     '''
     return a string to be displayed as header info for terminal reporting.
     '''
-    tests_confdir = config._tempdir.join('conf').strpath
-    tests_session_confdir = config._tempdir.join('session-conf').strpath
-    tests_cli_confdir = config._tempdir.join('conf-cli').strpath
-    tests_session_cli_confdir = config._tempdir.join('session-conf-cli').strpath
+    tests_rootdir = config._tempdir.join(ROOT_DIR).strpath
+    tests_session_rootdir = config._tempdir.join(SESSION_ROOT_DIR).strpath
+    tests_cli_rootdir = config._tempdir.join(CLI_ROOT_DIR).strpath
+    tests_session_cli_rootdir = config._tempdir.join(SESSION_CLI_ROOT_DIR).strpath
     return [
-        'pytest salt dirs:',
-        '              config dir: {0}'.format(tests_confdir),
-        '          cli config dir: {0}'.format(tests_cli_confdir),
-        '      session config dir: {0}'.format(tests_session_confdir),
-        '  session cli config dir: {0}'.format(tests_session_cli_confdir)
+        'pytest salt root dirs:',
+        '        function scope root dir: {0}'.format(tests_rootdir),
+        '  function scope cli config dir: {0}'.format(tests_cli_rootdir),
+        '       session scope config dir: {0}'.format(tests_session_rootdir),
+        '   session scope cli config dir: {0}'.format(tests_session_cli_rootdir)
     ]
 
 
 @pytest.fixture
-def conf_dir(tempdir):
-    '''
-    Fixture which returns the salt configuration directory path.
-    Creates the directory if it does not yet exist.
-    '''
-    dirpath = tempdir.join('conf')
+def root_dir(tempdir):
+    dirpath = tempdir.join('root')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture
-def cli_conf_dir(tempdir):
+def cli_root_dir(tempdir):
+    dirpath = tempdir.join('cli-root')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
+
+
+@pytest.fixture(scope='session')
+def session_root_dir(tempdir):
+    dirpath = tempdir.join('session-root')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
+
+
+@pytest.fixture(scope='session')
+def session_cli_root_dir(tempdir):
+    dirpath = tempdir.join('session-cli-root')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
+
+
+@pytest.fixture
+def conf_dir(root_dir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('conf-cli')
+    dirpath = root_dir.join('conf')
+    dirpath.ensure(dir=True)
+    return dirpath.realpath()
+
+
+@pytest.fixture
+def cli_conf_dir(cli_root_dir):
+    '''
+    Fixture which returns the salt configuration directory path.
+    Creates the directory if it does not yet exist.
+    '''
+    dirpath = cli_root_dir.join('conf')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
@@ -117,23 +150,23 @@ def cli_minion_config_includes_dir(cli_conf_dir):
 
 
 @pytest.fixture
-def integration_files_dir(tempdir):
+def integration_files_dir(root_dir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('integration-files')
+    dirpath = root_dir.join('integration-files')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture
-def cli_integration_files_dir(tempdir):
+def cli_integration_files_dir(cli_root_dir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('cli-integration-files')
+    dirpath = cli_root_dir.join('integration-files')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
@@ -271,23 +304,23 @@ def cli_prod_env_pillar_tree_root_dir(cli_pillar_tree_root_dir):
 
 
 @pytest.fixture(scope='session')
-def session_conf_dir(tempdir):
+def session_conf_dir(session_root_dir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('session-conf')
+    dirpath = session_root_dir.join('conf')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
-def session_cli_conf_dir(tempdir):
+def session_cli_conf_dir(session_cli_root_dir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('session-conf-cli')
+    dirpath = session_cli_root_dir.join('conf')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
@@ -337,23 +370,23 @@ def session_cli_minion_config_includes_dir(session_cli_conf_dir):
 
 
 @pytest.fixture(scope='session')
-def session_integration_files_dir(tempdir):
+def session_integration_files_dir(session_root_dir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('session-integration-files')
+    dirpath = session_root_dir.join('integration-files')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
-def session_cli_integration_files_dir(tempdir):
+def session_cli_integration_files_dir(session_cli_root_dir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirpath = tempdir.join('session-cli-integration-files')
+    dirpath = session_cli_root_dir.join('integration-files')
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 

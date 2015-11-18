@@ -256,7 +256,7 @@ def session_cli_minion_config_overrides():
     '''
 
 
-def _master_config(tempdir,
+def _master_config(root_dir,
                    config_file,
                    publish_port,
                    return_port,
@@ -273,7 +273,7 @@ def _master_config(tempdir,
     '''
     default_options = {
         'id': master_id,
-        'root_dir': tempdir.strpath,
+        'root_dir': root_dir.strpath,
         'publish_port': publish_port,
         'ret_port': return_port,
         'worker_threads': 3,
@@ -294,7 +294,7 @@ def _master_config(tempdir,
         'log_file': 'logs/master',
         'key_logfile': 'logs/key',
         'token_dir': 'tokens',
-        'token_file': tempdir.join('ksfjhdgiuebfgnkefvsikhfjdgvkjahcsidk').strpath,
+        'token_file': root_dir.join('ksfjhdgiuebfgnkefvsikhfjdgvkjahcsidk').strpath,
         'file_buffer_size': 8192,
         'user': running_username,
         'log_fmt_console': "[%(levelname)-8s][%(name)-5s:%(lineno)-4d] %(message)s",
@@ -358,7 +358,7 @@ def _master_config(tempdir,
 
 
 @pytest.fixture
-def master_config(tempdir,
+def master_config(root_dir,
                   master_config_file,
                   master_publish_port,
                   master_return_port,
@@ -373,7 +373,7 @@ def master_config(tempdir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
-    return _master_config(tempdir,
+    return _master_config(root_dir,
                           master_config_file,
                           master_publish_port,
                           master_return_port,
@@ -387,7 +387,7 @@ def master_config(tempdir,
 
 
 @pytest.fixture
-def cli_master_config(tempdir,
+def cli_master_config(cli_root_dir,
                       cli_master_config_file,
                       cli_master_publish_port,
                       cli_master_return_port,
@@ -402,7 +402,7 @@ def cli_master_config(tempdir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
-    return _master_config(tempdir,
+    return _master_config(cli_root_dir,
                           cli_master_config_file,
                           cli_master_publish_port,
                           cli_master_return_port,
@@ -416,7 +416,7 @@ def cli_master_config(tempdir,
 
 
 @pytest.fixture(scope='session')
-def session_master_config(tempdir,
+def session_master_config(session_root_dir,
                           session_master_config_file,
                           session_master_publish_port,
                           session_master_return_port,
@@ -431,7 +431,7 @@ def session_master_config(tempdir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
-    return _master_config(tempdir,
+    return _master_config(session_root_dir,
                           session_master_config_file,
                           session_master_publish_port,
                           session_master_return_port,
@@ -445,7 +445,7 @@ def session_master_config(tempdir,
 
 
 @pytest.fixture(scope='session')
-def session_cli_master_config(tempdir,
+def session_cli_master_config(session_cli_root_dir,
                               session_cli_master_config_file,
                               session_cli_master_publish_port,
                               session_cli_master_return_port,
@@ -460,7 +460,7 @@ def session_cli_master_config(tempdir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
-    return _master_config(tempdir,
+    return _master_config(session_cli_root_dir,
                           session_cli_master_config_file,
                           session_cli_master_publish_port,
                           session_cli_master_return_port,
@@ -473,7 +473,7 @@ def session_cli_master_config(tempdir,
                           running_username)
 
 
-def _minion_config(tempdir,
+def _minion_config(root_dir,
                    config_file,
                    return_port,
                    config_overrides,
@@ -484,7 +484,7 @@ def _minion_config(tempdir,
     overridden with any options passed from ``master_config_overrides``
     '''
     default_options = {
-        'root_dir': tempdir.strpath,
+        'root_dir': root_dir.strpath,
         'master': 'localhost',
         'master_port': return_port,
         'id': minion_id,
@@ -534,7 +534,7 @@ def _minion_config(tempdir,
 
 
 @pytest.fixture
-def minion_config(tempdir,
+def minion_config(root_dir,
                   minion_config_file,
                   master_return_port,
                   minion_config_overrides,
@@ -544,7 +544,7 @@ def minion_config(tempdir,
     This fixture will return the salt master configuration options after being
     overrided with any options passed from ``master_config_overrides``
     '''
-    return _minion_config(tempdir,
+    return _minion_config(root_dir,
                           minion_config_file,
                           master_return_port,
                           minion_config_overrides,
@@ -553,7 +553,7 @@ def minion_config(tempdir,
 
 
 @pytest.fixture
-def cli_minion_config(tempdir,
+def cli_minion_config(cli_root_dir,
                       cli_minion_config_file,
                       cli_master_return_port,
                       cli_minion_config_overrides,
@@ -563,7 +563,7 @@ def cli_minion_config(tempdir,
     This fixture will return the salt master configuration options after being
     overrided with any options passed from ``master_config_overrides``
     '''
-    return _minion_config(tempdir,
+    return _minion_config(cli_root_dir,
                           cli_minion_config_file,
                           cli_master_return_port,
                           cli_minion_config_overrides,
@@ -572,7 +572,7 @@ def cli_minion_config(tempdir,
 
 
 @pytest.fixture(scope='session')
-def session_minion_config(tempdir,
+def session_minion_config(session_root_dir,
                           session_minion_config_file,
                           session_master_return_port,
                           session_minion_config_overrides,
@@ -582,7 +582,7 @@ def session_minion_config(tempdir,
     This fixture will return the salt master configuration options after being
     overrided with any options passed from ``master_config_overrides``
     '''
-    return _minion_config(tempdir,
+    return _minion_config(session_root_dir,
                           session_minion_config_file,
                           session_master_return_port,
                           session_minion_config_overrides,
@@ -591,7 +591,7 @@ def session_minion_config(tempdir,
 
 
 @pytest.fixture(scope='session')
-def session_cli_minion_config(tempdir,
+def session_cli_minion_config(session_cli_root_dir,
                               session_cli_minion_config_file,
                               session_cli_master_return_port,
                               session_cli_minion_config_overrides,
@@ -601,7 +601,7 @@ def session_cli_minion_config(tempdir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
-    return _minion_config(tempdir,
+    return _minion_config(session_cli_root_dir,
                           session_cli_minion_config_file,
                           session_cli_master_return_port,
                           session_cli_minion_config_overrides,
