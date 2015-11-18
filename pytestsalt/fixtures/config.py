@@ -379,10 +379,10 @@ def master_config(tempdir,
                           master_return_port,
                           master_config_overrides,
                           master_id,
-                          [base_env_state_tree_root_dir],
-                          [prod_env_state_tree_root_dir],
-                          [base_env_pillar_tree_root_dir],
-                          [prod_env_pillar_tree_root_dir],
+                          [base_env_state_tree_root_dir.strpath],
+                          [prod_env_state_tree_root_dir.strpath],
+                          [base_env_pillar_tree_root_dir.strpath],
+                          [prod_env_pillar_tree_root_dir.strpath],
                           running_username)
 
 
@@ -408,10 +408,10 @@ def cli_master_config(tempdir,
                           cli_master_return_port,
                           cli_master_config_overrides,
                           cli_master_id,
-                          [cli_base_env_state_tree_root_dir],
-                          [cli_prod_env_state_tree_root_dir],
-                          [cli_base_env_pillar_tree_root_dir],
-                          [cli_prod_env_pillar_tree_root_dir],
+                          [cli_base_env_state_tree_root_dir.strpath],
+                          [cli_prod_env_state_tree_root_dir.strpath],
+                          [cli_base_env_pillar_tree_root_dir.strpath],
+                          [cli_prod_env_pillar_tree_root_dir.strpath],
                           running_username)
 
 
@@ -437,10 +437,10 @@ def session_master_config(tempdir,
                           session_master_return_port,
                           session_master_config_overrides,
                           session_master_id,
-                          [session_base_env_state_tree_root_dir],
-                          [session_prod_env_state_tree_root_dir],
-                          [session_base_env_pillar_tree_root_dir],
-                          [session_prod_env_pillar_tree_root_dir],
+                          [session_base_env_state_tree_root_dir.strpath],
+                          [session_prod_env_state_tree_root_dir.strpath],
+                          [session_base_env_pillar_tree_root_dir.strpath],
+                          [session_prod_env_pillar_tree_root_dir.strpath],
                           running_username)
 
 
@@ -466,10 +466,10 @@ def session_cli_master_config(tempdir,
                           session_cli_master_return_port,
                           session_cli_master_config_overrides,
                           session_cli_master_id,
-                          [session_cli_base_env_state_tree_root_dir],
-                          [session_cli_prod_env_state_tree_root_dir],
-                          [session_cli_base_env_pillar_tree_root_dir],
-                          [session_cli_prod_env_pillar_tree_root_dir],
+                          [session_cli_base_env_state_tree_root_dir.strpath],
+                          [session_cli_prod_env_state_tree_root_dir.strpath],
+                          [session_cli_base_env_pillar_tree_root_dir.strpath],
+                          [session_cli_prod_env_pillar_tree_root_dir.strpath],
                           running_username)
 
 
