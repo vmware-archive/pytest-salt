@@ -114,7 +114,11 @@ def salt_minion(mp_logging_setup, minion_config, salt_master):
 
 
 @pytest.yield_fixture
-def cli_salt_master(request, mp_logging_setup, cli_conf_dir, cli_master_config, cli_minion_config):
+def cli_salt_master(request,
+                    mp_logging_setup,
+                    cli_conf_dir,
+                    cli_master_config,
+                    cli_minion_config):
     '''
     Returns a running salt-master
     '''
@@ -150,7 +154,11 @@ def cli_salt_master(request, mp_logging_setup, cli_conf_dir, cli_master_config, 
 
 
 @pytest.yield_fixture
-def cli_salt_minion(request, mp_logging_setup, cli_conf_dir, cli_salt_master, cli_minion_config):
+def cli_salt_minion(request,
+                    mp_logging_setup,
+                    cli_conf_dir,
+                    cli_salt_master,
+                    cli_minion_config):
     '''
     Returns a running salt-minion
     '''
