@@ -194,7 +194,7 @@ def base_env_pillar_tree_root_dir(pillar_tree_root_dir):
 
 
 @pytest.fixture
-def prod_env_pilar_tree_root_dir(pillar_tree_root_dir):
+def prod_env_pillar_tree_root_dir(pillar_tree_root_dir):
     '''
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
@@ -260,7 +260,7 @@ def cli_base_env_pillar_tree_root_dir(cli_pillar_tree_root_dir):
 
 
 @pytest.fixture
-def cli_prod_env_pilar_tree_root_dir(cli_pillar_tree_root_dir):
+def cli_prod_env_pillar_tree_root_dir(cli_pillar_tree_root_dir):
     '''
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
@@ -414,7 +414,7 @@ def session_base_env_pillar_tree_root_dir(session_pillar_tree_root_dir):
 
 
 @pytest.fixture(scope='session')
-def session_prod_env_pilar_tree_root_dir(session_pillar_tree_root_dir):
+def session_prod_env_pillar_tree_root_dir(session_pillar_tree_root_dir):
     '''
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
@@ -480,7 +480,7 @@ def session_cli_base_env_pillar_tree_root_dir(session_cli_pillar_tree_root_dir):
 
 
 @pytest.fixture(scope='session')
-def session_cli_prod_env_pilar_tree_root_dir(session_cli_pillar_tree_root_dir):
+def session_cli_prod_env_pillar_tree_root_dir(session_cli_pillar_tree_root_dir):
     '''
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
