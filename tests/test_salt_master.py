@@ -27,6 +27,9 @@ def test_salt_master_running(salt_master):
 @pytest.mark.function
 @pytest.mark.daemon
 def test_salt_master_running_2(salt_master):
+    '''
+    Assert that the second function scoped master also runs ok
+    '''
     assert salt_master.is_alive()
 
 
