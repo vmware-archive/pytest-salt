@@ -16,6 +16,7 @@
 from __future__ import absolute_import, print_function
 import os
 import pwd
+import random
 import logging
 
 # Import 3rd-party libs
@@ -53,7 +54,7 @@ def master_id():
     '''
     Returns the master id
     '''
-    return DEFAULT_MASTER_ID
+    return DEFAULT_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def minion_id():
     '''
     Returns the minion id
     '''
-    return DEFAULT_MINION_ID
+    return DEFAULT_MINION_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture
@@ -69,7 +70,7 @@ def cli_master_id():
     '''
     Returns the CLI master id
     '''
-    return DEFAULT_CLI_MASTER_ID
+    return DEFAULT_CLI_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture
@@ -77,7 +78,7 @@ def cli_minion_id():
     '''
     Returns the CLI minion id
     '''
-    return DEFAULT_CLI_MINION_ID
+    return DEFAULT_CLI_MINION_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture(scope='session')
@@ -85,7 +86,7 @@ def session_master_id():
     '''
     Returns the session scope master id
     '''
-    return DEFAULT_SESSION_MASTER_ID
+    return DEFAULT_SESSION_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture(scope='session')
@@ -93,7 +94,7 @@ def session_minion_id():
     '''
     Returns the session scope minion id
     '''
-    return DEFAULT_SESSION_MINION_ID
+    return DEFAULT_SESSION_MINION_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture(scope='session')
@@ -101,7 +102,7 @@ def session_cli_master_id():
     '''
     Returns the CLI session scope master id
     '''
-    return DEFAULT_SESSION_CLI_MASTER_ID
+    return DEFAULT_SESSION_CLI_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture(scope='session')
@@ -109,7 +110,7 @@ def session_cli_minion_id():
     '''
     Returns the CLI session scope minion id
     '''
-    return DEFAULT_SESSION_CLI_MINION_ID
+    return DEFAULT_SESSION_CLI_MINION_ID + '-{0}'.format(random.randint(0, 50000))
 
 
 @pytest.fixture
