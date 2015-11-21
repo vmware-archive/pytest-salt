@@ -14,10 +14,35 @@
 # Import python libs
 from __future__ import absolute_import
 
+# Import pytest libs
+import pytest
 
+
+@pytest.mark.function
+@pytest.mark.daemon
 def test_salt_master_running(salt_master):
     assert salt_master.is_alive()
 
 
+@pytest.mark.function
+@pytest.mark.daemon
+def test_salt_master_running_2(salt_master):
+    assert salt_master.is_alive()
+
+
+@pytest.mark.function
+@pytest.mark.cli
 def test_cli_salt_master_running(cli_salt_master):
     assert cli_salt_master.is_alive()
+
+
+@pytest.mark.session
+@pytest.mark.daemon
+def test_session_salt_master_running(session_salt_master):
+    assert session_salt_master.is_alive()
+
+
+@pytest.mark.session
+@pytest.mark.cli
+def test_session_cli_salt_master_running(session_cli_salt_master):
+    assert session_cli_salt_master.is_alive()
