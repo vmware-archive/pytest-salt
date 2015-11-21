@@ -52,7 +52,7 @@ def get_log_level_name(verbosity):
                               HANDLED_LEVELS.get(verbosity > 6 and 6 or 2))
 
 
-@pytest.yield_fixture
+@pytest.yield_fixture(scope='session')
 def mp_logging_setup():
     '''
     Returns the salt process manager from _process_manager.
@@ -75,21 +75,32 @@ def salt_master(mp_logging_setup, master_config, minion_config):
     Returns a running salt-master
     '''
     log.warning('Starting salt-master')
-    log.trace('Starting salt-master')
-    log.garbage('\n\nStarting salt-master\n\n')
     master_process = SaltMaster(master_config, minion_config)
     master_process.start()
-    try:
-        master_process.wait_until_running(timeout=5)
-    except SaltDaemonNotRunning as exc:
-        pytest.skip(str(exc))
-    log.warning('The pytest salt-master is running and accepting connections')
-    yield master_process
-    log.warning('Stopping salt-master')
+    if master_process.is_alive():
+        try:
+            retcode = master_process.wait_until_running(timeout=15)
+            if not retcode:
+                os.kill(master_process.pid, signal.SIGTERM)
+                master_process.join()
+                master_process.terminate()
+                pytest.skip('The pytest function scoped salt-master has failed to start')
+        except SaltDaemonNotRunning as exc:
+            os.kill(master_process.pid, signal.SIGTERM)
+            master_process.join()
+            master_process.terminate()
+            pytest.skip(str(exc))
+        log.warning('The pytest function scoped salt-master is running and accepting connections')
+        yield master_process
+    else:
+        master_process.join()
+        master_process.terminate()
+        pytest.skip('The pytest function scoped salt-master has failed to start')
+    log.warning('Stopping function scoped salt-master')
     os.kill(master_process.pid, signal.SIGTERM)
     master_process.join()
     master_process.terminate()
-    log.warning('salt-master stopped')
+    log.warning('Function scoped salt-master stopped')
 
 
 @pytest.yield_fixture
@@ -100,17 +111,30 @@ def salt_minion(mp_logging_setup, minion_config, salt_master):
     log.warning('Starting salt-minion')
     minion_process = SaltMinion(minion_config)
     minion_process.start()
-    try:
-        minion_process.wait_until_running(timeout=5)
-    except SaltDaemonNotRunning as exc:
-        pytest.skip(str(exc))
-    log.warning('The pytest salt-minion is running and accepting commands')
-    yield minion_process
-    log.warning('Stopping salt-minion')
+    if minion_process.is_alive():
+        try:
+            retcode = minion_process.wait_until_running(timeout=15)
+            if not retcode:
+                os.kill(minion_process.pid, signal.SIGTERM)
+                minion_process.join()
+                minion_process.terminate()
+                pytest.skip('The pytest function scoped salt-minion has failed to start')
+        except SaltDaemonNotRunning as exc:
+            os.kill(minion_process.pid, signal.SIGTERM)
+            minion_process.join()
+            minion_process.terminate()
+            pytest.skip(str(exc))
+        log.warning('The pytest function scoped salt-minion is running and accepting connections')
+        yield minion_process
+    else:
+        minion_process.join()
+        minion_process.terminate()
+        pytest.skip('The pytest function scoped salt-minion has failed to start')
+    log.warning('Stopping function scoped salt-minion')
     os.kill(minion_process.pid, signal.SIGTERM)
     minion_process.join()
     minion_process.terminate()
-    log.warning('salt-minion stopped')
+    log.warning('Function scoped salt-minion stopped')
 
 
 @pytest.yield_fixture
@@ -145,6 +169,9 @@ def cli_salt_master(request,
         log.warning('The pytest CLI salt-master is running and accepting connections')
         yield master_process
     else:
+        #os.kill(master_process.pid, signal.SIGTERM)
+        master_process.join()
+        master_process.terminate()
         pytest.skip('The pytest salt-master has failed to start')
     log.warning('Stopping CLI salt-master')
     os.kill(master_process.pid, signal.SIGTERM)
@@ -185,7 +212,9 @@ def cli_salt_minion(request,
         log.warning('The pytest CLI salt-minion is running and accepting commands')
         yield minion_process
     else:
-        log.warning('The pytest salt-minion has failed to start')
+        #os.kill(minion_process.pid, signal.SIGTERM)
+        minion_process.join()
+        minion_process.terminate()
         pytest.skip('The pytest salt-minion has failed to start')
     log.warning('Stopping CLI salt-minion')
     os.kill(minion_process.pid, signal.SIGTERM)
@@ -195,71 +224,78 @@ def cli_salt_minion(request,
 
 
 @pytest.yield_fixture(scope='session')
-def session_mp_logging_setup():
-    '''
-    Returns the salt process manager from _process_manager.
-
-    We need these two functions to properly shutdown the process manager
-    '''
-    log.warning('starting multiprocessing logging')
-    salt.log.setup.setup_multiprocessing_logging_listener()
-    log.warning('multiprocessing logging started')
-    yield
-    log.warning('stopping multiprocessing logging')
-    salt.log.setup.shutdown_multiprocessing_logging()
-    salt.log.setup.shutdown_multiprocessing_logging_listener()
-    log.warning('multiprocessing logging stopped')
-
-
-@pytest.yield_fixture(scope='session')
-def session_salt_master(session_mp_logging_setup,
+def session_salt_master(mp_logging_setup,
                         session_master_config,
                         session_minion_config):
     '''
     Returns a running salt-master
     '''
     log.warning('Starting salt-master')
-    log.trace('Starting salt-master')
-    log.garbage('\n\nStarting salt-master\n\n')
     master_process = SaltMaster(session_master_config, session_minion_config)
     master_process.start()
-    try:
-        master_process.wait_until_running(timeout=5)
-    except SaltDaemonNotRunning as exc:
-        pytest.skip(str(exc))
-    log.warning('The pytest salt-master is running and accepting connections')
-    yield master_process
-    log.warning('Stopping salt-master')
+    if master_process.is_alive():
+        try:
+            retcode = master_process.wait_until_running(timeout=15)
+            if not retcode:
+                os.kill(master_process.pid, signal.SIGTERM)
+                master_process.join()
+                master_process.terminate()
+                pytest.skip('The pytest session scoped salt-master has failed to start')
+        except SaltDaemonNotRunning as exc:
+            os.kill(master_process.pid, signal.SIGTERM)
+            master_process.join()
+            master_process.terminate()
+            pytest.skip(str(exc))
+        log.warning('The pytest session scoped salt-master is running and accepting connections')
+        yield master_process
+    else:
+        master_process.join()
+        master_process.terminate()
+        pytest.skip('The pytest session scoped salt-master has failed to start')
+    log.warning('Stopping session scoped salt-master')
     os.kill(master_process.pid, signal.SIGTERM)
     master_process.join()
     master_process.terminate()
-    log.warning('salt-master stopped')
+    log.warning('Session scoped salt-master stopped')
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt_minion(session_mp_logging_setup, session_minion_config, session_salt_master):
+def session_salt_minion(mp_logging_setup, session_minion_config, session_salt_master):
     '''
     Returns a running salt-minion
     '''
-    log.warning('Starting salt-minion')
+    log.warning('Starting pytest session scoped salt-minion')
     minion_process = SaltMinion(session_minion_config)
     minion_process.start()
-    try:
-        minion_process.wait_until_running(timeout=5)
-    except SaltDaemonNotRunning as exc:
-        pytest.skip(str(exc))
-    log.warning('The pytest salt-minion is running and accepting commands')
-    yield minion_process
-    log.warning('Stopping salt-minion')
+    if minion_process.is_alive():
+        try:
+            retcode = minion_process.wait_until_running(timeout=15)
+            if not retcode:
+                os.kill(minion_process.pid, signal.SIGTERM)
+                minion_process.join()
+                minion_process.terminate()
+                pytest.skip('The pytest session scoped salt-minion has failed to start')
+        except SaltDaemonNotRunning as exc:
+            os.kill(minion_process.pid, signal.SIGTERM)
+            minion_process.join()
+            minion_process.terminate()
+            pytest.skip(str(exc))
+        log.warning('The pytest session scoped salt-minion is running and accepting connections')
+        yield minion_process
+    else:
+        minion_process.join()
+        minion_process.terminate()
+        pytest.skip('The pytest session scoped salt-minion has failed to start')
+    log.warning('Stopping session scoped salt-minion')
     os.kill(minion_process.pid, signal.SIGTERM)
     minion_process.join()
     minion_process.terminate()
-    log.warning('salt-minion stopped')
+    log.warning('Session scoped salt-minion stopped')
 
 
 @pytest.yield_fixture(scope='session')
 def session_cli_salt_master(request,
-                            session_mp_logging_setup,
+                            mp_logging_setup,
                             session_cli_conf_dir,
                             session_cli_master_config,
                             session_cli_minion_config):
@@ -275,20 +311,23 @@ def session_cli_salt_master(request,
     time.sleep(1.5)
     if master_process.is_alive():
         try:
-            retcode = master_process.wait_until_running(timeout=10)
+            retcode = master_process.wait_until_running(timeout=15)
             if not retcode:
                 os.kill(master_process.pid, signal.SIGTERM)
                 master_process.join()
                 master_process.terminate()
                 pytest.skip('The pytest salt-master has failed to start')
         except TimedProcTimeoutError as exc:
-            os.kill(master_process.pid, signal.SIGTERM)
+            #os.kill(master_process.pid, signal.SIGTERM)
             master_process.join()
             master_process.terminate()
             pytest.skip(str(exc))
         log.warning('The pytest CLI salt-master is running and accepting connections')
         yield master_process
     else:
+        #os.kill(master_process.pid, signal.SIGTERM)
+        master_process.join()
+        master_process.terminate()
         pytest.skip('The pytest salt-master has failed to start')
     log.warning('Stopping CLI salt-master')
     os.kill(master_process.pid, signal.SIGTERM)
@@ -299,7 +338,7 @@ def session_cli_salt_master(request,
 
 @pytest.yield_fixture(scope='session')
 def session_cli_salt_minion(request,
-                            session_mp_logging_setup,
+                            mp_logging_setup,
                             session_cli_conf_dir,
                             session_cli_salt_master,
                             session_cli_minion_config):
@@ -315,7 +354,7 @@ def session_cli_salt_minion(request,
     time.sleep(0.5)
     if minion_process.is_alive():
         try:
-            retcode = minion_process.wait_until_running(timeout=5)
+            retcode = minion_process.wait_until_running(timeout=10)
             if not retcode:
                 os.kill(minion_process.pid, signal.SIGTERM)
                 minion_process.join()
@@ -329,7 +368,9 @@ def session_cli_salt_minion(request,
         log.warning('The pytest CLI salt-minion is running and accepting commands')
         yield minion_process
     else:
-        log.warning('The pytest salt-minion has failed to start')
+        os.kill(minion_process.pid, signal.SIGTERM)
+        minion_process.join()
+        minion_process.terminate()
         pytest.skip('The pytest salt-minion has failed to start')
     log.warning('Stopping CLI salt-minion')
     os.kill(minion_process.pid, signal.SIGTERM)
@@ -357,7 +398,7 @@ class SaltMinion(multiprocessing.Process):
         # because of the following exception:
         #   Exception AttributeError: "'NoneType' object has no attribute 'zmqstream'" in
         #       <bound method Minion.__del__ of <salt.minion.Minion object at 0x7f2c41bf6390>> ignored
-        self.minion.functions.test.ping()
+        return self.minion.functions.test.ping()
 
     def run(self):
         self.minion.tune_in()
