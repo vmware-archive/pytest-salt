@@ -14,6 +14,7 @@
 
 # Import Python libs
 from __future__ import absolute_import
+import random
 import logging
 
 # Import 3rd-party libs
@@ -57,28 +58,28 @@ def pytest_report_header(config):
 
 @pytest.fixture
 def root_dir(tempdir):
-    dirpath = tempdir.join('root')
+    dirpath = tempdir.join('root-{0}'.format(random.randint(0, 50000)))
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture
 def cli_root_dir(tempdir):
-    dirpath = tempdir.join('cli-root')
+    dirpath = tempdir.join('cli-root-{0}'.format(random.randint(0, 50000)))
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
 def session_root_dir(tempdir):
-    dirpath = tempdir.join('session-root')
+    dirpath = tempdir.join('session-root-{0}'.format(random.randint(0, 50000)))
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
 
 @pytest.fixture(scope='session')
 def session_cli_root_dir(tempdir):
-    dirpath = tempdir.join('session-cli-root')
+    dirpath = tempdir.join('session-cli-root-{0}'.format(random.randint(0, 50000)))
     dirpath.ensure(dir=True)
     return dirpath.realpath()
 
