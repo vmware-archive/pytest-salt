@@ -20,23 +20,19 @@ import time
 import signal
 import socket
 import logging
-import functools
 import subprocess
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 
 # Import salt libs
 import salt.master
 import salt.minion
 import salt.log.setup
+from salt.exceptions import TimedProcTimeoutError
 import salt.utils.timed_subprocess as timed_subprocess
-from salt.utils.process import MultiprocessingProcess
-from salt.exceptions import SaltDaemonNotRunning, TimedProcTimeoutError
+from salt.utils.process import SignalHandlingMultiprocessingProcess
 
 # Import 3rd-party libs
 import pytest
-import tornado
 
 log = logging.getLogger(__name__)
 
@@ -78,9 +74,7 @@ def mp_logging_setup():
 def cli_salt_master(request,
                     mp_logging_setup,
                     cli_conf_dir,
-                    cli_master_config,
-                    cli_minion_config,
-                    io_loop):
+                    cli_master_config):
     '''
     Returns a running salt-master
     '''
@@ -88,8 +82,7 @@ def cli_salt_master(request,
     master_process = SaltCliMaster(cli_master_config,
                                    cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
-                                   request.config.getoption('-v'),
-                                   io_loop)
+                                   request.config.getoption('-v'))
     master_process.start()
     # Allow the subprocess to start
     time.sleep(0.5)
@@ -189,24 +182,25 @@ class SaltCliScriptBase(object):
         return []
 
 
-class SaltCliMPScriptBase(SaltCliScriptBase, MultiprocessingProcess):
+class SaltCliMPScriptBase(SaltCliScriptBase, SignalHandlingMultiprocessingProcess):
 
     cli_script_name = None
 
-    def __init__(self, config, config_dir, bin_dir_path, verbosity, io_loop=None):
-        SaltCliScriptBase.__init__(self, config, config_dir, bin_dir_path, verbosity)
-        MultiprocessingProcess.__init__(self, log_queue=salt.log.setup.get_multiprocessing_logging_queue())
-
-    def _on_signal(self, pid, signum, sigframe):
-        log.warning('received signal: %s', signum)
-        # escalate the signal
-        os.kill(pid, signum)
+    def __init__(self, config, config_dir, bin_dir_path, verbosity):
+        SaltCliScriptBase.__init__(
+            self,
+            config,
+            config_dir,
+            bin_dir_path,
+            verbosity)
+        SignalHandlingMultiprocessingProcess.__init__(
+            self,
+            log_queue=salt.log.setup.get_multiprocessing_logging_queue())
 
     def get_check_ports(self):
         return []
 
     def run(self):
-        import signal
         log.warning('Starting %s CLI DAEMON', self.__class__.__name__)
         proc_args = [
             self.get_script_path(self.cli_script_name),
@@ -218,8 +212,6 @@ class SaltCliMPScriptBase(SaltCliScriptBase, MultiprocessingProcess):
         proc = subprocess.Popen(
             proc_args,
         )
-        signal.signal(signal.SIGINT, functools.partial(self._on_signal, proc.pid))
-        signal.signal(signal.SIGTERM, functools.partial(self._on_signal, proc.pid))
         proc.communicate()
 
     def wait_until_running(self, timeout=None):
