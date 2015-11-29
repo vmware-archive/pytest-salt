@@ -18,20 +18,25 @@ import os
 import sys
 import time
 import signal
+import socket
 import logging
 import functools
 import subprocess
 import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+
 
 # Import salt libs
 import salt.master
 import salt.minion
 import salt.log.setup
 import salt.utils.timed_subprocess as timed_subprocess
+from salt.utils.process import MultiprocessingProcess
 from salt.exceptions import SaltDaemonNotRunning, TimedProcTimeoutError
 
 # Import 3rd-party libs
 import pytest
+import tornado
 
 log = logging.getLogger(__name__)
 
@@ -142,17 +147,18 @@ def cli_salt_master(request,
                     mp_logging_setup,
                     cli_conf_dir,
                     cli_master_config,
-                    cli_minion_config):
+                    cli_minion_config,
+                    io_loop):
     '''
     Returns a running salt-master
     '''
     log.warning('Starting CLI salt-master')
-    master_process = SaltCliMaster(cli_conf_dir.strpath,
+    master_process = SaltCliMaster(cli_master_config,
+                                   cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
-                                   verbosity=request.config.getoption('-v'))
+                                   request.config.getoption('-v'),
+                                   io_loop)
     master_process.start()
-    # Allow the subprocess to start
-    time.sleep(1.5)
     if master_process.is_alive():
         try:
             retcode = master_process.wait_until_running(timeout=10)
@@ -174,7 +180,10 @@ def cli_salt_master(request,
         master_process.terminate()
         pytest.skip('The pytest salt-master has failed to start')
     log.warning('Stopping CLI salt-master')
-    os.kill(master_process.pid, signal.SIGTERM)
+    try:
+        os.kill(master_process.pid, signal.SIGTERM)
+    except OSError:
+        pass
     master_process.join()
     master_process.terminate()
     log.warning('CLI salt-master stopped')
@@ -185,14 +194,17 @@ def cli_salt_minion(request,
                     mp_logging_setup,
                     cli_conf_dir,
                     cli_salt_master,
-                    cli_minion_config):
+                    cli_minion_config,
+                    io_loop):
     '''
     Returns a running salt-minion
     '''
-    log.warning('Starting CLI salt-master')
-    minion_process = SaltCliMinion(cli_conf_dir.strpath,
+    log.warning('Starting CLI salt-minion')
+    minion_process = SaltCliMinion(cli_minion_config,
+                                   cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
-                                   verbosity=request.config.getoption('-v'))
+                                   request.config.getoption('-v'),
+                                   io_loop)
     minion_process.start()
     # Allow the subprocess to start
     time.sleep(0.5)
@@ -303,12 +315,11 @@ def session_cli_salt_master(request,
     Returns a running salt-master
     '''
     log.warning('Starting CLI salt-master')
-    master_process = SaltCliMaster(session_cli_conf_dir.strpath,
+    master_process = SaltCliMaster(session_cli_master_config,
+                                   session_cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
                                    verbosity=request.config.getoption('-v'))
     master_process.start()
-    # Allow the subprocess to start
-    time.sleep(1.5)
     if master_process.is_alive():
         try:
             retcode = master_process.wait_until_running(timeout=15)
@@ -346,7 +357,8 @@ def session_cli_salt_minion(request,
     Returns a running salt-minion
     '''
     log.warning('Starting CLI salt-master')
-    minion_process = SaltCliMinion(session_cli_conf_dir.strpath,
+    minion_process = SaltCliMinion(session_cli_minion_config,
+                                   session_cli_conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
                                    verbosity=request.config.getoption('-v'))
     minion_process.start()
@@ -416,15 +428,31 @@ class SaltMaster(SaltMinion):
         self.master.start()
 
 
-class SaltCliScriptBase(multiprocessing.Process):
+class SaltCliScriptBase(MultiprocessingProcess):
 
     cli_script_name = None
 
-    def __init__(self, config_dir, bin_dir_path, verbosity):
-        super(SaltCliScriptBase, self).__init__()
+    def __init__(self, config, config_dir, bin_dir_path, verbosity, io_loop=None):
+        super(SaltCliScriptBase, self).__init__(log_queue=salt.log.setup.get_multiprocessing_logging_queue())
+        self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self.verbosity = verbosity
+        if io_loop is not None:
+            self._io_loop = io_loop
+
+    def __setstate__(self, state):
+        MultiprocessingProcess.__init__(self, log_queue=state['log_queue'])
+        self.config = state['config']
+        self.config_dir = state['config_dir']
+        self.bin_dir_path = state['bin_dir_path']
+        self.verbosity = state['verbosity']
+
+    def __getstate__(self):
+        return {'config': self.config,
+                'config_dir': self.config_dir,
+                'bin_dir_path': self.bin_dir_path,
+                'verbosity': self.verbosity}
 
     def get_script_path(self, scrip_name):
         return os.path.join(self.bin_dir_path, scrip_name)
@@ -434,6 +462,23 @@ class SaltCliScriptBase(multiprocessing.Process):
         # escalate the signal
         os.kill(pid, signum)
 
+    @property
+    def io_loop(self):
+        if not getattr(self, '_io_loop', None) is None:
+            log.warning('\n\nCreating IOLoop!')
+            self._io_loop = tornado.ioloop.IOLoop.instance()
+            self._io_loop.make_current()
+            self._io_loop.start()
+        return self._io_loop
+
+    @property
+    def executor(self):
+        if not hasattr(self, '_executor'):
+            log.warning('\n\nCreating ThreadPoolExecutor!')
+            self._executor = ThreadPoolExecutor(max_workers=4)
+            #self._executor = ProcessPoolExecutor(max_workers=4)
+        return self._executor
+
     def run(self):
         import signal
         log.warning('Starting %s CLI DAEMON', self.__class__.__name__)
@@ -442,6 +487,7 @@ class SaltCliScriptBase(multiprocessing.Process):
             '-c',
             self.config_dir,
             '-l', get_log_level_name(self.verbosity)
+            #'-l', 'debug'
         ]
         log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
         proc = subprocess.Popen(
@@ -457,23 +503,79 @@ class SaltCliMinion(SaltCliScriptBase):
     cli_script_name = 'salt-minion'
 
     def wait_until_running(self, timeout=None):
-        proc_args = [
-            self.get_script_path('salt-call'),
-            '-c',
-            self.config_dir,
-            '--retcode-passthrough',
-            '-l', get_log_level_name(self.verbosity),
-            '--out', 'quiet',
-            'test.ping'
-        ]
-        log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
-        proc = timed_subprocess.TimedProc(
-            proc_args,
-            with_communicate=True
-        )
-        proc.wait(timeout)
-        log.warning('salt-call finished. retcode: %s', proc.process.returncode)
-        return proc.process.returncode == 0
+        if timeout is not None:
+            until = time.time() + timeout
+        check_ports = set([self.config['pytest_port']])
+        connectable = False
+        while True:
+            if not check_ports:
+                connectable = True
+                break
+            if time.time() >= until:
+                break
+            for port in set(check_ports):
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                conn = sock.connect_ex(('localhost', port))
+                if conn == 0:
+                    check_ports.remove(port)
+                    sock.shutdown(socket.SHUT_RDWR)
+                    sock.close()
+                del sock
+            time.sleep(0.125)
+        return connectable
+
+    #@tornado.gen.coroutine
+    def ping_master(self, timeout=5):
+        ##return self.io_loop.run_sync(self._salt_call('test.ping', timeout=timeout))
+        #result = yield self._salt_call('test.ping', timeout=timeout)
+        #return result
+        future = self._salt_call('test.ping', timeout=timeout)
+        #while future.running():
+        #    time.sleep(0.25)
+            #yield tornado.gen.sleep(0.5)
+        return future.result()
+
+    #@tornado.gen.coroutine
+    def sync(self, timeout=5):
+        ##return self.io_loop.run_sync(self._salt_call('saltutil.sync_all', timeout=timeout))
+        #result = yield self._salt_call('saltutil.sync_all', timeout=timeout)
+        #return result
+        future = self._salt_call('saltutil.sync_all', timeout=timeout)
+        #while future.running():
+        #    time.sleep(0.25)
+        #    #yield tornado.gen.sleep(0.5)
+        return future.result()
+
+    def _salt_call(self, *args, **kwargs):
+        #@tornado.concurrent.run_on_executor(executor
+        def _executor_run(*args, **kwargs):
+            timeout = kwargs.pop('timeout', 5)
+            proc_args = [
+                self.get_script_path('salt-call'),
+                '-c',
+                self.config_dir,
+                '--retcode-passthrough',
+                '-l', get_log_level_name(self.verbosity),
+                #'-l', 'trace',
+                #'-l', 'debug',
+                #'--out', 'quiet',
+            ] + list(args)
+            log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
+            print('Running \'{}\' from {}...'.format(' '.join(proc_args), self.__class__.__name__))
+            proc = timed_subprocess.TimedProc(
+                proc_args,
+                with_communicate=True
+            )
+            try:
+                print('Communicate:', proc.wait(timeout))
+                log.warning('salt-call finished. retcode: %s', proc.process.returncode)
+                #print('Communicate:', proc.)
+                return proc.process.returncode == 0
+            except TimedProcTimeoutError:
+                log.warning('\n\nTimed out!!!   %s', proc.process.communicate())
+                return False
+        return self.executor.submit(_executor_run, *args, **kwargs)
+        return tornado.gen.maybe_future(_executor_run(*args, **kwargs))
 
 
 class SaltCliMaster(SaltCliMinion):
@@ -481,38 +583,28 @@ class SaltCliMaster(SaltCliMinion):
     cli_script_name = 'salt-master'
 
     def wait_until_running(self, timeout=None):
-        proc_args = [
-            self.get_script_path('salt-minion'),
-            '-c',
-            self.config_dir,
-            '--disable-keepalive',
-            '-l', get_log_level_name(self.verbosity)
-        ]
-        log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
-        minion_subprocess = subprocess.Popen(
-            proc_args,
-        )
-        # Let's let the minion start
-        time.sleep(2)
-        try:
-            salt_call_retcode = super(SaltCliMaster, self).wait_until_running(timeout=timeout)
-            if salt_call_retcode:
-                log.warning('Terminating minion after successful salt-call')
-            else:
-                log.warning('Terminating minion after un-successful salt-call')
-            os.kill(minion_subprocess.pid, signal.SIGTERM)
-            minion_subprocess.send_signal(signal.SIGTERM)
-            minion_subprocess.communicate()
-            return salt_call_retcode
-        except TimedProcTimeoutError:
-            log.warning('Terminating minion after failed salt-call')
-            os.kill(minion_subprocess.pid, signal.SIGTERM)
-            minion_subprocess.send_signal(signal.SIGTERM)
-            minion_subprocess.communicate()
-            minion_subprocess.terminate()
-            raise
-        except Exception as exc:
-            log.exception(exc)
+        if timeout is not None:
+            until = time.time() + timeout
+        check_ports = set([self.config['ret_port'],
+                           self.config['publish_port'],
+                           self.config['pytest_port']])
+        connectable = False
+        while True:
+            if not check_ports:
+                connectable = True
+                break
+            if time.time() >= until:
+                break
+            for port in set(check_ports):
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                conn = sock.connect_ex(('localhost', port))
+                if conn == 0:
+                    check_ports.remove(port)
+                    sock.shutdown(socket.SHUT_RDWR)
+                    sock.close()
+                del sock
+            time.sleep(0.125)
+        return connectable
 
 
 def pytest_addoption(parser):

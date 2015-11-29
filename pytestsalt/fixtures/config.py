@@ -29,6 +29,10 @@ import salt.utils.dictupdate as dictupdate
 import salt.utils.verify as salt_verify
 import salt.serializers.yaml as yamlserialize
 
+# Import pytest salt libs
+import pytestsalt.engines
+
+
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
 DEFAULT_CLI_MASTER_ID = 'pytest-salt-master-cli'
@@ -261,6 +265,7 @@ def _master_config(root_dir,
                    config_file,
                    publish_port,
                    return_port,
+                   engine_port,
                    config_overrides,
                    master_id,
                    base_env_state_tree_root_dirs,
@@ -305,13 +310,31 @@ def _master_config(root_dir,
             'prod': prod_env_state_tree_root_dirs,
         },
         'pillar_roots': {
-            'base': base_env_state_tree_root_dirs,
-            'prod': prod_env_state_tree_root_dirs,
+            'base': base_env_pillar_tree_root_dirs,
+            'prod': prod_env_pillar_tree_root_dirs,
         },
     }
     if config_overrides:
         # Merge in the default options with the master_config_overrides
         dictupdate.update(default_options, config_overrides, merge_lists=True)
+
+    if 'engines' not in default_options:
+        default_options['engines'] = {}
+    default_options['engines']['pytest'] = {}
+
+    if 'engines_dirs' not in default_options:
+        default_options['engines_dirs'] = []
+
+    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
+    default_options['pytest_port'] = engine_port
+    import shutil
+    opath = root_dir.strpath
+    for path in ('cache', 'extmods'):
+        opath = os.path.join(opath, path)
+        if not os.path.exists(opath):
+            os.mkdir(opath)
+    opath = os.path.join(opath, 'engines')
+    shutil.copytree(os.path.dirname(pytestsalt.engines.__file__), opath)
 
     log.warning('WRITING TO %s', config_file)
 
@@ -363,6 +386,7 @@ def master_config(root_dir,
                   master_config_file,
                   master_publish_port,
                   master_return_port,
+                  master_engine_port,
                   master_config_overrides,
                   master_id,
                   base_env_state_tree_root_dir,
@@ -378,6 +402,7 @@ def master_config(root_dir,
                           master_config_file,
                           master_publish_port,
                           master_return_port,
+                          master_engine_port,
                           master_config_overrides,
                           master_id,
                           [base_env_state_tree_root_dir.strpath],
@@ -392,6 +417,7 @@ def cli_master_config(cli_root_dir,
                       cli_master_config_file,
                       cli_master_publish_port,
                       cli_master_return_port,
+                      cli_master_engine_port,
                       cli_master_config_overrides,
                       cli_master_id,
                       cli_base_env_state_tree_root_dir,
@@ -407,6 +433,7 @@ def cli_master_config(cli_root_dir,
                           cli_master_config_file,
                           cli_master_publish_port,
                           cli_master_return_port,
+                          cli_master_engine_port,
                           cli_master_config_overrides,
                           cli_master_id,
                           [cli_base_env_state_tree_root_dir.strpath],
@@ -421,6 +448,7 @@ def session_master_config(session_root_dir,
                           session_master_config_file,
                           session_master_publish_port,
                           session_master_return_port,
+                          session_master_engine_port,
                           session_master_config_overrides,
                           session_master_id,
                           session_base_env_state_tree_root_dir,
@@ -436,6 +464,7 @@ def session_master_config(session_root_dir,
                           session_master_config_file,
                           session_master_publish_port,
                           session_master_return_port,
+                          session_master_engine_port,
                           session_master_config_overrides,
                           session_master_id,
                           [session_base_env_state_tree_root_dir.strpath],
@@ -450,6 +479,7 @@ def session_cli_master_config(session_cli_root_dir,
                               session_cli_master_config_file,
                               session_cli_master_publish_port,
                               session_cli_master_return_port,
+                              session_cli_master_engine_port,
                               session_cli_master_config_overrides,
                               session_cli_master_id,
                               session_cli_base_env_state_tree_root_dir,
@@ -465,6 +495,7 @@ def session_cli_master_config(session_cli_root_dir,
                           session_cli_master_config_file,
                           session_cli_master_publish_port,
                           session_cli_master_return_port,
+                          session_cli_master_engine_port,
                           session_cli_master_config_overrides,
                           session_cli_master_id,
                           [session_cli_base_env_state_tree_root_dir.strpath],
@@ -477,6 +508,7 @@ def session_cli_master_config(session_cli_root_dir,
 def _minion_config(root_dir,
                    config_file,
                    return_port,
+                   engine_port,
                    config_overrides,
                    minion_id,
                    running_username):
@@ -503,6 +535,16 @@ def _minion_config(root_dir,
     if config_overrides:
         # Merge in the default options with the minion_config_overrides
         dictupdate.update(default_options, config_overrides, merge_lists=True)
+
+    if 'engines' not in default_options:
+        default_options['engines'] = {}
+    default_options['engines']['pytest'] = {}
+
+    if 'engines_dirs' not in default_options:
+        default_options['engines_dirs'] = []
+
+    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
+    default_options['pytest_port'] = engine_port
 
     log.warning('WRITING TO %s', config_file)
     # Write down the computed configuration into the config file
@@ -538,6 +580,7 @@ def _minion_config(root_dir,
 def minion_config(root_dir,
                   minion_config_file,
                   master_return_port,
+                  minion_engine_port,
                   minion_config_overrides,
                   minion_id,
                   running_username):
@@ -548,6 +591,7 @@ def minion_config(root_dir,
     return _minion_config(root_dir,
                           minion_config_file,
                           master_return_port,
+                          minion_engine_port,
                           minion_config_overrides,
                           minion_id,
                           running_username)
@@ -557,6 +601,7 @@ def minion_config(root_dir,
 def cli_minion_config(cli_root_dir,
                       cli_minion_config_file,
                       cli_master_return_port,
+                      cli_minion_engine_port,
                       cli_minion_config_overrides,
                       cli_minion_id,
                       running_username):
@@ -567,6 +612,7 @@ def cli_minion_config(cli_root_dir,
     return _minion_config(cli_root_dir,
                           cli_minion_config_file,
                           cli_master_return_port,
+                          cli_minion_engine_port,
                           cli_minion_config_overrides,
                           cli_minion_id,
                           running_username)
@@ -576,6 +622,7 @@ def cli_minion_config(cli_root_dir,
 def session_minion_config(session_root_dir,
                           session_minion_config_file,
                           session_master_return_port,
+                          session_minion_engine_port,
                           session_minion_config_overrides,
                           session_minion_id,
                           running_username):
@@ -586,6 +633,7 @@ def session_minion_config(session_root_dir,
     return _minion_config(session_root_dir,
                           session_minion_config_file,
                           session_master_return_port,
+                          session_minion_engine_port,
                           session_minion_config_overrides,
                           session_minion_id,
                           running_username)
@@ -595,6 +643,7 @@ def session_minion_config(session_root_dir,
 def session_cli_minion_config(session_cli_root_dir,
                               session_cli_minion_config_file,
                               session_cli_master_return_port,
+                              session_cli_minion_engine_port,
                               session_cli_minion_config_overrides,
                               session_cli_minion_id,
                               running_username):
@@ -605,6 +654,7 @@ def session_cli_minion_config(session_cli_root_dir,
     return _minion_config(session_cli_root_dir,
                           session_cli_minion_config_file,
                           session_cli_master_return_port,
+                          session_cli_minion_engine_port,
                           session_cli_minion_config_overrides,
                           session_cli_minion_id,
                           running_username)

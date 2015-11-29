@@ -83,3 +83,43 @@ def session_cli_master_return_port():
     Returns an unused localhost port for the master return interface
     '''
     return get_unused_localhost_port()
+
+
+@pytest.fixture
+def master_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def minion_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_minion_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def cli_master_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def cli_minion_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_cli_master_engine_port():
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_cli_minion_engine_port():
+    return get_unused_localhost_port()
