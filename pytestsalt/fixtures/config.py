@@ -327,14 +327,6 @@ def _master_config(root_dir,
 
     default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
     default_options['pytest_port'] = engine_port
-    import shutil
-    opath = root_dir.strpath
-    for path in ('cache', 'extmods'):
-        opath = os.path.join(opath, path)
-        if not os.path.exists(opath):
-            os.mkdir(opath)
-    opath = os.path.join(opath, 'engines')
-    shutil.copytree(os.path.dirname(pytestsalt.engines.__file__), opath)
 
     log.warning('WRITING TO %s', config_file)
 
