@@ -15,5 +15,5 @@
 from __future__ import absolute_import
 
 
-def test_cli_salt_master_running(cli_salt_master):
-    assert cli_salt_master.is_alive()
+def test_salt_master_running(salt_master):
+    assert salt_master.is_alive()
