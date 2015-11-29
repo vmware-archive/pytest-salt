@@ -5,15 +5,15 @@
     :license: Apache 2.0, see LICENSE for more details.
 
 
-    test_salt_master.py
+    test_salt_minion.py
     ~~~~~~~~~~~~~~~~~~~
 
-    Test the pytest salt plugin salt master
+    Test the pytest salt plugin salt minion
 '''
 
 # Import python libs
 from __future__ import absolute_import
 
 
-def test_cli_salt_master_running(cli_salt_master):
-    assert cli_salt_master.is_alive()
+def test_cli_salt_minion_running(cli_salt_minion):
+    assert cli_salt_minion.is_alive()
