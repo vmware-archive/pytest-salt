@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 
 def test_ping(salt_call):
-    assert salt_call.run('test.ping', timeout=10) is True
+    assert salt_call.run('test.ping', timeout=10).exitcode == 0
 
 
 def test_sync(salt_call):
-    assert salt_call.run('saltutil.sync_all', timeout=10) is True
+    assert salt_call.run('saltutil.sync_all', timeout=10).exitcode == 0
