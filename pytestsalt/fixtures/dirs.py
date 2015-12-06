@@ -34,7 +34,7 @@ def root_dir(tempdir):
     '''
     Return the function scoped salt root dir
     '''
-    dirname = tempdir.join('root')
+    dirname = tempdir.join(ROOT_DIR)
     dirname.ensure(dir=True)
     return dirname
 
@@ -44,9 +44,7 @@ def cli_root_dir(tempdir):
     '''
     Return the function scoped salt CLI root dir
     '''
-    dirname = tempdir.join('cli-root')
-    dirname.ensure(dir=True)
-    return dirname
+    return tempdir.mkdir(CLI_ROOT_DIR)
 
 
 @pytest.fixture(scope='session')
@@ -54,9 +52,7 @@ def session_root_dir(tempdir):
     '''
     Return the session scoped salt root dir
     '''
-    dirname = tempdir.join('session-root')
-    dirname.ensure(dir=True)
-    return dirname
+    return tempdir.mkdir(SESSION_ROOT_DIR)
 
 
 @pytest.fixture(scope='session')
@@ -64,9 +60,7 @@ def session_cli_root_dir(tempdir):
     '''
     Return the session scoped salt CLI root dir
     '''
-    dirname = tempdir.join('session-cli-root')
-    dirname.ensure(dir=True)
-    return dirname
+    return tempdir.mkdir(SESSION_CLI_ROOT_DIR)
 
 
 @pytest.fixture
