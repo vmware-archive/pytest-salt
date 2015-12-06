@@ -45,6 +45,17 @@ DEFAULT_SESSION_CLI_MINION_ID = 'pytest-session-salt-minion-cli'
 log = logging.getLogger(__name__)
 
 
+class Counter(object):
+    def __init__(self):
+        self.counter = 0
+
+    def __call__(self):
+        try:
+            return self.counter
+        finally:
+            self.counter += 1
+
+
 @pytest.fixture(scope='session')
 def running_username():
     '''
@@ -53,68 +64,77 @@ def running_username():
     return pwd.getpwuid(os.getuid()).pw_name
 
 
+@pytest.fixture(scope='session')
+def salt_master_id_counter():
+    return Counter()
+
+@pytest.fixture(scope='session')
+def salt_minion_id_counter():
+    return Counter()
+
+
 @pytest.fixture
-def master_id():
+def master_id(salt_master_id_counter):
     '''
     Returns the master id
     '''
-    return DEFAULT_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_MASTER_ID + '-{0}'.format(salt_master_id_counter())
 
 
 @pytest.fixture
-def minion_id():
+def minion_id(salt_minion_id_counter):
     '''
     Returns the minion id
     '''
-    return DEFAULT_MINION_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture
-def cli_master_id():
+def cli_master_id(salt_master_id_counter):
     '''
     Returns the CLI master id
     '''
-    return DEFAULT_CLI_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_CLI_MASTER_ID + '-{0}'.format(salt_master_id_counter())
 
 
 @pytest.fixture
-def cli_minion_id():
+def cli_minion_id(salt_minion_id_counter):
     '''
     Returns the CLI minion id
     '''
-    return DEFAULT_CLI_MINION_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_CLI_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture(scope='session')
-def session_master_id():
+def session_master_id(salt_master_id_counter):
     '''
     Returns the session scope master id
     '''
-    return DEFAULT_SESSION_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_SESSION_MASTER_ID + '-{0}'.format(salt_master_id_counter())
 
 
 @pytest.fixture(scope='session')
-def session_minion_id():
+def session_minion_id(salt_minion_id_counter):
     '''
     Returns the session scope minion id
     '''
-    return DEFAULT_SESSION_MINION_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture(scope='session')
-def session_cli_master_id():
+def session_cli_master_id(salt_master_id_counter):
     '''
     Returns the CLI session scope master id
     '''
-    return DEFAULT_SESSION_CLI_MASTER_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_SESSION_CLI_MASTER_ID + '-{0}'.format(salt_master_id_counter())
 
 
 @pytest.fixture(scope='session')
-def session_cli_minion_id():
+def session_cli_minion_id(salt_minion_id_counter):
     '''
     Returns the CLI session scope minion id
     '''
-    return DEFAULT_SESSION_CLI_MINION_ID + '-{0}'.format(random.randint(0, 50000))
+    return DEFAULT_SESSION_CLI_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture
