@@ -214,8 +214,14 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
         if self.proc is not None:
             def _inner_terminate():
                 os.kill(self.pid, signal.SIGTERM)
-                self.proc.proc.terminate()
-                self.proc.proc.communicate()
+                try:
+                    self.proc.proc.terminate()
+                except Exception:
+                    pass
+                try:
+                    self.proc.proc.communicate()
+                except Exception:
+                    pass
                 self.proc = None
             self.io_loop.run_sync(_inner_terminate)
 
@@ -247,7 +253,7 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
 
 class SaltCliCall(SaltCliScriptBase):
 
-    def run(self, *args, **kwargs):
+    def run_sync(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', 5)
         try:
             return self.io_loop.run_sync(lambda: self._salt_call(*args, **kwargs), timeout=timeout)
@@ -257,6 +263,24 @@ class SaltCliCall(SaltCliScriptBase):
                     args, kwargs, exc
                 )
             )
+        except RuntimeError as exc:
+            if str(exc) != 'IOLoop is already running':
+                raise
+
+    @gen.coroutine
+    def run(self, *args, **kwargs):
+        timeout = self.io_loop.time() + kwargs.pop('timeout', 5)
+        try:
+            result = yield gen.with_timeout(timeout, self._salt_call(*args, **kwargs))
+            raise gen.Return(result)
+        except gen.TimeoutError as exc:
+            pytest.skip(
+                'Failed to run args: {0!r}; kwargs: {1!r}; Error: {2}'.format(
+                    args, kwargs, exc
+                )
+            )
+
+
 
     @gen.coroutine
     def _salt_call(self, *args, **kwargs):
