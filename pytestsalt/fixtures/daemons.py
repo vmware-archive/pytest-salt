@@ -263,9 +263,6 @@ class SaltCliCall(SaltCliScriptBase):
                     args, kwargs, exc
                 )
             )
-        except RuntimeError as exc:
-            if str(exc) != 'IOLoop is already running':
-                raise
 
     @gen.coroutine
     def run(self, *args, **kwargs):
@@ -279,8 +276,6 @@ class SaltCliCall(SaltCliScriptBase):
                     args, kwargs, exc
                 )
             )
-
-
 
     @gen.coroutine
     def _salt_call(self, *args, **kwargs):
