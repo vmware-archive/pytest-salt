@@ -7,7 +7,6 @@ import sys
 import codecs
 from setuptools import setup, find_packages
 
-
 # Change to source's directory prior to running any command
 try:
     SETUP_DIRNAME = os.path.dirname(__file__)
@@ -28,10 +27,17 @@ def read(fname):
     with codecs.open(file_path, encoding='utf-8') as rfh:
         return rfh.read()
 
+
 # Version info -- read without importing
 _LOCALS = {}
-with open(os.path.join(SETUP_DIRNAME, 'pytestsalt', 'version.py')) as rfh:
-    exec(rfh.read(), None, _LOCALS)  # pylint: disable=exec-used
+with codecs.open(os.path.join(SETUP_DIRNAME, 'pytestsalt', 'version.py'), encoding='utf-8') as rfh:
+    contents = rfh.read()
+    try:
+        exec(contents, None, _LOCALS)  # pylint: disable=exec-used
+    except SyntaxError:
+        # SyntaxError: encoding declaration in Unicode string
+        exec(contents.encode('utf-8'), None, _LOCALS)  # pylint: disable=exec-used
+
 
 VERSION = _LOCALS['__version__']
 LONG_DESCRIPTION = read('README.rst')
