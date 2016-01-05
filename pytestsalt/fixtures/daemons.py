@@ -220,10 +220,22 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
                     self.proc.proc.terminate()
                 except Exception:
                     pass
+
+                def kill_it_if_hung(signum, frame):
+                    log.warning('%s has hung while exiting. Killing it!', self.__class__.__name__)
+                    try:
+                        os.kill(self.pid, signal.SIGKILL)
+                    except Exception:
+                        pass
+
+                signal.signal(signal.SIGALRM, kill_it_if_hung)
+                signal.alarm(5)
                 try:
                     self.proc.proc.communicate()
                 except Exception:
                     pass
+                # If we reached this far it means that the process didn't hung while exiting. Disable the alarm.
+                signal.alarm(0)
                 self.proc = None
             self.io_loop.run_sync(_inner_terminate)
 
