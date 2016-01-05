@@ -15,9 +15,25 @@
 from __future__ import absolute_import
 
 
+# Import pytest libs
+import pytest
+
+
 def test_ping(salt_call):
-    assert salt_call.run('test.ping', timeout=10).exitcode == 0
+    assert salt_call.run_sync('test.ping', timeout=10).exitcode == 0
+
+
+@pytest.mark.gen_test
+def test_ping_async(salt_call):
+    result = yield salt_call.run('test.ping', timeout=10)
+    assert result.exitcode == 0
 
 
 def test_sync(salt_call):
-    assert salt_call.run('saltutil.sync_all', timeout=10).exitcode == 0
+    assert salt_call.run_sync('saltutil.sync_all', timeout=10).exitcode == 0
+
+
+@pytest.mark.gen_test
+def test_sync_async(salt_call):
+    result = yield salt_call.run('saltutil.sync_all', timeout=10)
+    assert result.exitcode == 0
