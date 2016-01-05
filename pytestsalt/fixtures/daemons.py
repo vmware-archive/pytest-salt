@@ -37,11 +37,13 @@ from tornado.process import Subprocess
 log = logging.getLogger(__name__)
 
 HANDLED_LEVELS = {
-    2: 'warning',       # logging.WARN,    # -v
-    3: 'info',          # logging.INFO,    # -vv
-    4: 'debug',         # logging.DEBUG,   # -vvv
-    5: 'trace',         # logging.TRACE,   # -vvvv
-    6: 'garbage'        # logging.GARBAGE  # -vvvvv
+    0: 'critical',      # logging.CRITICAL  # -v
+    1: 'error',         # logging.ERROR     # -vv
+    2: 'warning',       # logging.WARN,     # -vvv
+    3: 'info',          # logging.INFO,     # -vvvv
+    4: 'debug',         # logging.DEBUG,    # -vvvvv
+    5: 'trace',         # logging.TRACE,    # -vvvvvv
+    6: 'garbage'        # logging.GARBAGE   # -vvvvvvv
 }
 
 
