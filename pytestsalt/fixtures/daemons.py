@@ -57,15 +57,15 @@ def get_log_level_name(verbosity):
 
 @pytest.yield_fixture
 def salt_master(request,
-                cli_conf_dir,
-                cli_master_config,
+                conf_dir,
+                master_config,
                 io_loop):
     '''
     Returns a running salt-master
     '''
     log.warning('Starting CLI salt-master')
-    master_process = SaltCliMaster(cli_master_config,
-                                   cli_conf_dir.strpath,
+    master_process = SaltCliMaster(master_config,
+                                   conf_dir.strpath,
                                    request.config.getoption('--cli-bin-dir'),
                                    request.config.getoption('-v'),
                                    io_loop)
@@ -90,12 +90,12 @@ def salt_master(request,
 
 
 @pytest.yield_fixture
-def salt_minion(salt_master, cli_minion_config):
+def salt_minion(salt_master, minion_config):
     '''
     Returns a running salt-minion
     '''
     log.warning('Starting CLI salt-minion')
-    minion_process = SaltCliMinion(cli_minion_config,
+    minion_process = SaltCliMinion(minion_config,
                                    salt_master.config_dir,
                                    salt_master.bin_dir_path,
                                    salt_master.verbosity,

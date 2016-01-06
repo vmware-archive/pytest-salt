@@ -10,13 +10,12 @@
 
     pytest salt configuration related fixtures
 '''
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,too-many-arguments,too-many-locals
 
 # Import python libs
 from __future__ import absolute_import, print_function
 import os
 import pwd
-import random
 import logging
 
 # Import 3rd-party libs
@@ -35,17 +34,16 @@ import pytestsalt.engines
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
-DEFAULT_CLI_MASTER_ID = 'pytest-salt-master-cli'
-DEFAULT_CLI_MINION_ID = 'pytest-salt-minion-cli'
 DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
 DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
-DEFAULT_SESSION_CLI_MASTER_ID = 'pytest-session-salt-master-cli'
-DEFAULT_SESSION_CLI_MINION_ID = 'pytest-session-salt-minion-cli'
 
 log = logging.getLogger(__name__)
 
 
-class Counter(object):
+class Counter(object):  # pylint: disable=too-few-public-methods
+    '''
+    Simple counter class which increases count on every call to it's instance
+    '''
     def __init__(self):
         self.counter = 0
 
@@ -66,10 +64,19 @@ def running_username():
 
 @pytest.fixture(scope='session')
 def salt_master_id_counter():
+    '''
+    Fixture which return a number to include in the master ID.
+    Every call to this fixture increases the couter.
+    '''
     return Counter()
+
 
 @pytest.fixture(scope='session')
 def salt_minion_id_counter():
+    '''
+    Fixture which return a number to include in the minion ID.
+    Every call to this fixture increases the couter.
+    '''
     return Counter()
 
 
@@ -89,22 +96,6 @@ def minion_id(salt_minion_id_counter):
     return DEFAULT_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
-@pytest.fixture
-def cli_master_id(salt_master_id_counter):
-    '''
-    Returns the CLI master id
-    '''
-    return DEFAULT_CLI_MASTER_ID + '-{0}'.format(salt_master_id_counter())
-
-
-@pytest.fixture
-def cli_minion_id(salt_minion_id_counter):
-    '''
-    Returns the CLI minion id
-    '''
-    return DEFAULT_CLI_MINION_ID + '-{0}'.format(salt_minion_id_counter())
-
-
 @pytest.fixture(scope='session')
 def session_master_id(salt_master_id_counter):
     '''
@@ -119,22 +110,6 @@ def session_minion_id(salt_minion_id_counter):
     Returns the session scope minion id
     '''
     return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
-
-
-@pytest.fixture(scope='session')
-def session_cli_master_id(salt_master_id_counter):
-    '''
-    Returns the CLI session scope master id
-    '''
-    return DEFAULT_SESSION_CLI_MASTER_ID + '-{0}'.format(salt_master_id_counter())
-
-
-@pytest.fixture(scope='session')
-def session_cli_minion_id(salt_minion_id_counter):
-    '''
-    Returns the CLI session scope minion id
-    '''
-    return DEFAULT_SESSION_CLI_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture
@@ -173,42 +148,6 @@ def minion_config_overrides():
     '''
 
 
-@pytest.fixture
-def cli_master_config_file(cli_conf_dir):
-    '''
-    Returns the path to the salt master configuration file
-    '''
-    return cli_conf_dir.join('master').realpath().strpath
-
-
-@pytest.fixture
-def cli_minion_config_file(cli_conf_dir):
-    '''
-    Returns the path to the salt minion configuration file
-    '''
-    return cli_conf_dir.join('minion').realpath().strpath
-
-
-@pytest.fixture
-def cli_master_config_overrides():
-    '''
-    This fixture should be implemented to overwrite default salt master
-    configuration options.
-
-    It will be applied over the loaded default options
-    '''
-
-
-@pytest.fixture
-def cli_minion_config_overrides():
-    '''
-    This fixture should be implemented to overwrite default salt minion
-    configuration options.
-
-    It will be applied over the loaded default options
-    '''
-
-
 @pytest.fixture(scope='session')
 def session_master_config_file(session_conf_dir):
     '''
@@ -237,42 +176,6 @@ def session_master_config_overrides():
 
 @pytest.fixture(scope='session')
 def session_minion_config_overrides():
-    '''
-    This fixture should be implemented to overwrite default salt minion
-    configuration options.
-
-    It will be applied over the loaded default options
-    '''
-
-
-@pytest.fixture(scope='session')
-def session_cli_master_config_file(session_cli_conf_dir):
-    '''
-    Returns the path to the salt master configuration file
-    '''
-    return session_cli_conf_dir.join('master').realpath().strpath
-
-
-@pytest.fixture(scope='session')
-def session_cli_minion_config_file(session_cli_conf_dir):
-    '''
-    Returns the path to the salt minion configuration file
-    '''
-    return session_cli_conf_dir.join('minion').realpath().strpath
-
-
-@pytest.fixture(scope='session')
-def session_cli_master_config_overrides():
-    '''
-    This fixture should be implemented to overwrite default salt master
-    configuration options.
-
-    It will be applied over the loaded default options
-    '''
-
-
-@pytest.fixture(scope='session')
-def session_cli_minion_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt minion
     configuration options.
@@ -424,37 +327,6 @@ def master_config(root_dir,
                           running_username)
 
 
-@pytest.fixture
-def cli_master_config(cli_root_dir,
-                      cli_master_config_file,
-                      cli_master_publish_port,
-                      cli_master_return_port,
-                      cli_master_engine_port,
-                      cli_master_config_overrides,
-                      cli_master_id,
-                      cli_base_env_state_tree_root_dir,
-                      cli_prod_env_state_tree_root_dir,
-                      cli_base_env_pillar_tree_root_dir,
-                      cli_prod_env_pillar_tree_root_dir,
-                      running_username):
-    '''
-    This fixture will return the salt master configuration options after being
-    overridden with any options passed from ``master_config_overrides``
-    '''
-    return _master_config(cli_root_dir,
-                          cli_master_config_file,
-                          cli_master_publish_port,
-                          cli_master_return_port,
-                          cli_master_engine_port,
-                          cli_master_config_overrides,
-                          cli_master_id,
-                          [cli_base_env_state_tree_root_dir.strpath],
-                          [cli_prod_env_state_tree_root_dir.strpath],
-                          [cli_base_env_pillar_tree_root_dir.strpath],
-                          [cli_prod_env_pillar_tree_root_dir.strpath],
-                          running_username)
-
-
 @pytest.fixture(scope='session')
 def session_master_config(session_root_dir,
                           session_master_config_file,
@@ -483,37 +355,6 @@ def session_master_config(session_root_dir,
                           [session_prod_env_state_tree_root_dir.strpath],
                           [session_base_env_pillar_tree_root_dir.strpath],
                           [session_prod_env_pillar_tree_root_dir.strpath],
-                          running_username)
-
-
-@pytest.fixture(scope='session')
-def session_cli_master_config(session_cli_root_dir,
-                              session_cli_master_config_file,
-                              session_cli_master_publish_port,
-                              session_cli_master_return_port,
-                              session_cli_master_engine_port,
-                              session_cli_master_config_overrides,
-                              session_cli_master_id,
-                              session_cli_base_env_state_tree_root_dir,
-                              session_cli_prod_env_state_tree_root_dir,
-                              session_cli_base_env_pillar_tree_root_dir,
-                              session_cli_prod_env_pillar_tree_root_dir,
-                              running_username):
-    '''
-    This fixture will return the salt master configuration options after being
-    overridden with any options passed from ``master_config_overrides``
-    '''
-    return _master_config(session_cli_root_dir,
-                          session_cli_master_config_file,
-                          session_cli_master_publish_port,
-                          session_cli_master_return_port,
-                          session_cli_master_engine_port,
-                          session_cli_master_config_overrides,
-                          session_cli_master_id,
-                          [session_cli_base_env_state_tree_root_dir.strpath],
-                          [session_cli_prod_env_state_tree_root_dir.strpath],
-                          [session_cli_base_env_pillar_tree_root_dir.strpath],
-                          [session_cli_prod_env_pillar_tree_root_dir.strpath],
                           running_username)
 
 
@@ -609,27 +450,6 @@ def minion_config(root_dir,
                           running_username)
 
 
-@pytest.fixture
-def cli_minion_config(cli_root_dir,
-                      cli_minion_config_file,
-                      cli_master_return_port,
-                      cli_minion_engine_port,
-                      cli_minion_config_overrides,
-                      cli_minion_id,
-                      running_username):
-    '''
-    This fixture will return the salt master configuration options after being
-    overrided with any options passed from ``master_config_overrides``
-    '''
-    return _minion_config(cli_root_dir,
-                          cli_minion_config_file,
-                          cli_master_return_port,
-                          cli_minion_engine_port,
-                          cli_minion_config_overrides,
-                          cli_minion_id,
-                          running_username)
-
-
 @pytest.fixture(scope='session')
 def session_minion_config(session_root_dir,
                           session_minion_config_file,
@@ -648,25 +468,4 @@ def session_minion_config(session_root_dir,
                           session_minion_engine_port,
                           session_minion_config_overrides,
                           session_minion_id,
-                          running_username)
-
-
-@pytest.fixture(scope='session')
-def session_cli_minion_config(session_cli_root_dir,
-                              session_cli_minion_config_file,
-                              session_cli_master_return_port,
-                              session_cli_minion_engine_port,
-                              session_cli_minion_config_overrides,
-                              session_cli_minion_id,
-                              running_username):
-    '''
-    This fixture will return the salt master configuration options after being
-    overridden with any options passed from ``master_config_overrides``
-    '''
-    return _minion_config(session_cli_root_dir,
-                          session_cli_minion_config_file,
-                          session_cli_master_return_port,
-                          session_cli_minion_engine_port,
-                          session_cli_minion_config_overrides,
-                          session_cli_minion_id,
                           running_username)

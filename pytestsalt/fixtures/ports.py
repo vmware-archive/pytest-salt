@@ -37,22 +37,6 @@ def master_return_port():
     return get_unused_localhost_port()
 
 
-@pytest.fixture
-def cli_master_publish_port():
-    '''
-    Returns an unused localhost port for the master publish interface
-    '''
-    return get_unused_localhost_port()
-
-
-@pytest.fixture
-def cli_master_return_port():
-    '''
-    Returns an unused localhost port for the master return interface
-    '''
-    return get_unused_localhost_port()
-
-
 @pytest.fixture(scope='session')
 def session_master_publish_port():
     '''
@@ -69,57 +53,33 @@ def session_master_return_port():
     return get_unused_localhost_port()
 
 
-@pytest.fixture(scope='session')
-def session_cli_master_publish_port():
-    '''
-    Returns an unused localhost port for the master publish interface
-    '''
-    return get_unused_localhost_port()
-
-
-@pytest.fixture(scope='session')
-def session_cli_master_return_port():
-    '''
-    Returns an unused localhost port for the master return interface
-    '''
-    return get_unused_localhost_port()
-
-
 @pytest.fixture
 def master_engine_port():
+    '''
+    Returns an unused localhost port for the pytest salt master engine
+    '''
     return get_unused_localhost_port()
 
 
 @pytest.fixture
 def minion_engine_port():
+    '''
+    Returns an unused localhost port for the pytest salt minion engine
+    '''
     return get_unused_localhost_port()
 
 
 @pytest.fixture(scope='session')
 def session_master_engine_port():
+    '''
+    Returns an unused localhost port for the pytest session salt master engine
+    '''
     return get_unused_localhost_port()
 
 
 @pytest.fixture(scope='session')
 def session_minion_engine_port():
-    return get_unused_localhost_port()
-
-
-@pytest.fixture
-def cli_master_engine_port():
-    return get_unused_localhost_port()
-
-
-@pytest.fixture
-def cli_minion_engine_port():
-    return get_unused_localhost_port()
-
-
-@pytest.fixture(scope='session')
-def session_cli_master_engine_port():
-    return get_unused_localhost_port()
-
-
-@pytest.fixture(scope='session')
-def session_cli_minion_engine_port():
+    '''
+    Returns an unused localhost port for the pytest session salt minion engine
+    '''
     return get_unused_localhost_port()
