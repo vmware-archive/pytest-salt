@@ -32,9 +32,7 @@ def root_dir(tempdir):
     '''
     Return the function scoped salt root dir
     '''
-    dirname = tempdir.join(ROOT_DIR)
-    dirname.ensure(dir=True)
-    return dirname
+    return tempdir.mkdir(ROOT_DIR)
 
 
 @pytest.fixture(scope='session')
