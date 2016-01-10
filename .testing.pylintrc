@@ -113,7 +113,8 @@ disable=R,
   E8265,
   E8266,
   E8402,
-  E8731
+  E8731,
+  locally-disabled
 
 # Disabled:
 # R* [refactoring suggestions & reports]
