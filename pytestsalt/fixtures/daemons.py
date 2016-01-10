@@ -368,8 +368,7 @@ class SaltCall(SaltScriptBase):
                 proc.proc.communicate()
             except Exception:  # pylint: disable=broad-except
                 pass
-        # Make sure that, if the timeout occurrs
-        the process will be properly shut down
+        # Make sure that, if the timeout occurrs, the process will be properly shut down
         terminate_timeout = self.io_loop.add_timeout(self.io_loop.time() + timeout,
                                                      terminate_proc)
 
