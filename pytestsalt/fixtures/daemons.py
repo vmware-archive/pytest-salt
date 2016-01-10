@@ -17,14 +17,10 @@ from __future__ import absolute_import, print_function
 import os
 import sys
 import json
-import time
-import errno
 import signal
 import socket
 import logging
-import functools
 import subprocess
-import multiprocessing
 from collections import namedtuple
 
 # Import 3rd-party libs
@@ -58,85 +54,92 @@ def get_log_level_name(verbosity):
 @pytest.yield_fixture
 def salt_master(request,
                 conf_dir,
+                master_id,
                 master_config,
                 io_loop):
     '''
     Returns a running salt-master
     '''
-    log.warning('Starting CLI salt-master')
-    master_process = SaltCliMaster(master_config,
-                                   conf_dir.strpath,
-                                   request.config.getoption('--cli-bin-dir'),
-                                   request.config.getoption('-v'),
-                                   io_loop)
+    log.warning('Starting pytest salt-master(%s)', master_id)
+    master_process = SaltMaster(master_config,
+                                conf_dir.strpath,
+                                request.config.getoption('--cli-bin-dir'),
+                                request.config.getoption('-v'),
+                                io_loop)
     master_process.start()
     if master_process.is_alive():
         try:
             connectable = master_process.wait_until_running(timeout=10)
             if connectable is False:
                 master_process.terminate()
-                pytest.skip('The pytest salt-master has failed to start')
+                pytest.skip('The pytest salt-master({0}) has failed to start'.format(master_id))
         except Exception as exc:  # pylint: disable=broad-except
             master_process.terminate()
             pytest.skip(str(exc))
-        log.warning('The pytest CLI salt-master is running and accepting connections')
+        log.warning('The pytest salt-master(%s) is running and accepting connections', master_id)
         yield master_process
     else:
         master_process.terminate()
-        pytest.skip('The pytest salt-master has failed to start')
-    log.warning('Stopping CLI salt-master')
+        pytest.skip('The pytest salt-master({0}) has failed to start'.format(master_id))
+    log.warning('Stopping pytest salt-master(%s)', master_id)
     master_process.terminate()
-    log.warning('CLI salt-master stopped')
+    log.warning('Pytest salt-master(%s) stopped', master_id)
 
 
 @pytest.yield_fixture
-def salt_minion(salt_master, minion_config):
+def salt_minion(salt_master, minion_id, minion_config):
     '''
     Returns a running salt-minion
     '''
-    log.warning('Starting CLI salt-minion')
-    minion_process = SaltCliMinion(minion_config,
-                                   salt_master.config_dir,
-                                   salt_master.bin_dir_path,
-                                   salt_master.verbosity,
-                                   salt_master.io_loop)
+    log.warning('Starting pytest salt-minion(%s)', minion_id)
+    minion_process = SaltMinion(minion_config,
+                                salt_master.config_dir,
+                                salt_master.bin_dir_path,
+                                salt_master.verbosity,
+                                salt_master.io_loop)
     minion_process.start()
     if minion_process.is_alive():
         try:
             connectable = minion_process.wait_until_running(timeout=5)
             if connectable is False:
                 minion_process.terminate()
-                pytest.skip('The pytest salt-minion has failed to start')
+                pytest.skip('The pytest salt-minion({0}) has failed to start'.format(minion_id))
         except Exception as exc:  # pylint: disable=broad-except
             minion_process.terminate()
             pytest.skip(str(exc))
-        log.warning('The pytest CLI salt-minion is running and accepting commands')
+        log.warning('The pytest salt-minion(%s) is running and accepting commands', minion_id)
         yield minion_process
     else:
         minion_process.terminate()
-        pytest.skip('The pytest salt-minion has failed to start')
-    log.warning('Stopping CLI salt-minion')
+        pytest.skip('The pytest salt-minion({0}) has failed to start'.format(minion_id))
+    log.warning('Stopping pytest salt-minion(%s)', minion_id)
     minion_process.terminate()
-    log.warning('CLI salt-minion stopped')
+    log.warning('pytest salt-minion(%s) stopped', minion_id)
 
 
 @pytest.yield_fixture
 def salt_call(salt_minion):
-    salt_call = SaltCliCall(salt_minion.config,
-                            salt_minion.config_dir,
-                            salt_minion.bin_dir_path,
-                            salt_minion.verbosity,
-                            salt_minion.io_loop)
+    '''
+    Returns a salt_call fixture
+    '''
+    salt_call = SaltCall(salt_minion.config,
+                         salt_minion.config_dir,
+                         salt_minion.bin_dir_path,
+                         salt_minion.verbosity,
+                         salt_minion.io_loop)
     yield salt_call
 
 
-class SaltCliScriptBase(object):
+class SaltScriptBase(object):
+    '''
+    Base class for Salt CLI scripts
+    '''
 
     cli_script_name = None
 
     ShellResult = namedtuple('Result', ('exitcode', 'stdout', 'stderr'))
 
-    def __init__(self, config, config_dir, bin_dir_path, verbosity, io_loop=None):
+    def __init__(self, config, config_dir, bin_dir_path, verbosity, io_loop=None):  # pylint: disable=too-many-arguments
         self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
@@ -145,19 +148,31 @@ class SaltCliScriptBase(object):
 
     @property
     def io_loop(self):
+        '''
+        The io_loop instance. If not passed, one is instantiated
+        '''
         if self._io_loop is None:
             self._io_loop = ioloop.IOLoop.instance()
             self._io_loop.start()
         return self._io_loop
 
     def get_script_path(self, script_name):
+        '''
+        Returns the path to the script to run
+        '''
         return os.path.join(self.bin_dir_path, script_name)
 
-    def get_script_args(self):
+    def get_script_args(self):  # pylint: disable=no-self-use
+        '''
+        Returns any additional arguments to pass to the CLI script
+        '''
         return []
 
 
-class SaltCliDaemonScriptBase(SaltCliScriptBase):
+class SaltDaemonScriptBase(SaltScriptBase):
+    '''
+    Base class for Salt Daemon CLI scripts
+    '''
 
     cli_script_name = None
     proc = None
@@ -168,17 +183,29 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
     _running = False
 
     def is_alive(self):
+        '''
+        Returns true if the process is alive
+        '''
         return self._running
 
-    def get_check_ports(self):
+    def get_check_ports(self):  # pylint: disable=no-self-use
+        '''
+        Return a list of ports to check against to ensure the daemon is running
+        '''
         return []
 
     def start(self):
+        '''
+        Start the daemon subprocess
+        '''
         return self.io_loop.run_sync(self._start)
 
     @gen.coroutine
     def _start(self):
-        log.warning('Starting %s CLI DAEMON', self.__class__.__name__)
+        '''
+        The actual, coroutine aware, start method
+        '''
+        log.warning('Starting pytest %s DAEMON', self.__class__.__name__)
         self._running = True
         proc_args = [
             self.get_script_path(self.cli_script_name),
@@ -192,7 +219,7 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
         yield gen.sleep(0.125)
         Subprocess.initialize(self.io_loop)
 
-        self.proc = Subprocess(proc_args)
+        self.proc = Subprocess(' '.join(proc_args), close_fds=True, shell=True)
         self.pid = self.proc.proc.pid
 
         # Let's make the start() call wait a little for the process to
@@ -201,6 +228,9 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
 
         @gen.coroutine
         def set_exitcode(future):
+            '''
+            Set the exitcode in the class instance to the exitcode of the stopped subprocess
+            '''
             self.exitcode = future.result()
             self._running = False
             # Allow the IOLoop to do something else
@@ -213,33 +243,30 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
         )
 
     def terminate(self):
+        '''
+        Terminate the started daemon
+        '''
         if self.proc is not None:
             def _inner_terminate():
-                os.kill(self.pid, signal.SIGTERM)
+                '''
+                The actual terminate method
+                '''
+                self.proc.proc.send_signal(signal.SIGTERM)
                 try:
                     self.proc.proc.terminate()
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     pass
-
-                def kill_it_if_hung(signum, frame):
-                    log.warning('%s has hung while exiting. Killing it!', self.__class__.__name__)
-                    try:
-                        os.kill(self.pid, signal.SIGKILL)
-                    except Exception:
-                        pass
-
-                signal.signal(signal.SIGALRM, kill_it_if_hung)
-                signal.alarm(5)
                 try:
                     self.proc.proc.communicate()
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     pass
-                # If we reached this far it means that the process didn't hung while exiting. Disable the alarm.
-                signal.alarm(0)
                 self.proc = None
             self.io_loop.run_sync(_inner_terminate)
 
     def wait_until_running(self, timeout=None):
+        '''
+        Blocking call to wait for the daemon to start listening
+        '''
         try:
             return self.io_loop.run_sync(self._wait_until_running, timeout=timeout)
         except ioloop.TimeoutError:
@@ -247,6 +274,9 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
 
     @gen.coroutine
     def _wait_until_running(self):
+        '''
+        The actual, coroutine aware, call to wait for the daemon to start listening
+        '''
         check_ports = self.get_check_ports()
         connectable = False
         while True:
@@ -265,10 +295,18 @@ class SaltCliDaemonScriptBase(SaltCliScriptBase):
         raise gen.Return(connectable)
 
 
-class SaltCliCall(SaltCliScriptBase):
+class SaltCall(SaltScriptBase):
+    '''
+    Class which runs salt-call commands
+    '''
+
+    DEFAULT_TIMEOUT = 5
 
     def run_sync(self, *args, **kwargs):
-        timeout = kwargs.pop('timeout', 5)
+        '''
+        Run the given command synchronously
+        '''
+        timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
             return self.io_loop.run_sync(lambda: self._salt_call(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
@@ -280,7 +318,10 @@ class SaltCliCall(SaltCliScriptBase):
 
     @gen.coroutine
     def run(self, *args, **kwargs):
-        timeout = self.io_loop.time() + kwargs.pop('timeout', 5)
+        '''
+        Run the given command asynchronously
+        '''
+        timeout = self.io_loop.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
             result = yield gen.with_timeout(timeout, self._salt_call(*args, **kwargs))
             raise gen.Return(result)
@@ -293,6 +334,10 @@ class SaltCliCall(SaltCliScriptBase):
 
     @gen.coroutine
     def _salt_call(self, *args, **kwargs):
+        '''
+        The actual, coroutine aware, method which runs the salt-call commands
+        '''
+        timeout = kwargs.pop('timeout', 5)
         raw_output = kwargs.pop('raw_output', False)
         proc_args = [
             self.get_script_path('salt-call'),
@@ -309,7 +354,32 @@ class SaltCliCall(SaltCliScriptBase):
             stdout=Subprocess.STREAM,
             stderr=Subprocess.STREAM,
         )
+        def terminate_proc():
+            '''
+            Terminate the process in case a pytest.skip was issued or the process
+            did not exit correctly
+            '''
+            proc.proc.send_signal(signal.SIGTERM)
+            try:
+                proc.proc.terminate()
+            except Exception:  # pylint: disable=broad-except
+                pass
+            try:
+                proc.proc.communicate()
+            except Exception:  # pylint: disable=broad-except
+                pass
+        # Make sure that, if the timeout occurrs
+        the process will be properly shut down
+        terminate_timeout = self.io_loop.add_timeout(self.io_loop.time() + timeout,
+                                                     terminate_proc)
+
+        # Let's wait for the process to exit
         exitcode = yield proc.wait_for_exit(raise_error=False)
+
+        # If the process exited, remove the terminate_timeout
+        self.io_loop.remove_timeout(terminate_timeout)
+
+        # Process output
         stdout = yield proc.stdout.read_until_close()
         if six.PY3:
             stdout = stdout.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
@@ -326,7 +396,10 @@ class SaltCliCall(SaltCliScriptBase):
         )
 
 
-class SaltCliMinion(SaltCliDaemonScriptBase):
+class SaltMinion(SaltDaemonScriptBase):
+    '''
+    Class which runs the salt-minion daemon
+    '''
 
     cli_script_name = 'salt-minion'
 
@@ -337,7 +410,10 @@ class SaltCliMinion(SaltCliDaemonScriptBase):
         return set([self.config['pytest_port']])
 
 
-class SaltCliMaster(SaltCliDaemonScriptBase):
+class SaltMaster(SaltDaemonScriptBase):
+    '''
+    Class which runs the salt-minion daemon
+    '''
 
     cli_script_name = 'salt-master'
 
