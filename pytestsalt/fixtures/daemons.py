@@ -295,12 +295,13 @@ class SaltDaemonScriptBase(SaltScriptBase):
         raise gen.Return(connectable)
 
 
-class SaltCall(SaltScriptBase):
+class SaltCliScriptBase(SaltScriptBase):
     '''
-    Class which runs salt-call commands
+    Base class which runs Salt's non daemon CLI scripts
     '''
 
     DEFAULT_TIMEOUT = 5
+    SCRIPT_NAME = None
 
     def run_sync(self, *args, **kwargs):
         '''
@@ -308,11 +309,11 @@ class SaltCall(SaltScriptBase):
         '''
         timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
-            return self.io_loop.run_sync(lambda: self._salt_call(*args, **kwargs), timeout=timeout)
+            return self.io_loop.run_sync(lambda: self._run_script_pre(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
             pytest.skip(
-                'Failed to run args: {0!r}; kwargs: {1!r}; Error: {2}'.format(
-                    args, kwargs, exc
+                'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
+                    self.SCRIPT_NAME, args, kwargs, exc
                 )
             )
 
@@ -323,7 +324,7 @@ class SaltCall(SaltScriptBase):
         '''
         timeout = self.io_loop.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
-            result = yield gen.with_timeout(timeout, self._salt_call(*args, **kwargs))
+            result = yield gen.with_timeout(timeout, self._run_script_pre(*args, **kwargs))
             raise gen.Return(result)
         except gen.TimeoutError as exc:
             pytest.skip(
@@ -333,20 +334,30 @@ class SaltCall(SaltScriptBase):
             )
 
     @gen.coroutine
-    def _salt_call(self, *args, **kwargs):
+    def _run_script_pre(self, *args, **kwargs):
         '''
-        The actual, coroutine aware, method which runs the salt-call commands
+        This method just calls the actual run script method and chains the post
+        processing of it.
         '''
         timeout = kwargs.pop('timeout', 5)
         raw_output = kwargs.pop('raw_output', False)
+        proc = yield self._run_script(*args, **kwargs)
+        result = yield self._run_script_post(proc, timeout, raw_output)
+        raise gen.Return(result)
+
+    @gen.coroutine
+    def _run_script(self, *args, **kwargs):
+        '''
+        This method can be overridden by subclasses and it should return
+        the process instantiated.
+        '''
         proc_args = [
-            self.get_script_path('salt-call'),
+            self.get_script_path(self.SCRIPT_NAME),
             '-c',
             self.config_dir,
-            '--retcode-passthrough',
             '-l', get_log_level_name(self.verbosity),
             '--out', 'json'
-        ] + list(args)
+        ] + self.get_script_args() + list(args)
         log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
         Subprocess.initialize(self.io_loop)
         proc = Subprocess(
@@ -354,6 +365,15 @@ class SaltCall(SaltScriptBase):
             stdout=Subprocess.STREAM,
             stderr=Subprocess.STREAM,
         )
+        raise gen.Return(proc)
+
+    @gen.coroutine
+    def _run_script_post(self, proc, timeout, raw_output):
+        '''
+        This method takes care of waiting for the process to finish or cancel
+        it in case the timeout is exceded.
+        It will also return a ShellResult in the end
+        '''
         def terminate_proc():
             '''
             Terminate the process in case a pytest.skip was issued or the process
@@ -393,6 +413,19 @@ class SaltCall(SaltScriptBase):
         raise gen.Return(
             self.ShellResult(exitcode, stdout, stderr)
         )
+
+
+class SaltCall(SaltCliScriptBase):
+    '''
+    Class which runs salt-call commands
+    '''
+
+    SCRIPT_NAME = 'salt-call'
+
+    def get_script_args(self):
+        return [
+            '--retcode-passthrough',
+        ]
 
 
 class SaltMinion(SaltDaemonScriptBase):
