@@ -163,8 +163,6 @@ class SaltScriptBase(object):
 
     cli_script_name = None
 
-    ShellResult = namedtuple('Result', ('exitcode', 'stdout', 'stderr'))
-
     def __init__(self, config, config_dir, bin_dir_path, verbosity, io_loop=None):  # pylint: disable=too-many-arguments
         self.config = config
         self.config_dir = config_dir
@@ -327,7 +325,7 @@ class SaltCliScriptBase(SaltScriptBase):
     '''
 
     DEFAULT_TIMEOUT = 5
-    SCRIPT_NAME = None
+    ShellResult = namedtuple('Result', ('exitcode', 'stdout', 'stderr', 'json'))
 
     def run_sync(self, *args, **kwargs):
         '''
@@ -366,9 +364,8 @@ class SaltCliScriptBase(SaltScriptBase):
         processing of it.
         '''
         timeout = kwargs.pop('timeout', 5)
-        raw_output = kwargs.pop('raw_output', False)
         proc = yield self._run_script(*args, **kwargs)
-        result = yield self._run_script_post(proc, timeout, raw_output)
+        result = yield self._run_script_post(proc, timeout)
         raise gen.Return(result)
 
     @gen.coroutine
@@ -378,10 +375,9 @@ class SaltCliScriptBase(SaltScriptBase):
         the process instantiated.
         '''
         proc_args = [
-            self.get_script_path(self.SCRIPT_NAME),
+            self.get_script_path(self.cli_script_name),
             '-c',
             self.config_dir,
-            '-l', get_log_level_name(self.verbosity),
             '--out', 'json'
         ] + self.get_script_args() + list(args)
         log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
@@ -394,7 +390,7 @@ class SaltCliScriptBase(SaltScriptBase):
         raise gen.Return(proc)
 
     @gen.coroutine
-    def _run_script_post(self, proc, timeout, raw_output):
+    def _run_script_post(self, proc, timeout):
         '''
         This method takes care of waiting for the process to finish or cancel
         it in case the timeout is exceded.
@@ -428,8 +424,10 @@ class SaltCliScriptBase(SaltScriptBase):
         stdout = yield proc.stdout.read_until_close()
         if six.PY3:
             stdout = stdout.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
-        if raw_output is False:
-            stdout = json.loads(stdout)
+        try:
+            json = json.loads(stdout)
+        except ValueError:
+            json = None
         stderr = yield proc.stderr.read_until_close()
         if six.PY3:
             stderr = stderr.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
@@ -437,7 +435,7 @@ class SaltCliScriptBase(SaltScriptBase):
         yield gen.moment
         Subprocess.uninitialize()
         raise gen.Return(
-            self.ShellResult(exitcode, stdout, stderr)
+            self.ShellResult(exitcode, stdout, stderr, json)
         )
 
 
@@ -446,10 +444,11 @@ class SaltCall(SaltCliScriptBase):
     Class which runs salt-call commands
     '''
 
-    SCRIPT_NAME = 'salt-call'
+    cli_script_name = 'salt-call'
 
     def get_script_args(self):
         return [
+            '-l', get_log_level_name(self.verbosity),
             '--retcode-passthrough',
         ]
 
@@ -459,7 +458,7 @@ class SaltKey(SaltCliScriptBase):
     Class which runs salt-key commands
     '''
 
-    SCRIPT_NAME = 'salt-key'
+    cli_script_name = 'salt-key'
 
 
 class SaltRun(SaltCliScriptBase):
@@ -467,7 +466,12 @@ class SaltRun(SaltCliScriptBase):
     Class which runs salt-run commands
     '''
 
-    SCRIPT_NAME = 'salt-run'
+    cli_script_name = 'salt-run'
+
+    def get_script_args(self):
+        return [
+            '-l', get_log_level_name(self.verbosity),
+        ]
 
 
 class SaltMinion(SaltDaemonScriptBase):
