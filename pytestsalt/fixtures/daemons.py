@@ -333,7 +333,7 @@ class SaltCliScriptBase(SaltScriptBase):
         '''
         timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
-            return self.io_loop.run_sync(lambda: self._run_script_pre(*args, **kwargs), timeout=timeout)
+            return self.io_loop.run_sync(lambda: self._run_script(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
             pytest.skip(
                 'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
@@ -348,7 +348,7 @@ class SaltCliScriptBase(SaltScriptBase):
         '''
         timeout = self.io_loop.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
-            result = yield gen.with_timeout(timeout, self._run_script_pre(*args, **kwargs))
+            result = yield gen.with_timeout(timeout, self._run_script(*args, **kwargs))
             raise gen.Return(result)
         except gen.TimeoutError as exc:
             pytest.skip(
@@ -358,22 +358,12 @@ class SaltCliScriptBase(SaltScriptBase):
             )
 
     @gen.coroutine
-    def _run_script_pre(self, *args, **kwargs):
+    def _run_script(self, *args, **kwargs):
         '''
         This method just calls the actual run script method and chains the post
         processing of it.
         '''
         timeout = kwargs.pop('timeout', 5)
-        proc = yield self._run_script(*args, **kwargs)
-        result = yield self._run_script_post(proc, timeout)
-        raise gen.Return(result)
-
-    @gen.coroutine
-    def _run_script(self, *args, **kwargs):
-        '''
-        This method can be overridden by subclasses and it should return
-        the process instantiated.
-        '''
         proc_args = [
             self.get_script_path(self.cli_script_name),
             '-c',
@@ -387,15 +377,6 @@ class SaltCliScriptBase(SaltScriptBase):
             stdout=Subprocess.STREAM,
             stderr=Subprocess.STREAM,
         )
-        raise gen.Return(proc)
-
-    @gen.coroutine
-    def _run_script_post(self, proc, timeout):
-        '''
-        This method takes care of waiting for the process to finish or cancel
-        it in case the timeout is exceded.
-        It will also return a ShellResult in the end
-        '''
         def terminate_proc():
             '''
             Terminate the process in case a pytest.skip was issued or the process
