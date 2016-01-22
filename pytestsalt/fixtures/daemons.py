@@ -130,6 +130,32 @@ def salt_call(salt_minion):
     yield salt_call
 
 
+@pytest.yield_fixture
+def salt_key(salt_master):
+    '''
+    Returns a salt_key fixture
+    '''
+    salt_key = SaltKey(salt_master.config,
+                       salt_master.config_dir,
+                       salt_master.bin_dir_path,
+                       salt_master.verbosity,
+                       salt_master.io_loop)
+    yield salt_key
+
+
+@pytest.yield_fixture
+def salt_run(salt_master):
+    '''
+    Returns a salt_run fixture
+    '''
+    salt_run = SaltRun(salt_master.config,
+                       salt_master.config_dir,
+                       salt_master.bin_dir_path,
+                       salt_master.verbosity,
+                       salt_master.io_loop)
+    yield salt_run
+
+
 class SaltScriptBase(object):
     '''
     Base class for Salt CLI scripts
@@ -426,6 +452,22 @@ class SaltCall(SaltCliScriptBase):
         return [
             '--retcode-passthrough',
         ]
+
+
+class SaltKey(SaltCliScriptBase):
+    '''
+    Class which runs salt-key commands
+    '''
+
+    SCRIPT_NAME = 'salt-key'
+
+
+class SaltRun(SaltCliScriptBase):
+    '''
+    Class which runs salt-run commands
+    '''
+
+    SCRIPT_NAME = 'salt-run'
 
 
 class SaltMinion(SaltDaemonScriptBase):
