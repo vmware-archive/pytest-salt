@@ -406,9 +406,9 @@ class SaltCliScriptBase(SaltScriptBase):
         if six.PY3:
             stdout = stdout.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
         try:
-            json = json.loads(stdout)
+            json_out = json.loads(stdout)
         except ValueError:
-            json = None
+            json_out = None
         stderr = yield proc.stderr.read_until_close()
         if six.PY3:
             stderr = stderr.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
@@ -416,7 +416,7 @@ class SaltCliScriptBase(SaltScriptBase):
         yield gen.moment
         Subprocess.uninitialize()
         raise gen.Return(
-            self.ShellResult(exitcode, stdout, stderr, json)
+            self.ShellResult(exitcode, stdout, stderr, json_out)
         )
 
 
