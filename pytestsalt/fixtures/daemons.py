@@ -337,7 +337,7 @@ class SaltCliScriptBase(SaltScriptBase):
         except ioloop.TimeoutError as exc:
             pytest.skip(
                 'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
-                    self.SCRIPT_NAME, args, kwargs, exc
+                    self.cli_script_name, args, kwargs, exc
                 )
             )
 
