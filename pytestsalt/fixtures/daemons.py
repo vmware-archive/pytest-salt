@@ -20,7 +20,6 @@ import json
 import signal
 import socket
 import logging
-import subprocess
 from collections import namedtuple
 
 # Import 3rd-party libs
@@ -51,6 +50,25 @@ def get_log_level_name(verbosity):
                               HANDLED_LEVELS.get(verbosity > 6 and 6 or 2))
 
 
+def cli_bin_dir(config):
+    '''
+    Return the path to the CLI script directory to use
+    '''
+    path = config.getoption('cli_bin_dir')
+    if path is not None:
+        # We were passed --cli-bin-dir as a CLI option
+        return path
+
+    # The path was not passed as a CLI option
+    path = config.getini('cli_bin_dir')
+    if path is not None:
+        # We were passed cli_bin_dir as a INI option
+        return path
+
+    # Default to the directory of the current python executable
+    return os.path.dirname(sys.executable)
+
+
 @pytest.yield_fixture
 def salt_master(request,
                 conf_dir,
@@ -63,7 +81,7 @@ def salt_master(request,
     log.warning('Starting pytest salt-master(%s)', master_id)
     master_process = SaltMaster(master_config,
                                 conf_dir.strpath,
-                                request.config.getoption('--cli-bin-dir'),
+                                cli_bin_dir(request.config),
                                 request.config.getoption('-v'),
                                 io_loop)
     master_process.start()
@@ -198,7 +216,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
     Base class for Salt Daemon CLI scripts
     '''
 
-    cli_script_name = None
     proc = None
     pid = None
     stdout = None
@@ -489,7 +506,14 @@ def pytest_addoption(parser):
     saltparser = parser.getgroup('Salt Plugin Options')
     saltparser.addoption(
         '--cli-bin-dir',
-        default=os.path.dirname(sys.executable),
+        default=None,
+        help=('Path to the bin directory where the salt daemon\'s scripts can be '
+              'found. Defaults to the directory name of the python executable '
+              'running py.test')
+    )
+    parser.addini(
+        'cli_bin_dir',
+        default=None,
         help=('Path to the bin directory where the salt daemon\'s scripts can be '
               'found. Defaults to the directory name of the python executable '
               'running py.test')
