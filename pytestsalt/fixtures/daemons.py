@@ -40,6 +40,7 @@ HANDLED_LEVELS = {
     5: 'trace',         # logging.TRACE,    # -vvvvvv
     6: 'garbage'        # logging.GARBAGE   # -vvvvvvv
 }
+HANDLED_NAMES = dict((v, k) for (k, v) in HANDLED_LEVELS.items())
 
 
 def get_log_level_name(verbosity):
@@ -79,10 +80,17 @@ def salt_master(request,
     Returns a running salt-master
     '''
     log.warning('Starting pytest salt-master(%s)', master_id)
+    try:
+        # New catchlog approach
+        verbosity = HANDLED_NAMES.get(
+            logging.getLevelName(request.config._catchlog_log_cli_level).lower())
+    except:
+        # Old catchlog approach
+        verbosity = request.config.getoption('-v')
     master_process = SaltMaster(master_config,
                                 conf_dir.strpath,
                                 cli_bin_dir(request.config),
-                                request.config.getoption('-v'),
+                                verbosity,
                                 io_loop)
     master_process.start()
     if master_process.is_alive():
@@ -333,6 +341,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     sock.close()
                 del sock
             yield gen.sleep(0.125)
+        yield gen.sleep(1)
         raise gen.Return(connectable)
 
 
@@ -369,8 +378,8 @@ class SaltCliScriptBase(SaltScriptBase):
             raise gen.Return(result)
         except gen.TimeoutError as exc:
             pytest.skip(
-                'Failed to run args: {0!r}; kwargs: {1!r}; Error: {2}'.format(
-                    args, kwargs, exc
+                'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
+                    self.cli_script_name, args, kwargs, exc
                 )
             )
 
