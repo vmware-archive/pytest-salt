@@ -17,7 +17,11 @@ from __future__ import absolute_import
 import socket
 import logging
 
+# Import salt libs
+import salt.utils.event
+
 # Import 3rd-party libs
+from tornado import gen
 from tornado import ioloop
 from tornado import netutil
 
@@ -43,7 +47,11 @@ class PyTestEngine(object):
         self.io_loop = io_loop
         self.sock = None
 
+    @gen.coroutine
     def start(self):
+        if self.opts['__role'] == 'minion':
+            yield self.listen_to_minion_connected_event()
+
         port = int(self.opts['pytest_port'])
         log.warning('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -64,3 +72,16 @@ class PyTestEngine(object):
         # We just need to know that the daemon running the engine is alive...
         connection.shutdown(socket.SHUT_RDWR)  # pylint: disable=no-member
         connection.close()
+
+    @gen.coroutine
+    def listen_to_minion_connected_event(self):
+        minion_start_event_match = 'salt/minion/{0}/start'.format(self.opts['id'])
+        event_bus = salt.utils.event.get_master_event(self.opts,
+                                                      self.opts['sock_dir'],
+                                                      listen=True)
+        event_bus.subscribe(minion_start_event_match)
+        while True:
+            event = event_bus.get_event(full=True, no_block=True)
+            if event is not None and event['tag'] == minion_start_event_match:
+                break
+            yield gen.sleep(0.25)
