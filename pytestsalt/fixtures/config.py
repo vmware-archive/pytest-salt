@@ -251,7 +251,7 @@ def _master_config(root_dir,
     default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
     default_options['pytest_port'] = engine_port
 
-    log.warning('WRITING TO %s', config_file)
+    log.info('Writing configuration file to %s', config_file)
 
     # Write down the computed configuration into the config file
     with salt.utils.fopen(config_file, 'w') as wfh:
@@ -342,7 +342,7 @@ def session_master_config(session_root_dir,
                           running_username):
     '''
     This fixture will return the salt master configuration options after being
-    overridden with any options passed from ``master_config_overrides``
+    overridden with any options passed from ``session_master_config_overrides``
     '''
     return _master_config(session_root_dir,
                           session_master_config_file,
@@ -366,8 +366,8 @@ def _minion_config(root_dir,
                    minion_id,
                    running_username):
     '''
-    This fixture will return the salt master configuration options after being
-    overridden with any options passed from ``master_config_overrides``
+    This fixture will return the salt minion configuration options after being
+    overridden with any options passed from ``config_overrides``
     '''
     default_options = {
         'root_dir': root_dir.strpath,
@@ -399,7 +399,8 @@ def _minion_config(root_dir,
     default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
     default_options['pytest_port'] = engine_port
 
-    log.warning('WRITING TO %s', config_file)
+    log.info('Writing configuration file to %s', config_file)
+
     # Write down the computed configuration into the config file
     with salt.utils.fopen(config_file, 'w') as wfh:
         wfh.write(yamlserialize.serialize(default_options))
@@ -438,8 +439,8 @@ def minion_config(root_dir,
                   minion_id,
                   running_username):
     '''
-    This fixture will return the salt master configuration options after being
-    overrided with any options passed from ``master_config_overrides``
+    This fixture will return the salt minion configuration options after being
+    overrided with any options passed from ``minion_config_overrides``
     '''
     return _minion_config(root_dir,
                           minion_config_file,
@@ -459,8 +460,8 @@ def session_minion_config(session_root_dir,
                           session_minion_id,
                           running_username):
     '''
-    This fixture will return the salt master configuration options after being
-    overrided with any options passed from ``master_config_overrides``
+    This fixture will return the session salt minion configuration options after being
+    overrided with any options passed from ``session_minion_config_overrides``
     '''
     return _minion_config(session_root_dir,
                           session_minion_config_file,
