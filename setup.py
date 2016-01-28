@@ -56,7 +56,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'pytest >= 2.8.1',
-        'pytest-catchlog',
+        #'pytest-catchlog',
         'pytest-tempdir'
     ],
     setup_requires=[
