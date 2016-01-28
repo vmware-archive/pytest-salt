@@ -98,15 +98,15 @@ def salt_master(request,
             connectable = master_process.wait_until_running(timeout=10)
             if connectable is False:
                 master_process.terminate()
-                pytest.skip('The pytest salt-master({0}) has failed to start'.format(master_id))
+                pytest.xfail('The pytest salt-master({0}) has failed to start'.format(master_id))
         except Exception as exc:  # pylint: disable=broad-except
             master_process.terminate()
-            pytest.skip(str(exc))
+            pytest.xfail(str(exc))
         log.warning('The pytest salt-master(%s) is running and accepting connections', master_id)
         yield master_process
     else:
         master_process.terminate()
-        pytest.skip('The pytest salt-master({0}) has failed to start'.format(master_id))
+        pytest.xfail('The pytest salt-master({0}) has failed to start'.format(master_id))
     log.warning('Stopping pytest salt-master(%s)', master_id)
     master_process.terminate()
     log.warning('Pytest salt-master(%s) stopped', master_id)
@@ -129,15 +129,15 @@ def salt_minion(salt_master, minion_id, minion_config):
             connectable = minion_process.wait_until_running(timeout=5)
             if connectable is False:
                 minion_process.terminate()
-                pytest.skip('The pytest salt-minion({0}) has failed to start'.format(minion_id))
+                pytest.xfail('The pytest salt-minion({0}) has failed to start'.format(minion_id))
         except Exception as exc:  # pylint: disable=broad-except
             minion_process.terminate()
-            pytest.skip(str(exc))
+            pytest.xfail(str(exc))
         log.warning('The pytest salt-minion(%s) is running and accepting commands', minion_id)
         yield minion_process
     else:
         minion_process.terminate()
-        pytest.skip('The pytest salt-minion({0}) has failed to start'.format(minion_id))
+        pytest.xfail('The pytest salt-minion({0}) has failed to start'.format(minion_id))
     log.warning('Stopping pytest salt-minion(%s)', minion_id)
     minion_process.terminate()
     log.warning('pytest salt-minion(%s) stopped', minion_id)
@@ -361,7 +361,7 @@ class SaltCliScriptBase(SaltScriptBase):
         try:
             return self.io_loop.run_sync(lambda: self._run_script(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
-            pytest.skip(
+            pytest.xfail(
                 'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
                     self.cli_script_name, args, kwargs, exc
                 )
@@ -377,7 +377,7 @@ class SaltCliScriptBase(SaltScriptBase):
             result = yield gen.with_timeout(timeout, self._run_script(*args, **kwargs))
             raise gen.Return(result)
         except gen.TimeoutError as exc:
-            pytest.skip(
+            pytest.xfail(
                 'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
                     self.cli_script_name, args, kwargs, exc
                 )
@@ -405,7 +405,7 @@ class SaltCliScriptBase(SaltScriptBase):
         )
         def terminate_proc():
             '''
-            Terminate the process in case a pytest.skip was issued or the process
+            Terminate the process in case a pytest.xfail was issued or the process
             did not exit correctly
             '''
             proc.proc.send_signal(signal.SIGTERM)
