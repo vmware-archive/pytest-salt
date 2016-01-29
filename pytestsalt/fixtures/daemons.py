@@ -79,7 +79,7 @@ def salt_master(request,
     '''
     Returns a running salt-master
     '''
-    log.warning('Starting pytest salt-master(%s)', master_id)
+    log.info('Starting pytest salt-master(%s)', master_id)
     try:
         # New catchlog approach
         verbosity = HANDLED_NAMES.get(
@@ -102,14 +102,14 @@ def salt_master(request,
         except Exception as exc:  # pylint: disable=broad-except
             master_process.terminate()
             pytest.xfail(str(exc))
-        log.warning('The pytest salt-master(%s) is running and accepting connections', master_id)
+        log.info('The pytest salt-master(%s) is running and accepting connections', master_id)
         yield master_process
     else:
         master_process.terminate()
         pytest.xfail('The pytest salt-master({0}) has failed to start'.format(master_id))
-    log.warning('Stopping pytest salt-master(%s)', master_id)
+    log.info('Stopping pytest salt-master(%s)', master_id)
     master_process.terminate()
-    log.warning('Pytest salt-master(%s) stopped', master_id)
+    log.info('Pytest salt-master(%s) stopped', master_id)
 
 
 @pytest.yield_fixture
@@ -117,7 +117,7 @@ def salt_minion(salt_master, minion_id, minion_config):
     '''
     Returns a running salt-minion
     '''
-    log.warning('Starting pytest salt-minion(%s)', minion_id)
+    log.info('Starting pytest salt-minion(%s)', minion_id)
     minion_process = SaltMinion(minion_config,
                                 salt_master.config_dir,
                                 salt_master.bin_dir_path,
@@ -133,14 +133,14 @@ def salt_minion(salt_master, minion_id, minion_config):
         except Exception as exc:  # pylint: disable=broad-except
             minion_process.terminate()
             pytest.xfail(str(exc))
-        log.warning('The pytest salt-minion(%s) is running and accepting commands', minion_id)
+        log.info('The pytest salt-minion(%s) is running and accepting commands', minion_id)
         yield minion_process
     else:
         minion_process.terminate()
         pytest.xfail('The pytest salt-minion({0}) has failed to start'.format(minion_id))
-    log.warning('Stopping pytest salt-minion(%s)', minion_id)
+    log.info('Stopping pytest salt-minion(%s)', minion_id)
     minion_process.terminate()
-    log.warning('pytest salt-minion(%s) stopped', minion_id)
+    log.info('pytest salt-minion(%s) stopped', minion_id)
 
 
 @pytest.yield_fixture
@@ -254,7 +254,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, start method
         '''
-        log.warning('Starting pytest %s DAEMON', self.__class__.__name__)
+        log.info('Starting pytest %s DAEMON', self.__class__.__name__)
         self._running = True
         proc_args = [
             self.get_script_path(self.cli_script_name),
