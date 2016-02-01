@@ -53,7 +53,7 @@ class PyTestEngine(object):
             yield self.listen_to_minion_connected_event()
 
         port = int(self.opts['pytest_port'])
-        log.warning('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
+        log.info('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.setblocking(0)
