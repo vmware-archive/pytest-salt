@@ -71,11 +71,27 @@ def cli_bin_dir(config):
 
 
 @pytest.yield_fixture
+def salt_master_prep():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-master and after ending it.
+    '''
+    # Prep routines for the salt master go here
+
+    # Start the salt-master
+    yield
+
+    # Clean routines for the salt master go here
+
+
+@pytest.yield_fixture
 def salt_master(request,
                 conf_dir,
                 master_id,
                 master_config,
-                io_loop):
+                io_loop,
+                salt_master_prep):  # pylint: disable=unused-argument
     '''
     Returns a running salt-master
     '''
@@ -84,7 +100,7 @@ def salt_master(request,
         # New catchlog approach
         verbosity = HANDLED_NAMES.get(
             logging.getLevelName(request.config._catchlog_log_cli_level).lower())
-    except:
+    except:  # pylint: disable=bare-except
         # Old catchlog approach
         verbosity = request.config.getoption('-v')
     master_process = SaltMaster(master_config,
@@ -113,7 +129,25 @@ def salt_master(request,
 
 
 @pytest.yield_fixture
-def salt_minion(salt_master, minion_id, minion_config):
+def salt_minion_prep():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-minion and after ending it.
+    '''
+    # Prep routines for the salt minion go here
+
+    # Start the salt-minion
+    yield
+
+    # Clean routines for the salt minion go here
+
+
+@pytest.yield_fixture
+def salt_minion(salt_master,
+                minion_id,
+                minion_config,
+                salt_minion_prep):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
     '''
@@ -144,7 +178,22 @@ def salt_minion(salt_master, minion_id, minion_config):
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion):
+def salt_call_prep():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-call and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_call(salt_minion, salt_call_prep):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
@@ -157,7 +206,22 @@ def salt_call(salt_minion):
 
 
 @pytest.yield_fixture
-def salt_key(salt_master):
+def salt_key_prep():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-key and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_key(salt_master, salt_key_prep):  # pylint: disable=unused-argument
     '''
     Returns a salt_key fixture
     '''
@@ -170,7 +234,22 @@ def salt_key(salt_master):
 
 
 @pytest.yield_fixture
-def salt_run(salt_master):
+def salt_run_prep():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-run and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_run(salt_master, salt_run_prep):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
     '''
@@ -403,6 +482,7 @@ class SaltCliScriptBase(SaltScriptBase):
             stdout=Subprocess.STREAM,
             stderr=Subprocess.STREAM,
         )
+
         def terminate_proc():
             '''
             Terminate the process in case a pytest.xfail was issued or the process
