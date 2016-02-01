@@ -262,7 +262,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             self.config_dir,
             '-l', get_log_level_name(self.verbosity)
         ] + self.get_script_args()
-        log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
+        log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
 
         # Allow the IOLoop to do something else
         yield gen.sleep(0.125)
@@ -396,7 +396,7 @@ class SaltCliScriptBase(SaltScriptBase):
             self.config_dir,
             '--out', 'json'
         ] + self.get_script_args() + list(args)
-        log.warn('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
+        log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
         Subprocess.initialize(self.io_loop)
         proc = Subprocess(
             proc_args,
