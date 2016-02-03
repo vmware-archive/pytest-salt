@@ -81,8 +81,9 @@ def salt_master(request,
                 conf_dir,
                 master_id,
                 master_config,
+                salt_master_prep,  # pylint: disable=unused-argument
                 io_loop,
-                salt_master_prep):  # pylint: disable=unused-argument
+                pytestsalt_executor):
     '''
     Returns a running salt-master
     '''
@@ -90,7 +91,8 @@ def salt_master(request,
     master_process = SaltMaster(master_config,
                                 conf_dir.strpath,
                                 cli_bin_dir(request.config),
-                                io_loop)
+                                io_loop,
+                                pytestsalt_executor)
     master_process.start()
     if master_process.is_alive():
         try:
@@ -138,7 +140,8 @@ def salt_minion(salt_master,
     minion_process = SaltMinion(minion_config,
                                 salt_master.config_dir,
                                 salt_master.bin_dir_path,
-                                salt_master.io_loop)
+                                salt_master.io_loop,
+                                salt_master.executor)
     minion_process.start()
     if minion_process.is_alive():
         try:
@@ -175,7 +178,7 @@ def salt_call_prep():
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion, salt_call_prep, pytestsalt_executor):  # pylint: disable=unused-argument
+def salt_call(salt_minion, salt_call_prep):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
@@ -183,7 +186,7 @@ def salt_call(salt_minion, salt_call_prep, pytestsalt_executor):  # pylint: disa
                          salt_minion.config_dir,
                          salt_minion.bin_dir_path,
                          salt_minion.io_loop,
-                         executor=pytestsalt_executor)
+                         salt_minion.executor)
     yield salt_call
 
 
@@ -210,7 +213,8 @@ def salt_key(salt_master, salt_key_prep):  # pylint: disable=unused-argument
     salt_key = SaltKey(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
-                       salt_master.io_loop)
+                       salt_master.io_loop,
+                       salt_master.executor)
     yield salt_key
 
 
@@ -237,7 +241,8 @@ def salt_run(salt_master, salt_run_prep):  # pylint: disable=unused-argument
     salt_run = SaltRun(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
-                       salt_master.io_loop)
+                       salt_master.io_loop,
+                       salt_master.executor)
     yield salt_run
 
 
