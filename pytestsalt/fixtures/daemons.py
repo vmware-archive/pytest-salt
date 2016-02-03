@@ -472,12 +472,13 @@ class SaltCliScriptBase(SaltScriptBase):
             '--out', 'json'
         ] + self.get_script_args() + list(args)
         terminal = vt.Terminal(proc_args,
-                               stream_stdout=True,
+                               stream_stdout=False,
                                log_stdout=True,
-                               log_stdout_level='warning',
-                               stream_stderr=True,
+                               #log_stdout_level='warning',
+                               stream_stderr=False,
                                log_stderr=True,
-                               log_stderr_level='warning')
+                               #log_stderr_level='warning'
+                               )
 
         # Consume the output
         stdout = ''
