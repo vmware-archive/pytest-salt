@@ -18,9 +18,9 @@ import os
 import time
 import sys
 import json
-import signal
 import socket
 import logging
+import multiprocessing
 from collections import namedtuple
 
 # Import 3rd-party libs
@@ -34,6 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Import salt libs
 import salt.utils.vt as vt
+from salt.utils.process import SignalHandlingMultiprocessingProcess
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,9 @@ def cli_bin_dir(config):
 
 
 def get_threadpool_executors(config):
+    '''
+    Return the number of threads the ThreadPoolExecutor should use
+    '''
     executors = config.getoption('thread_executors')
     if executors is not None:
         return executors
@@ -74,6 +78,9 @@ def get_threadpool_executors(config):
 
 @pytest.fixture(scope='session')
 def pytestsalt_executor(request):
+    '''
+    Return a session scoped ThreadPoolExecutor
+    '''
     return ThreadPoolExecutor(
         max_workers=get_threadpool_executors(request.config))
 
@@ -284,25 +291,21 @@ class SaltScriptBase(object):
 
     @property
     def io_loop(self):
+        '''
+        Return an IOLoop
+        '''
         if self._io_loop is None:
             self._io_loop = ioloop.IOLoop.current()
         return self._io_loop
 
     @property
     def executor(self):
+        '''
+        Return a ThreadPoolExecutor
+        '''
         if self._executor is None:
             self._executor = ThreadPoolExecutor(max_workers=4)
         return self._executor
-
-    @property
-    def io_loop(self):
-        '''
-        The io_loop instance. If not passed, one is instantiated
-        '''
-        if self._io_loop is None:
-            self._io_loop = ioloop.IOLoop.instance()
-            self._io_loop.start()
-        return self._io_loop
 
     def get_script_path(self, script_name):
         '''
@@ -322,18 +325,16 @@ class SaltDaemonScriptBase(SaltScriptBase):
     Base class for Salt Daemon CLI scripts
     '''
 
-    proc = None
-    pid = None
-    stdout = None
-    stderr = None
-    exitcode = None
-    _running = False
+    def __init__(self, *args, **kwargs):
+        super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
+        self._running = multiprocessing.Event()
+        self._process = None
 
     def is_alive(self):
         '''
         Returns true if the process is alive
         '''
-        return self._running
+        return self._running.is_set()
 
     def get_check_ports(self):  # pylint: disable=no-self-use
         '''
@@ -345,15 +346,18 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         Start the daemon subprocess
         '''
-        return self.io_loop.run_sync(self._start)
+        #self._running_thread = threading.Thread(target=self._start)
+        self._process = SignalHandlingMultiprocessingProcess(
+            target=self._start, args=(self._running,))
+        self._process.start()
+        self._running.set()
+        return True
 
-    @gen.coroutine
-    def _start(self):
+    def _start(self, running_event):
         '''
         The actual, coroutine aware, start method
         '''
         log.info('Starting pytest %s DAEMON', self.__class__.__name__)
-        self._running = True
         proc_args = [
             self.get_script_path(self.cli_script_name),
             '-c',
@@ -361,53 +365,31 @@ class SaltDaemonScriptBase(SaltScriptBase):
         ] + self.get_script_args()
         log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
 
-        # Allow the IOLoop to do something else
-        yield gen.sleep(0.125)
-        Subprocess.initialize(self.io_loop)
+        terminal = vt.Terminal(proc_args,
+                               stream_stdout=False,
+                               log_stdout=True,
+                               #log_stdout_level='warning',
+                               stream_stderr=False,
+                               log_stderr=True,
+                               #log_stderr_level='warning'
+                               )
+        self.pid = terminal.pid
 
-        self.proc = Subprocess(' '.join(proc_args), close_fds=True, shell=True)
-        self.pid = self.proc.proc.pid
+        while running_event.is_set() and terminal.has_unread_data:
+            # We're not actually interessed in processing the output, just consume it
+            terminal.recv()
+            time.sleep(0.125)
 
-        # Let's make the start() call wait a little for the process to
-        # bootstrap without blocking the IOLoop
-        yield gen.sleep(0.25)
-
-        @gen.coroutine
-        def set_exitcode(future):
-            '''
-            Set the exitcode in the class instance to the exitcode of the stopped subprocess
-            '''
-            self.exitcode = future.result()
-            self._running = False
-            # Allow the IOLoop to do something else
-            yield gen.moment
-            Subprocess.uninitialize()
-
-        self.io_loop.add_future(
-            self.proc.wait_for_exit(raise_error=False),
-            set_exitcode
-        )
+        # Let's close the terminal now that we're done with it
+        terminal.close(kill=True)
+        self.exitcode = terminal.exitstatus
 
     def terminate(self):
         '''
         Terminate the started daemon
         '''
-        if self.proc is not None:
-            def _inner_terminate():
-                '''
-                The actual terminate method
-                '''
-                self.proc.proc.send_signal(signal.SIGTERM)
-                try:
-                    self.proc.proc.terminate()
-                except Exception:  # pylint: disable=broad-except
-                    pass
-                try:
-                    self.proc.proc.communicate()
-                except Exception:  # pylint: disable=broad-except
-                    pass
-                self.proc = None
-            self.io_loop.run_sync(_inner_terminate)
+        self._running.clear()
+        self._process.terminate()
 
     def wait_until_running(self, timeout=None):
         '''
