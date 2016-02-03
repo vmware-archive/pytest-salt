@@ -15,6 +15,7 @@
 # Import python libs
 from __future__ import absolute_import, print_function
 import os
+import time
 import sys
 import json
 import signal
@@ -27,28 +28,14 @@ import salt.ext.six as six
 import pytest
 from tornado import gen
 from tornado import ioloop
+from tornado import concurrent
 from tornado.process import Subprocess
+from concurrent.futures import ThreadPoolExecutor
+
+# Import salt libs
+import salt.utils.vt as vt
 
 log = logging.getLogger(__name__)
-
-HANDLED_LEVELS = {
-    0: 'critical',      # logging.CRITICAL  # -v
-    1: 'error',         # logging.ERROR     # -vv
-    2: 'warning',       # logging.WARN,     # -vvv
-    3: 'info',          # logging.INFO,     # -vvvv
-    4: 'debug',         # logging.DEBUG,    # -vvvvv
-    5: 'trace',         # logging.TRACE,    # -vvvvvv
-    6: 'garbage'        # logging.GARBAGE   # -vvvvvvv
-}
-HANDLED_NAMES = dict((v, k) for (k, v) in HANDLED_LEVELS.items())
-
-
-def get_log_level_name(verbosity):
-    '''
-    Return the CLI logging level name based on pytest verbosity
-    '''
-    return HANDLED_LEVELS.get(verbosity,
-                              HANDLED_LEVELS.get(verbosity > 6 and 6 or 2))
 
 
 def cli_bin_dir(config):
@@ -69,6 +56,10 @@ def cli_bin_dir(config):
     # Default to the directory of the current python executable
     return os.path.dirname(sys.executable)
 
+
+@pytest.fixture(scope='session')
+def pytestsalt_executor():
+    return ThreadPoolExecutor(max_workers=4)
 
 @pytest.yield_fixture
 def salt_master_prep():
@@ -96,17 +87,9 @@ def salt_master(request,
     Returns a running salt-master
     '''
     log.info('Starting pytest salt-master(%s)', master_id)
-    try:
-        # New catchlog approach
-        verbosity = HANDLED_NAMES.get(
-            logging.getLevelName(request.config._catchlog_log_cli_level).lower())
-    except:  # pylint: disable=bare-except
-        # Old catchlog approach
-        verbosity = request.config.getoption('-v')
     master_process = SaltMaster(master_config,
                                 conf_dir.strpath,
                                 cli_bin_dir(request.config),
-                                verbosity,
                                 io_loop)
     master_process.start()
     if master_process.is_alive():
@@ -155,7 +138,6 @@ def salt_minion(salt_master,
     minion_process = SaltMinion(minion_config,
                                 salt_master.config_dir,
                                 salt_master.bin_dir_path,
-                                salt_master.verbosity,
                                 salt_master.io_loop)
     minion_process.start()
     if minion_process.is_alive():
@@ -193,15 +175,15 @@ def salt_call_prep():
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion, salt_call_prep):  # pylint: disable=unused-argument
+def salt_call(salt_minion, salt_call_prep, pytestsalt_executor):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
     salt_call = SaltCall(salt_minion.config,
                          salt_minion.config_dir,
                          salt_minion.bin_dir_path,
-                         salt_minion.verbosity,
-                         salt_minion.io_loop)
+                         salt_minion.io_loop,
+                         executor=pytestsalt_executor)
     yield salt_call
 
 
@@ -228,7 +210,6 @@ def salt_key(salt_master, salt_key_prep):  # pylint: disable=unused-argument
     salt_key = SaltKey(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
-                       salt_master.verbosity,
                        salt_master.io_loop)
     yield salt_key
 
@@ -256,7 +237,6 @@ def salt_run(salt_master, salt_run_prep):  # pylint: disable=unused-argument
     salt_run = SaltRun(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
-                       salt_master.verbosity,
                        salt_master.io_loop)
     yield salt_run
 
@@ -268,12 +248,29 @@ class SaltScriptBase(object):
 
     cli_script_name = None
 
-    def __init__(self, config, config_dir, bin_dir_path, verbosity, io_loop=None):  # pylint: disable=too-many-arguments
+    def __init__(self,
+                 config,
+                 config_dir,
+                 bin_dir_path,
+                 io_loop=None,
+                 executor=None):  # pylint: disable=too-many-arguments
         self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
-        self.verbosity = verbosity
         self._io_loop = io_loop
+        self._executor = executor
+
+    @property
+    def io_loop(self):
+        if self._io_loop is None:
+            self._io_loop = ioloop.IOLoop.current()
+        return self._io_loop
+
+    @property
+    def executor(self):
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(max_workers=4)
+        return self._executor
 
     @property
     def io_loop(self):
@@ -339,7 +336,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
             self.get_script_path(self.cli_script_name),
             '-c',
             self.config_dir,
-            '-l', get_log_level_name(self.verbosity)
         ] + self.get_script_args()
         log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
 
@@ -462,68 +458,53 @@ class SaltCliScriptBase(SaltScriptBase):
                 )
             )
 
-    @gen.coroutine
+    @concurrent.run_on_executor
     def _run_script(self, *args, **kwargs):
         '''
         This method just calls the actual run script method and chains the post
         processing of it.
         '''
-        timeout = kwargs.pop('timeout', 5)
+        timeout_expire = time.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         proc_args = [
             self.get_script_path(self.cli_script_name),
             '-c',
             self.config_dir,
             '--out', 'json'
         ] + self.get_script_args() + list(args)
-        log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
-        Subprocess.initialize(self.io_loop)
-        proc = Subprocess(
-            proc_args,
-            stdout=Subprocess.STREAM,
-            stderr=Subprocess.STREAM,
-        )
+        terminal = vt.Terminal(proc_args,
+                               stream_stdout=True,
+                               log_stdout=True,
+                               log_stdout_level='warning',
+                               stream_stderr=True,
+                               log_stderr=True,
+                               log_stderr_level='warning')
 
-        def terminate_proc():
-            '''
-            Terminate the process in case a pytest.xfail was issued or the process
-            did not exit correctly
-            '''
-            proc.proc.send_signal(signal.SIGTERM)
+        # Consume the output
+        stdout = ''
+        stderr = ''
+        timedout = False
+        while terminal.has_unread_data:
             try:
-                proc.proc.terminate()
-            except Exception:  # pylint: disable=broad-except
-                pass
-            try:
-                proc.proc.communicate()
-            except Exception:  # pylint: disable=broad-except
-                pass
-        # Make sure that, if the timeout occurrs, the process will be properly shut down
-        terminate_timeout = self.io_loop.add_timeout(self.io_loop.time() + timeout,
-                                                     terminate_proc)
+                out, err = terminal.recv()
+            except IOError:
+                out = err = ''
+            if out:
+                stdout += out
+            if err:
+                stderr += err
+            if timeout_expire < time.time():
+                timedout = True
+                break
+            time.sleep(0.025)
 
-        # Let's wait for the process to exit
-        exitcode = yield proc.wait_for_exit(raise_error=False)
-
-        # If the process exited, remove the terminate_timeout
-        self.io_loop.remove_timeout(terminate_timeout)
-
-        # Process output
-        stdout = yield proc.stdout.read_until_close()
-        if six.PY3:
-            stdout = stdout.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
+        # Let's close the terminal now that we're done with it
+        terminal.close(kill=True)
+        exitcode = terminal.exitstatus
         try:
             json_out = json.loads(stdout)
         except ValueError:
             json_out = None
-        stderr = yield proc.stderr.read_until_close()
-        if six.PY3:
-            stderr = stderr.decode(__salt_system_encoding__)  # pylint: disable=undefined-variable
-        # Allow the IOLoop to do something else
-        yield gen.moment
-        Subprocess.uninitialize()
-        raise gen.Return(
-            self.ShellResult(exitcode, stdout, stderr, json_out)
-        )
+        return self.ShellResult(exitcode, stdout, stderr, json_out)
 
 
 class SaltCall(SaltCliScriptBase):
@@ -534,10 +515,7 @@ class SaltCall(SaltCliScriptBase):
     cli_script_name = 'salt-call'
 
     def get_script_args(self):
-        return [
-            '-l', get_log_level_name(self.verbosity),
-            '--retcode-passthrough',
-        ]
+        return ['--retcode-passthrough']
 
 
 class SaltKey(SaltCliScriptBase):
@@ -554,11 +532,6 @@ class SaltRun(SaltCliScriptBase):
     '''
 
     cli_script_name = 'salt-run'
-
-    def get_script_args(self):
-        return [
-            '-l', get_log_level_name(self.verbosity),
-        ]
 
 
 class SaltMinion(SaltDaemonScriptBase):
