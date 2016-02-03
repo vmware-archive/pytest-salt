@@ -57,9 +57,26 @@ def cli_bin_dir(config):
     return os.path.dirname(sys.executable)
 
 
+def get_threadpool_executors(config):
+    executors = config.getoption('thread_executors')
+    if executors is not None:
+        return executors
+
+    executors = config.getini('thread_executors')
+    if executors is not None:
+        try:
+            return int(executors)
+        except ValueError:
+            pass
+
+    return 4
+
+
 @pytest.fixture(scope='session')
-def pytestsalt_executor():
-    return ThreadPoolExecutor(max_workers=4)
+def pytestsalt_executor(request):
+    return ThreadPoolExecutor(
+        max_workers=get_threadpool_executors(request.config))
+
 
 @pytest.yield_fixture
 def salt_master_prep():
@@ -573,12 +590,21 @@ def pytest_addoption(parser):
     '''
     saltparser = parser.getgroup('Salt Plugin Options')
     saltparser.addoption(
+        '--thread-executors',
+        default=None,
+        type=int,
+        help='Number of threads to assign to the ThreadPoolExecutor. Defaults to 4.')
+    saltparser.addoption(
         '--cli-bin-dir',
         default=None,
         help=('Path to the bin directory where the salt daemon\'s scripts can be '
               'found. Defaults to the directory name of the python executable '
               'running py.test')
     )
+    parser.addini(
+        'thread_executors',
+        default=None,
+        help='Number of threads to assign to the ThreadPoolExecutor. Defaults to 4.')
     parser.addini(
         'cli_bin_dir',
         default=None,
