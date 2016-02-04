@@ -328,6 +328,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
     def __init__(self, *args, **kwargs):
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = multiprocessing.Event()
+        self._connectable = multiprocessing.Event()
         self._process = None
 
     def is_alive(self):
@@ -346,7 +347,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         Start the daemon subprocess
         '''
-        #self._running_thread = threading.Thread(target=self._start)
         self._process = SignalHandlingMultiprocessingProcess(
             target=self._start, args=(self._running,))
         self._process.start()
@@ -389,12 +389,15 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Terminate the started daemon
         '''
         self._running.clear()
+        self._connectable.clear()
         self._process.terminate()
 
     def wait_until_running(self, timeout=None):
         '''
         Blocking call to wait for the daemon to start listening
         '''
+        if self._connectable.is_set():
+            return True
         try:
             return self.io_loop.run_sync(self._wait_until_running, timeout=timeout)
         except ioloop.TimeoutError:
@@ -406,10 +409,9 @@ class SaltDaemonScriptBase(SaltScriptBase):
         The actual, coroutine aware, call to wait for the daemon to start listening
         '''
         check_ports = self.get_check_ports()
-        connectable = False
-        while True:
+        while self._running.is_set():
             if not check_ports:
-                connectable = True
+                self._connectable.set()
                 break
             for port in set(check_ports):
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -420,8 +422,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     sock.close()
                 del sock
             yield gen.sleep(0.125)
-        yield gen.sleep(1)
-        raise gen.Return(connectable)
+        raise gen.Return(self._connectable.is_set())
 
 
 class SaltCliScriptBase(SaltScriptBase):
@@ -451,9 +452,8 @@ class SaltCliScriptBase(SaltScriptBase):
         '''
         Run the given command asynchronously
         '''
-        timeout = self.io_loop.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         try:
-            result = yield gen.with_timeout(timeout, self._run_script(*args, **kwargs))
+            result = yield self._run_script(*args, **kwargs)
             raise gen.Return(result)
         except gen.TimeoutError as exc:
             pytest.xfail(
@@ -462,7 +462,8 @@ class SaltCliScriptBase(SaltScriptBase):
                 )
             )
 
-    @concurrent.run_on_executor
+    #@concurrent.run_on_executor
+    @gen.coroutine
     def _run_script(self, *args, **kwargs):
         '''
         This method just calls the actual run script method and chains the post
@@ -500,15 +501,19 @@ class SaltCliScriptBase(SaltScriptBase):
             if timeout_expire < time.time():
                 timedout = True
                 break
-            time.sleep(0.025)
+            yield gen.sleep(0.001)
+            #time.sleep(0.025)
 
         # Let's close the terminal now that we're done with it
         terminal.close(kill=True)
+        if timedout:
+            raise gen.TimeoutError('Timmed out!')
         exitcode = terminal.exitstatus
         try:
             json_out = json.loads(stdout)
         except ValueError:
             json_out = None
+        raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
         return self.ShellResult(exitcode, stdout, stderr, json_out)
 
 
