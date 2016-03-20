@@ -35,7 +35,9 @@ def __virtual__():
 
 
 def start():
-    io_loop = ioloop.IOLoop.instance()
+    # Create our own IOLoop, we're in another process
+    io_loop = ioloop.IOLoop()
+    io_loop.make_current()
     pytest_engine = PyTestEngine(__opts__, io_loop)  # pylint: disable=undefined-variable
     io_loop.add_callback(pytest_engine.start)
     io_loop.start()
