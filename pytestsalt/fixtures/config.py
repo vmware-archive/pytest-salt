@@ -29,7 +29,7 @@ import salt.utils.verify as salt_verify
 import salt.serializers.yaml as yamlserialize
 
 # Import pytest salt libs
-import pytestsalt.engines
+import pytestsalt.salt.engines
 
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
@@ -248,7 +248,7 @@ def _master_config(root_dir,
     if 'engines_dirs' not in default_options:
         default_options['engines_dirs'] = []
 
-    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
+    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
     default_options['pytest_port'] = engine_port
 
     log.info('Writing configuration file to %s', config_file)
@@ -396,7 +396,7 @@ def _minion_config(root_dir,
     if 'engines_dirs' not in default_options:
         default_options['engines_dirs'] = []
 
-    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.engines.__file__))
+    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
     default_options['pytest_port'] = engine_port
 
     log.info('Writing configuration file to %s', config_file)

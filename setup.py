@@ -57,13 +57,11 @@ setup(
     install_requires=[
         'pytest >= 2.8.1',
         #'pytest-catchlog',
-        'pytest-tempdir'
-    ],
-    setup_requires=[
-        'salt>=2015.8.0',
+        'pytest-tempdir',
+        'Salt'
     ],
     dependency_links=[
-        'https://github.com/saltstack/salt/tarball/develop#egg=salt-2015.8.0-587-g6a4d68a'
+        'git+https://github.com/saltstack/salt.git@2016.3#egg=Salt'
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -87,5 +85,8 @@ setup(
             'salt.dirs      = pytestsalt.fixtures.dirs',
             'salt.ports     = pytestsalt.fixtures.ports',
         ],
+        'salt.loader': [
+            'engines_dirs   = pytestsalt.salt.loader:engines_dirs'
+        ]
     },
 )
