@@ -83,3 +83,11 @@ def session_minion_engine_port():
     Returns an unused localhost port for the pytest session salt minion engine
     '''
     return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def salt_log_port():
+    '''
+    Returns an unused localhost port for the pytest logging manager
+    '''
+    return get_unused_localhost_port()
