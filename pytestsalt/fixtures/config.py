@@ -30,6 +30,7 @@ import salt.serializers.yaml as yamlserialize
 
 # Import pytest salt libs
 import pytestsalt.salt.engines
+import pytestsalt.salt.log_handlers
 
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
@@ -195,7 +196,8 @@ def _master_config(root_dir,
                    prod_env_state_tree_root_dirs,
                    base_env_pillar_tree_root_dirs,
                    prod_env_pillar_tree_root_dirs,
-                   running_username):
+                   running_username,
+                   salt_log_port):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
@@ -221,13 +223,14 @@ def _master_config(root_dir,
             ]
         },
         'log_file': 'logs/master',
+        'log_level_logfile': 'debug',
         'key_logfile': 'logs/key',
         'token_dir': 'tokens',
         'token_file': root_dir.join('ksfjhdgiuebfgnkefvsikhfjdgvkjahcsidk').strpath,
         'file_buffer_size': 8192,
         'user': running_username,
         'log_fmt_console': "[%(levelname)-8s][%(name)-5s:%(lineno)-4d] %(message)s",
-        #'log_fmt_logfile': '%(asctime)s,%(msecs)03.0f [%(name)-5s:%(lineno)-4d][%(levelname)-8s] %(message)s',
+        'log_fmt_logfile': "[%(asctime)s,%(msecs)03.0f][%(name)-5s:%(lineno)-4d][%(levelname)-8s] %(message)s",
         'file_roots': {
             'base': base_env_state_tree_root_dirs,
             'prod': prod_env_state_tree_root_dirs,
@@ -236,6 +239,7 @@ def _master_config(root_dir,
             'base': base_env_pillar_tree_root_dirs,
             'prod': prod_env_pillar_tree_root_dirs,
         },
+        'hash_type': 'sha256'
     }
     if config_overrides:
         # Merge in the default options with the master_config_overrides
@@ -250,6 +254,12 @@ def _master_config(root_dir,
 
     default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
     default_options['pytest_port'] = engine_port
+
+    if 'log_handlers_dirs' not in default_options:
+        default_options['log_handlers_dirs'] = []
+    default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
+
+    default_options['pytest_log_port'] = salt_log_port
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -308,7 +318,8 @@ def master_config(root_dir,
                   prod_env_state_tree_root_dir,
                   base_env_pillar_tree_root_dir,
                   prod_env_pillar_tree_root_dir,
-                  running_username):
+                  running_username,
+                  salt_log_port):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
@@ -324,7 +335,8 @@ def master_config(root_dir,
                           [prod_env_state_tree_root_dir.strpath],
                           [base_env_pillar_tree_root_dir.strpath],
                           [prod_env_pillar_tree_root_dir.strpath],
-                          running_username)
+                          running_username,
+                          salt_log_port)
 
 
 @pytest.fixture(scope='session')
@@ -339,7 +351,8 @@ def session_master_config(session_root_dir,
                           session_prod_env_state_tree_root_dir,
                           session_base_env_pillar_tree_root_dir,
                           session_prod_env_pillar_tree_root_dir,
-                          running_username):
+                          running_username,
+                          salt_log_port):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``session_master_config_overrides``
@@ -355,7 +368,8 @@ def session_master_config(session_root_dir,
                           [session_prod_env_state_tree_root_dir.strpath],
                           [session_base_env_pillar_tree_root_dir.strpath],
                           [session_prod_env_pillar_tree_root_dir.strpath],
-                          running_username)
+                          running_username,
+                          salt_log_port)
 
 
 def _minion_config(root_dir,
@@ -364,7 +378,8 @@ def _minion_config(root_dir,
                    engine_port,
                    config_overrides,
                    minion_id,
-                   running_username):
+                   running_username,
+                   salt_log_port):
     '''
     This fixture will return the salt minion configuration options after being
     overridden with any options passed from ``config_overrides``
@@ -379,11 +394,14 @@ def _minion_config(root_dir,
         'cachedir': 'cache',
         'sock_dir': '.salt-unix',
         'log_file': 'logs/minion',
+        'log_level_logfile': 'debug',
         'loop_interval': 0.05,
         'open_mode': True,
         'user': running_username,
         #'multiprocessing': False,
-        'log_fmt_console': "[%(levelname)-8s][%(name)-5s:%(lineno)-4d] %(message)s"
+        'log_fmt_console': "[%(levelname)-8s][%(name)-5s:%(lineno)-4d] %(message)s",
+        'log_fmt_logfile': "[%(asctime)s,%(msecs)03.0f][%(name)-5s:%(lineno)-4d][%(levelname)-8s] %(message)s",
+        'hash_type': 'sha256'
     }
     if config_overrides:
         # Merge in the default options with the minion_config_overrides
@@ -398,6 +416,12 @@ def _minion_config(root_dir,
 
     default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
     default_options['pytest_port'] = engine_port
+
+    if 'log_handlers_dirs' not in default_options:
+        default_options['log_handlers_dirs'] = []
+    default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
+
+    default_options['pytest_log_port'] = salt_log_port
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -437,7 +461,8 @@ def minion_config(root_dir,
                   minion_engine_port,
                   minion_config_overrides,
                   minion_id,
-                  running_username):
+                  running_username,
+                  salt_log_port):
     '''
     This fixture will return the salt minion configuration options after being
     overrided with any options passed from ``minion_config_overrides``
@@ -448,7 +473,8 @@ def minion_config(root_dir,
                           minion_engine_port,
                           minion_config_overrides,
                           minion_id,
-                          running_username)
+                          running_username,
+                          salt_log_port)
 
 
 @pytest.fixture(scope='session')
@@ -458,7 +484,8 @@ def session_minion_config(session_root_dir,
                           session_minion_engine_port,
                           session_minion_config_overrides,
                           session_minion_id,
-                          running_username):
+                          running_username,
+                          salt_log_port):
     '''
     This fixture will return the session salt minion configuration options after being
     overrided with any options passed from ``session_minion_config_overrides``
@@ -469,4 +496,5 @@ def session_minion_config(session_root_dir,
                           session_minion_engine_port,
                           session_minion_config_overrides,
                           session_minion_id,
-                          running_username)
+                          running_username,
+                          salt_log_port)
