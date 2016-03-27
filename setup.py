@@ -84,9 +84,11 @@ setup(
             'salt.daemons   = pytestsalt.fixtures.daemons',
             'salt.dirs      = pytestsalt.fixtures.dirs',
             'salt.ports     = pytestsalt.fixtures.ports',
+            'salt.log       = pytestsalt.fixtures.log',
         ],
         'salt.loader': [
-            'engines_dirs   = pytestsalt.salt.loader:engines_dirs'
+            'engines_dirs      = pytestsalt.salt.loader:engines_dirs',
+            'log_handlers_dirs = pytestsalt.salt.loader:log_handlers_dirs'
         ]
     },
 )
