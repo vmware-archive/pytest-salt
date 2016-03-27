@@ -169,7 +169,7 @@ def salt_minion(salt_master,
     minion_process.start()
     if minion_process.is_alive():
         try:
-            connectable = minion_process.wait_until_running(timeout=5)
+            connectable = minion_process.wait_until_running(timeout=10)
             if connectable is False:
                 minion_process.terminate()
                 pytest.xfail('The pytest salt-minion({0}) has failed to start'.format(minion_id))
@@ -552,7 +552,7 @@ class SaltMinion(SaltDaemonScriptBase):
     cli_script_name = 'salt-minion'
 
     def get_script_args(self):
-        return ['--disable-keepalive']
+        return ['--disable-keepalive', '-l', 'quiet']
 
     def get_check_ports(self):
         return set([self.config['pytest_port']])
@@ -569,6 +569,9 @@ class SaltMaster(SaltDaemonScriptBase):
         return set([self.config['ret_port'],
                     self.config['publish_port'],
                     self.config['pytest_port']])
+
+    def get_script_args(self):
+        return ['-l', 'quiet']
 
 
 def pytest_addoption(parser):
