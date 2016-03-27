@@ -14,15 +14,6 @@
 # Import Python libs
 from __future__ import absolute_import
 import socket
-import multiprocessing
-import logging
-try:
-    import SocketServer as socketserver
-except ImportError:
-    import socketserver
-import msgpack
-
-log = logging.getLogger(__name__)
 
 
 def get_unused_localhost_port():
@@ -34,29 +25,3 @@ def get_unused_localhost_port():
     port = usock.getsockname()[1]
     usock.close()
     return port
-
-
-
-def get_pytest_log_server(port):
-    return ThreadedSocketServer(('localhost', port), SocketServerRequestHandler)
-
-
-class ThreadedSocketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    pass
-
-
-class SocketServerRequestHandler(socketserver.StreamRequestHandler):
-    def handle(self):
-        unpacker = msgpack.Unpacker(encoding='utf-8')
-        while True:
-            try:
-                wire_bytes = self.request.recv(1024)
-                if not wire_bytes:
-                    break
-                unpacker.feed(wire_bytes)
-                for record_dict in unpacker:
-                    record = logging.makeLogRecord(record_dict)
-                    logger = logging.getLogger(record.name)
-                    logger.handle(record)
-            except Exception as exc:
-                log.exception(exc)
