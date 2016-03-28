@@ -216,6 +216,7 @@ def _master_config(root_dir,
         'open_mode': True,
         'syndic_master': 'localhost',
         'fileserver_list_cache_time': 0,
+        'fileserver_backend': ['roots'],
         'pillar_opts': False,
         'peer': {
             '.*': [
