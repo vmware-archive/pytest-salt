@@ -44,6 +44,7 @@ def log_server(salt_log_port):
     yield server
     server.shutdown()
     server.server_close()
+    server_process.join()
 
 
 
