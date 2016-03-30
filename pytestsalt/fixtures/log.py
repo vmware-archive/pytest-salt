@@ -65,5 +65,7 @@ class SocketServerRequestHandler(socketserver.StreamRequestHandler):
                     record = logging.makeLogRecord(record_dict)
                     logger = logging.getLogger(record.name)
                     logger.handle(record)
+            except (EOFError, KeyboardInterrupt, SystemExit):
+                break
             except Exception as exc:
                 log.exception(exc)
