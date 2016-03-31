@@ -44,18 +44,24 @@ def log_server(salt_log_port):
     yield server
     server.shutdown()
     server.server_close()
-    server_process.join()
-
 
 
 class ThreadedSocketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    pass
+
+    def server_activate(self):
+        self.shutting_down = threading.Event()
+        super(ThreadedSocketServer, self).server_activate()
+
+
+    def server_close(self):
+        self.shutting_down.set()
+        super(ThreadedSocketServer, self).server_close()
 
 
 class SocketServerRequestHandler(socketserver.StreamRequestHandler):
     def handle(self):
         unpacker = msgpack.Unpacker(encoding='utf-8')
-        while True:
+        while not self.server.shutting_down.is_set():
             try:
                 wire_bytes = self.request.recv(1024)
                 if not wire_bytes:
