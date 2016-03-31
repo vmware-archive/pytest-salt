@@ -187,6 +187,34 @@ def salt_minion(salt_master,
 
 
 @pytest.yield_fixture
+def salt_prep():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-call and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt(salt_minion, salt_prep):  # pylint: disable=unused-argument
+    '''
+    Returns a salt fixture
+    '''
+    salt = Salt(salt_minion.config,
+                salt_minion.config_dir,
+                salt_minion.bin_dir_path,
+                salt_minion.io_loop,
+                salt_minion.executor)
+    yield salt
+
+
+@pytest.yield_fixture
 def salt_call_prep():
     '''
     This fixture should be overridden if you need to do
@@ -507,7 +535,7 @@ class SaltCliScriptBase(SaltScriptBase):
         # Let's close the terminal now that we're done with it
         terminal.close(kill=True)
         if timedout:
-            raise gen.TimeoutError('Timmed out!')
+            raise gen.TimeoutError('Timmed out after {} seconds!'.format(kwargs.get('timeout', self.DEFAULT_TIMEOUT)))
         exitcode = terminal.exitstatus
         try:
             json_out = json.loads(stdout)
@@ -515,6 +543,14 @@ class SaltCliScriptBase(SaltScriptBase):
             json_out = None
         raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
         return self.ShellResult(exitcode, stdout, stderr, json_out)
+
+
+class Salt(SaltCliScriptBase):
+    '''
+    Class which runs salt-call commands
+    '''
+
+    cli_script_name = 'salt'
 
 
 class SaltCall(SaltCliScriptBase):
