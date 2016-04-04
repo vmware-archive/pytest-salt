@@ -107,7 +107,8 @@ def salt_master(request,
                 master_config,
                 salt_master_prep,  # pylint: disable=unused-argument
                 io_loop,
-                pytestsalt_executor):
+                pytestsalt_executor,
+                log_server):
     '''
     Returns a running salt-master
     '''
@@ -156,7 +157,8 @@ def salt_minion_prep():
 def salt_minion(salt_master,
                 minion_id,
                 minion_config,
-                salt_minion_prep):  # pylint: disable=unused-argument
+                salt_minion_prep,  # pylint: disable=unused-argument
+                log_server):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
     '''
@@ -202,7 +204,7 @@ def salt_prep():
 
 
 @pytest.yield_fixture
-def salt(salt_minion, salt_prep):  # pylint: disable=unused-argument
+def salt(salt_minion, salt_prep, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt fixture
     '''
@@ -230,7 +232,7 @@ def salt_call_prep():
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion, salt_call_prep):  # pylint: disable=unused-argument
+def salt_call(salt_minion, salt_call_prep, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
@@ -258,7 +260,7 @@ def salt_key_prep():
 
 
 @pytest.yield_fixture
-def salt_key(salt_master, salt_key_prep):  # pylint: disable=unused-argument
+def salt_key(salt_master, salt_key_prep, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_key fixture
     '''
@@ -286,7 +288,7 @@ def salt_run_prep():
 
 
 @pytest.yield_fixture
-def salt_run(salt_master, salt_run_prep):  # pylint: disable=unused-argument
+def salt_run(salt_master, salt_run_prep, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
     '''

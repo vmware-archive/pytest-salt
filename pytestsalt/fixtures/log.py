@@ -30,7 +30,7 @@ import msgpack
 log = logging.getLogger(__name__)
 
 
-@pytest.yield_fixture(scope='session', autouse=True)
+@pytest.yield_fixture(scope='session')
 def log_server(salt_log_port):
     '''
     Returns a log server fixture.
@@ -42,11 +42,15 @@ def log_server(salt_log_port):
     server_process.daemon = True
     server_process.start()
     yield server
-    server.shutdown()
     server.server_close()
+    server.shutdown()
 
 
-class ThreadedSocketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+class ThreadingMixIn(socketserver.ThreadingMixIn):
+    daemon_threads = True
+
+
+class ThreadedSocketServer(ThreadingMixIn, socketserver.TCPServer):
 
     def server_activate(self):
         self.shutting_down = threading.Event()
