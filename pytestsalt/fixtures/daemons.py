@@ -20,6 +20,7 @@ import sys
 import json
 import socket
 import logging
+import subprocess
 import multiprocessing
 from collections import namedtuple
 
@@ -136,6 +137,22 @@ def salt_master(request,
     log.info('Stopping pytest salt-master(%s)', master_id)
     master_process.terminate()
     log.info('Pytest salt-master(%s) stopped', master_id)
+
+
+@pytest.fixture(scope='session')
+def salt_version(request):
+    proc = subprocess.Popen(
+        [
+            '{0}/salt-master'.format(cli_bin_dir(request.config)),
+            '--version'
+        ],
+        stdout=subprocess.PIPE
+    )
+    stdout, stderr = proc.communicate()
+    version = stdout.split()[1]
+    if six.PY3:
+        version = version.decode('utf-8')
+    return version
 
 
 @pytest.yield_fixture
