@@ -59,18 +59,33 @@ def cli_bin_dir(config):
 
 
 @pytest.yield_fixture
-def salt_master_prep():
+def salt_master_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work before starting
     the salt-master and after ending it.
     '''
-    # Prep routines for the salt master go here
+    # Prep routines go here
 
     # Start the salt-master
     yield
 
-    # Clean routines for the salt master go here
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_master_after_start(salt_master):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-master and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
 
 
 @pytest.yield_fixture
@@ -78,7 +93,7 @@ def salt_master(request,
                 conf_dir,
                 master_id,
                 master_config,
-                salt_master_prep,  # pylint: disable=unused-argument
+                salt_master_before_start,  # pylint: disable=unused-argument
                 io_loop,
                 log_server):
     '''
@@ -126,25 +141,40 @@ def salt_version(request):
 
 
 @pytest.yield_fixture
-def salt_minion_prep():
+def salt_minion_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work before starting
     the salt-minion and after ending it.
     '''
-    # Prep routines for the salt minion go here
+    # Prep routines go here
 
     # Start the salt-minion
     yield
 
-    # Clean routines for the salt minion go here
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_minion_after_start(salt_minion):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-minion and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
 
 
 @pytest.yield_fixture
 def salt_minion(salt_master,
                 minion_id,
                 minion_config,
-                salt_minion_prep,  # pylint: disable=unused-argument
+                salt_minion_before_start,  # pylint: disable=unused-argument
                 log_server):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -175,7 +205,7 @@ def salt_minion(salt_master,
 
 
 @pytest.yield_fixture
-def salt_prep():
+def salt_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation work before running salt-call and
@@ -190,7 +220,22 @@ def salt_prep():
 
 
 @pytest.yield_fixture
-def salt(salt_minion, salt_prep, log_server):  # pylint: disable=unused-argument
+def salt_after_start(salt):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt CLI script and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt(salt_minion, salt_before_start, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt fixture
     '''
@@ -202,7 +247,7 @@ def salt(salt_minion, salt_prep, log_server):  # pylint: disable=unused-argument
 
 
 @pytest.yield_fixture
-def salt_call_prep():
+def salt_call_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation work before running salt-call and
@@ -217,7 +262,22 @@ def salt_call_prep():
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion, salt_call_prep, log_server):  # pylint: disable=unused-argument
+def salt_call_after_start(salt_call):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-call and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_call(salt_minion, salt_call_before_start, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
@@ -229,7 +289,7 @@ def salt_call(salt_minion, salt_call_prep, log_server):  # pylint: disable=unuse
 
 
 @pytest.yield_fixture
-def salt_key_prep():
+def salt_key_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation work before running salt-key and
@@ -244,7 +304,22 @@ def salt_key_prep():
 
 
 @pytest.yield_fixture
-def salt_key(salt_master, salt_key_prep, log_server):  # pylint: disable=unused-argument
+def salt_key_after_start(salt_key):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-key and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_key(salt_master, salt_key_before_start, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_key fixture
     '''
@@ -256,7 +331,7 @@ def salt_key(salt_master, salt_key_prep, log_server):  # pylint: disable=unused-
 
 
 @pytest.yield_fixture
-def salt_run_prep():
+def salt_run_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation work before running salt-run and
@@ -271,7 +346,22 @@ def salt_run_prep():
 
 
 @pytest.yield_fixture
-def salt_run(salt_master, salt_run_prep, log_server):  # pylint: disable=unused-argument
+def salt_run_after_start(salt_run):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-run and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_run(salt_master, salt_run_before_start, log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
     '''
@@ -603,3 +693,15 @@ def pytest_addoption(parser):
               'found. Defaults to the directory name of the python executable '
               'running py.test')
     )
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    '''
+    Fixtures injection based on markers
+    '''
+    for fixture in ('salt_master', 'salt_minion', 'salt_call', 'salt', 'salt_key', 'salt_run'):
+        if fixture in item.fixturenames:
+            after_start_fixture = '{0}_after_start'.format(fixture)
+            if after_start_fixture not in item.fixturenames:
+                item.fixturenames.append(after_start_fixture)
