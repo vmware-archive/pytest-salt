@@ -31,7 +31,6 @@ from tornado import gen
 from tornado import ioloop
 from tornado import concurrent
 from tornado.process import Subprocess
-from concurrent.futures import ThreadPoolExecutor
 
 # Import salt libs
 import salt.utils.vt as vt
@@ -59,33 +58,6 @@ def cli_bin_dir(config):
     return os.path.dirname(sys.executable)
 
 
-def get_threadpool_executors(config):
-    '''
-    Return the number of threads the ThreadPoolExecutor should use
-    '''
-    executors = config.getoption('thread_executors')
-    if executors is not None:
-        return executors
-
-    executors = config.getini('thread_executors')
-    if executors is not None:
-        try:
-            return int(executors)
-        except ValueError:
-            pass
-
-    return 4
-
-
-@pytest.fixture(scope='session')
-def pytestsalt_executor(request):
-    '''
-    Return a session scoped ThreadPoolExecutor
-    '''
-    return ThreadPoolExecutor(
-        max_workers=get_threadpool_executors(request.config))
-
-
 @pytest.yield_fixture
 def salt_master_prep():
     '''
@@ -108,7 +80,6 @@ def salt_master(request,
                 master_config,
                 salt_master_prep,  # pylint: disable=unused-argument
                 io_loop,
-                pytestsalt_executor,
                 log_server):
     '''
     Returns a running salt-master
@@ -117,8 +88,7 @@ def salt_master(request,
     master_process = SaltMaster(master_config,
                                 conf_dir.strpath,
                                 cli_bin_dir(request.config),
-                                io_loop,
-                                pytestsalt_executor)
+                                io_loop)
     master_process.start()
     if master_process.is_alive():
         try:
@@ -183,8 +153,7 @@ def salt_minion(salt_master,
     minion_process = SaltMinion(minion_config,
                                 salt_master.config_dir,
                                 salt_master.bin_dir_path,
-                                salt_master.io_loop,
-                                salt_master.executor)
+                                salt_master.io_loop)
     minion_process.start()
     if minion_process.is_alive():
         try:
@@ -228,8 +197,7 @@ def salt(salt_minion, salt_prep, log_server):  # pylint: disable=unused-argument
     salt = Salt(salt_minion.config,
                 salt_minion.config_dir,
                 salt_minion.bin_dir_path,
-                salt_minion.io_loop,
-                salt_minion.executor)
+                salt_minion.io_loop)
     yield salt
 
 
@@ -256,8 +224,7 @@ def salt_call(salt_minion, salt_call_prep, log_server):  # pylint: disable=unuse
     salt_call = SaltCall(salt_minion.config,
                          salt_minion.config_dir,
                          salt_minion.bin_dir_path,
-                         salt_minion.io_loop,
-                         salt_minion.executor)
+                         salt_minion.io_loop)
     yield salt_call
 
 
@@ -284,8 +251,7 @@ def salt_key(salt_master, salt_key_prep, log_server):  # pylint: disable=unused-
     salt_key = SaltKey(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
-                       salt_master.io_loop,
-                       salt_master.executor)
+                       salt_master.io_loop)
     yield salt_key
 
 
@@ -312,8 +278,7 @@ def salt_run(salt_master, salt_run_prep, log_server):  # pylint: disable=unused-
     salt_run = SaltRun(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
-                       salt_master.io_loop,
-                       salt_master.executor)
+                       salt_master.io_loop)
     yield salt_run
 
 
@@ -328,13 +293,11 @@ class SaltScriptBase(object):
                  config,
                  config_dir,
                  bin_dir_path,
-                 io_loop=None,
-                 executor=None):  # pylint: disable=too-many-arguments
+                 io_loop=None):
         self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self._io_loop = io_loop
-        self._executor = executor
 
     @property
     def io_loop(self):
@@ -344,15 +307,6 @@ class SaltScriptBase(object):
         if self._io_loop is None:
             self._io_loop = ioloop.IOLoop.current()
         return self._io_loop
-
-    @property
-    def executor(self):
-        '''
-        Return a ThreadPoolExecutor
-        '''
-        if self._executor is None:
-            self._executor = ThreadPoolExecutor(max_workers=4)
-        return self._executor
 
     def get_script_path(self, script_name):
         '''
@@ -509,7 +463,6 @@ class SaltCliScriptBase(SaltScriptBase):
                 )
             )
 
-    #@concurrent.run_on_executor
     @gen.coroutine
     def _run_script(self, *args, **kwargs):
         '''
@@ -635,21 +588,12 @@ def pytest_addoption(parser):
     '''
     saltparser = parser.getgroup('Salt Plugin Options')
     saltparser.addoption(
-        '--thread-executors',
-        default=None,
-        type=int,
-        help='Number of threads to assign to the ThreadPoolExecutor. Defaults to 4.')
-    saltparser.addoption(
         '--cli-bin-dir',
         default=None,
         help=('Path to the bin directory where the salt daemon\'s scripts can be '
               'found. Defaults to the directory name of the python executable '
               'running py.test')
     )
-    parser.addini(
-        'thread_executors',
-        default=None,
-        help='Number of threads to assign to the ThreadPoolExecutor. Defaults to 4.')
     parser.addini(
         'cli_bin_dir',
         default=None,
