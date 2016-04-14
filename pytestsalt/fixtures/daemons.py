@@ -423,6 +423,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     sock.close()
                 del sock
             yield gen.sleep(0.125)
+        # A final sleep to allow the ioloop to do other things
+        yield gen.sleep(0.125)
         raise gen.Return(self._connectable.is_set())
 
 
