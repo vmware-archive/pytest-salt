@@ -20,6 +20,7 @@ import sys
 import json
 import socket
 import logging
+import traceback
 import subprocess
 import multiprocessing
 from collections import namedtuple
@@ -100,25 +101,49 @@ def salt_master(request,
     Returns a running salt-master
     '''
     log.info('Starting pytest salt-master(%s)', master_id)
-    master_process = SaltMaster(master_config,
-                                conf_dir.strpath,
-                                cli_bin_dir(request.config),
-                                io_loop)
-    master_process.start()
-    if master_process.is_alive():
-        try:
-            connectable = master_process.wait_until_running(timeout=10)
-            if connectable is False:
+    attempts = 0
+    while attempts <= 3:
+        attempts += 1
+        master_process = SaltMaster(master_config,
+                                    conf_dir.strpath,
+                                    cli_bin_dir(request.config),
+                                    io_loop)
+        master_process.start()
+        if master_process.is_alive():
+            try:
+                connectable = master_process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = master_process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        master_process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest salt-master({0}) has failed to confirm running status '
+                                'after {1} attempts'.format(master_id, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception(exc)
                 master_process.terminate()
-                pytest.xfail('The pytest salt-master({0}) has failed to start'.format(master_id))
-        except Exception as exc:  # pylint: disable=broad-except
+                if attempts >= 3:
+                    pytest.xfail(traceback.format_exc(exc))
+                continue
+            log.info(
+                'The pytest salt-master(%s) is running and accepting connections '
+                'after %d attempts',
+                master_id,
+                attempts
+            )
+            yield master_process
+            break
+        else:
             master_process.terminate()
-            pytest.xfail(str(exc))
-        log.info('The pytest salt-master(%s) is running and accepting connections', master_id)
-        yield master_process
+            continue
     else:
-        master_process.terminate()
-        pytest.xfail('The pytest salt-master({0}) has failed to start'.format(master_id))
+        pytest.xfail(
+            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
+                master_id, attempts-1
+            )
+        )
     log.info('Stopping pytest salt-master(%s)', master_id)
     master_process.terminate()
     log.info('Pytest salt-master(%s) stopped', master_id)
@@ -180,25 +205,50 @@ def salt_minion(salt_master,
     Returns a running salt-minion
     '''
     log.info('Starting pytest salt-minion(%s)', minion_id)
-    minion_process = SaltMinion(minion_config,
-                                salt_master.config_dir,
-                                salt_master.bin_dir_path,
-                                salt_master.io_loop)
-    minion_process.start()
-    if minion_process.is_alive():
-        try:
-            connectable = minion_process.wait_until_running(timeout=10)
-            if connectable is False:
+    attempts = 0
+    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
+        attempts += 1
+        minion_process = SaltMinion(minion_config,
+                                    salt_master.config_dir,
+                                    salt_master.bin_dir_path,
+                                    salt_master.io_loop)
+        minion_process.start()
+        if minion_process.is_alive():
+            try:
+                connectable = minion_process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = minion_process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        minion_process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest salt-minion({0}) has failed to confirm '
+                                'running status after {1} attempts'.format(minion_id, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception(exc)
                 minion_process.terminate()
-                pytest.xfail('The pytest salt-minion({0}) has failed to start'.format(minion_id))
-        except Exception as exc:  # pylint: disable=broad-except
+                if attempts >= 3:
+                    pytest.xfail(traceback.format_exc(exc))
+                continue
+            log.info(
+                'The pytest salt-minion(%s) is running and accepting commands '
+                'after %d attempts',
+                minion_id,
+                attempts
+            )
+            yield minion_process
+            break
+        else:
             minion_process.terminate()
-            pytest.xfail(str(exc))
-        log.info('The pytest salt-minion(%s) is running and accepting commands', minion_id)
-        yield minion_process
+            continue
     else:
-        minion_process.terminate()
-        pytest.xfail('The pytest salt-minion({0}) has failed to start'.format(minion_id))
+        pytest.xfail(
+            'The pytest salt-minion({0}) has failed to start after {1} attempts'.format(
+                minion_id,
+                attempts-1
+            )
+        )
     log.info('Stopping pytest salt-minion(%s)', minion_id)
     minion_process.terminate()
     log.info('pytest salt-minion(%s) stopped', minion_id)
@@ -467,7 +517,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self.pid = terminal.pid
 
         while running_event.is_set() and terminal.has_unread_data:
-            # We're not actually interessed in processing the output, just consume it
+            # We're not actually interested in processing the output, just consume it
             terminal.recv()
             time.sleep(0.125)
 
@@ -482,6 +532,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._running.clear()
         self._connectable.clear()
         self._process.terminate()
+        time.sleep(0.0125)
 
     def wait_until_running(self, timeout=None):
         '''
@@ -500,14 +551,21 @@ class SaltDaemonScriptBase(SaltScriptBase):
         The actual, coroutine aware, call to wait for the daemon to start listening
         '''
         check_ports = self.get_check_ports()
+        log.debug(
+            '%s is checking the following ports to assure running status: %s',
+            self.__class__.__name__,
+            check_ports
+        )
         while self._running.is_set():
             if not check_ports:
                 self._connectable.set()
                 break
             for port in set(check_ports):
+                log.debug('Checking connectable status on port: %s', port)
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 conn = sock.connect_ex(('localhost', port))
                 if conn == 0:
+                    log.debug('Port %s is connectable!', port)
                     check_ports.remove(port)
                     sock.shutdown(socket.SHUT_RDWR)
                     sock.close()
@@ -515,6 +573,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             yield gen.sleep(0.125)
         # A final sleep to allow the ioloop to do other things
         yield gen.sleep(0.125)
+        log.debug('All ports checked. Running!')
         raise gen.Return(self._connectable.is_set())
 
 
@@ -605,8 +664,8 @@ class SaltCliScriptBase(SaltScriptBase):
             json_out = json.loads(stdout)
         except ValueError:
             json_out = None
+        yield gen.sleep(0.125)
         raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
-        return self.ShellResult(exitcode, stdout, stderr, json_out)
 
 
 class Salt(SaltCliScriptBase):
