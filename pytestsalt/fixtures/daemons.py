@@ -20,7 +20,6 @@ import sys
 import json
 import socket
 import logging
-import traceback
 import subprocess
 import multiprocessing
 from collections import namedtuple
@@ -125,7 +124,7 @@ def salt_master(request,
                 log.exception(exc)
                 master_process.terminate()
                 if attempts >= 3:
-                    pytest.xfail(traceback.format_exc(exc))
+                    pytest.xfail(str(exc))
                 continue
             log.info(
                 'The pytest salt-master(%s) is running and accepting connections '
@@ -229,7 +228,7 @@ def salt_minion(salt_master,
                 log.exception(exc)
                 minion_process.terminate()
                 if attempts >= 3:
-                    pytest.xfail(traceback.format_exc(exc))
+                    pytest.xfail(str(exc))
                 continue
             log.info(
                 'The pytest salt-minion(%s) is running and accepting commands '
