@@ -246,9 +246,9 @@ def _master_config(root_dir,
         # Merge in the default options with the master_config_overrides
         dictupdate.update(default_options, config_overrides, merge_lists=True)
 
-    if 'engines' not in default_options:
-        default_options['engines'] = {}
-    default_options['engines']['pytest'] = {}
+    default_options.setdefault('engines', [])
+    if 'pytest' not in default_options['engines']:
+        default_options['engines'].append('pytest')
 
     if 'engines_dirs' not in default_options:
         default_options['engines_dirs'] = []
@@ -408,9 +408,9 @@ def _minion_config(root_dir,
         # Merge in the default options with the minion_config_overrides
         dictupdate.update(default_options, config_overrides, merge_lists=True)
 
-    if 'engines' not in default_options:
-        default_options['engines'] = {}
-    default_options['engines']['pytest'] = {}
+    default_options.setdefault('engines', [])
+    if 'pytest' not in default_options['engines']:
+        default_options['engines'].append('pytest')
 
     if 'engines_dirs' not in default_options:
         default_options['engines_dirs'] = []
