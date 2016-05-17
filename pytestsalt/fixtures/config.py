@@ -67,7 +67,7 @@ def running_username():
 def salt_master_id_counter():
     '''
     Fixture which return a number to include in the master ID.
-    Every call to this fixture increases the couter.
+    Every call to this fixture increases the counter.
     '''
     return Counter()
 
@@ -76,7 +76,7 @@ def salt_master_id_counter():
 def salt_minion_id_counter():
     '''
     Fixture which return a number to include in the minion ID.
-    Every call to this fixture increases the couter.
+    Every call to this fixture increases the counter.
     '''
     return Counter()
 

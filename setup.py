@@ -58,7 +58,8 @@ setup(
         'pytest >= 2.8.1',
         #'pytest-catchlog',
         'pytest-tempdir',
-        #'Salt'
+        #'Salt',
+        'psutil >= 4.2.0'
     ],
     dependency_links=[
         'git+https://github.com/saltstack/salt.git@2016.3#egg=Salt'
