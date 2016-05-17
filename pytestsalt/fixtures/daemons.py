@@ -18,6 +18,7 @@ import os
 import time
 import sys
 import json
+import signal
 import socket
 import logging
 import subprocess
@@ -27,6 +28,7 @@ from collections import namedtuple
 # Import 3rd-party libs
 import salt.ext.six as six
 import pytest
+import psutil
 from tornado import gen
 from tornado import ioloop
 from tornado import concurrent
@@ -37,6 +39,28 @@ import salt.utils.vt as vt
 from salt.utils.process import SignalHandlingMultiprocessingProcess
 
 log = logging.getLogger(__name__)
+
+
+def kill_proc_tree(pid, including_parent=True):
+    try:
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+        for child in children:
+            child.send_signal(signal.SIGTERM)
+            try:
+                child.wait(timeout=5)
+            except psutil.TimeoutExpired:
+                child.kill()
+        psutil.wait_procs(children, timeout=5)
+        if including_parent:
+            parent.send_signal(signal.SIGTERM)
+            try:
+                parent.wait(5)
+            except psutil.TimeoutExpired:
+                parent.kill()
+                parent.wait(5)
+    except psutil.NoSuchProcess:
+        pass
 
 
 def cli_bin_dir(config):
@@ -530,7 +554,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         self._running.clear()
         self._connectable.clear()
-        self._process.terminate()
+        kill_proc_tree(self._process.pid)
+        #self._process.terminate()
         time.sleep(0.0125)
 
     def wait_until_running(self, timeout=None):
