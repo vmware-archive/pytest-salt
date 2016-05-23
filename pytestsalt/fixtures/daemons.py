@@ -18,6 +18,7 @@ import os
 import time
 import sys
 import json
+import errno
 import signal
 import socket
 import logging
@@ -35,32 +36,11 @@ from tornado import concurrent
 from tornado.process import Subprocess
 
 # Import salt libs
-import salt.utils.vt as vt
+#import salt
+import salt.utils.nb_popen as nb_popen
 from salt.utils.process import SignalHandlingMultiprocessingProcess
 
 log = logging.getLogger(__name__)
-
-
-def kill_proc_tree(pid, including_parent=True):
-    try:
-        parent = psutil.Process(pid)
-        children = parent.children(recursive=True)
-        for child in children:
-            child.send_signal(signal.SIGTERM)
-            try:
-                child.wait(timeout=5)
-            except psutil.TimeoutExpired:
-                child.kill()
-        psutil.wait_procs(children, timeout=5)
-        if including_parent:
-            parent.send_signal(signal.SIGTERM)
-            try:
-                parent.wait(5)
-            except psutil.TimeoutExpired:
-                parent.kill()
-                parent.wait(5)
-    except psutil.NoSuchProcess:
-        pass
 
 
 def cli_bin_dir(config):
@@ -513,8 +493,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         self._process = SignalHandlingMultiprocessingProcess(
             target=self._start, args=(self._running,))
-        self._process.start()
         self._running.set()
+        self._process.start()
         return True
 
     def _start(self, running_event):
@@ -529,34 +509,89 @@ class SaltDaemonScriptBase(SaltScriptBase):
         ] + self.get_script_args()
         log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
 
-        terminal = vt.Terminal(proc_args,
-                               stream_stdout=False,
-                               log_stdout=True,
-                               #log_stdout_level='warning',
-                               stream_stderr=False,
-                               log_stderr=True,
-                               #log_stderr_level='warning'
-                               )
+        terminal = nb_popen.NonBlockingPopen(proc_args)
         self.pid = terminal.pid
 
-        while running_event.is_set() and terminal.has_unread_data:
-            # We're not actually interested in processing the output, just consume it
-            terminal.recv()
-            time.sleep(0.125)
+        try:
+            while running_event.is_set() and terminal.poll() is None:
+                # We're not actually interested in processing the output, just consume it
+                if terminal.stdout is not None:
+                    terminal.recv()
+                if terminal.stderr is not None:
+                    terminal.recv_err()
+                time.sleep(0.125)
+        except (SystemExit, KeyboardInterrupt):
+            pass
 
+        # Let's begin the shutdown routines
+        if terminal.poll() is None:
+            try:
+                terminal.send_signal(signal.SIGINT)
+            except OSError as exc:
+                if exc.errno not in (errno.ESRCH, errno.EACCES):
+                    raise
+            timeout = 5
+            while timeout > 0:
+                if terminal.poll() is not None:
+                    break
+                timeout -= 0.0125
+                time.sleep(0.0125)
+        if terminal.poll() is None:
+            try:
+                terminal.send_signal(signal.SIGTERM)
+            except OSError as exc:
+                if exc.errno not in (errno.ESRCH, errno.EACCES):
+                    raise
+            timeout = 5
+            while timeout > 0:
+                if terminal.poll() is not None:
+                    break
+                timeout -= 0.0125
+                time.sleep(0.0125)
+        if terminal.poll() is None:
+            try:
+                terminal.kill()
+            except OSError as exc:
+                if exc.errno not in (errno.ESRCH, errno.EACCES):
+                    raise
         # Let's close the terminal now that we're done with it
-        terminal.close(kill=True)
-        self.exitcode = terminal.exitstatus
+        try:
+            terminal.terminate()
+        except OSError as exc:
+            if exc.errno not in (errno.ESRCH, errno.EACCES):
+                raise
+        terminal.communicate()
 
     def terminate(self):
         '''
         Terminate the started daemon
         '''
+        # Let's get the child processes of the started subprocess
+        try:
+            parent = psutil.Process(self._process.pid)
+            children = parent.children(recursive=True)
+        except psutil.NoSuchProcess:
+            children = []
+
         self._running.clear()
         self._connectable.clear()
-        kill_proc_tree(self._process.pid)
-        #self._process.terminate()
         time.sleep(0.0125)
+        self._process.terminate()
+        self._process.join()
+
+        # Lets log and kill any child processes which salt left behind
+        for child in children[:]:
+            try:
+                child.send_signal(signal.SIGTERM)
+                log.info('Salt left behind the following child process: %s', child.as_dict())
+                try:
+                    child.wait(timeout=5)
+                except psutil.TimeoutExpired:
+                    child.kill()
+            except psutil.NoSuchProcess:
+                children.remove(child)
+        if children:
+            psutil.wait_procs(children, timeout=5)
 
     def wait_until_running(self, timeout=None):
         '''
@@ -651,39 +686,96 @@ class SaltCliScriptBase(SaltScriptBase):
             self.config_dir,
             '--out', 'json'
         ] + self.get_script_args() + list(args)
-        terminal = vt.Terminal(proc_args,
-                               stream_stdout=False,
-                               log_stdout=True,
-                               #log_stdout_level='warning',
-                               stream_stderr=False,
-                               log_stderr=True,
-                               #log_stderr_level='warning'
-                               )
+
+        terminal = nb_popen.NonBlockingPopen(proc_args,
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE)
+        self.pid = terminal.pid
 
         # Consume the output
-        stdout = ''
-        stderr = ''
+        stdout = six.b('')
+        stderr = six.b('')
         timedout = False
-        while terminal.has_unread_data:
-            try:
-                out, err = terminal.recv()
-            except IOError:
-                out = err = ''
-            if out:
-                stdout += out
-            if err:
-                stderr += err
-            if timeout_expire < time.time():
-                timedout = True
-                break
-            yield gen.sleep(0.001)
-            #time.sleep(0.025)
 
+        try:
+            while True:
+                # We're not actually interested in processing the output, just consume it
+                if terminal.stdout is not None:
+                    try:
+                        out = terminal.recv(4096)
+                    except IOError:
+                        out = six.b('')
+                    if out:
+                        stdout += out
+                if terminal.stderr is not None:
+                    try:
+                        err = terminal.recv_err(4096)
+                    except IOError:
+                        err = ''
+                    if err:
+                        stderr += err
+                if out is None and err is None:
+                    break
+                if timeout_expire < time.time():
+                    timedout = True
+                    break
+                if terminal.poll() is not None:
+                    break
+                yield gen.sleep(0.001)
+        except (SystemExit, KeyboardInterrupt):
+            pass
+
+        # Let's begin the shutdown routines
+        if terminal.poll() is None:
+            try:
+                terminal.send_signal(signal.SIGINT)
+            except OSError as exc:
+                if exc.errno not in (errno.ESRCH, errno.EACCES):
+                    raise
+            timeout = 5
+            while timeout > 0:
+                if terminal.poll() is not None:
+                    break
+                timeout -= 0.0125
+                time.sleep(0.0125)
+        if terminal.poll() is None:
+            try:
+                terminal.send_signal(signal.SIGTERM)
+            except OSError as exc:
+                if exc.errno not in (errno.ESRCH, errno.EACCES):
+                    raise
+            timeout = 5
+            while timeout > 0:
+                if terminal.poll() is not None:
+                    break
+                timeout -= 0.0125
+                time.sleep(0.0125)
+        if terminal.poll() is None:
+            try:
+                terminal.kill()
+            except OSError as exc:
+                if exc.errno not in (errno.ESRCH, errno.EACCES):
+                    raise
         # Let's close the terminal now that we're done with it
-        terminal.close(kill=True)
+        try:
+            terminal.terminate()
+        except OSError as exc:
+            if exc.errno not in (errno.ESRCH, errno.EACCES):
+                raise
+        terminal.communicate()
+
         if timedout:
-            raise gen.TimeoutError('Timmed out after {} seconds!'.format(kwargs.get('timeout', self.DEFAULT_TIMEOUT)))
-        exitcode = terminal.exitstatus
+            raise gen.TimeoutError(
+                'Timmed out after {} seconds!'.format(
+                    kwargs.get('timeout', self.DEFAULT_TIMEOUT)))
+
+        if six.PY3:
+            # pylint: disable=undefined-variable
+            stdout = stdout.decode(__salt_system_encoding__)
+            stderr = stderr.decode(__salt_system_encoding__)
+            # pylint: enable=undefined-variable
+
+        exitcode = terminal.returncode
         try:
             json_out = json.loads(stdout)
         except ValueError:
