@@ -18,7 +18,7 @@ import threading
 import logging
 import msgpack
 import salt.log.setup
-from salt.ext.six.moves.queue import Queue
+from multiprocessing import Queue
 
 __virtualname__ = 'pytest_log_handler'
 
@@ -49,10 +49,10 @@ def process_queue(port, queue):
             if record is None:
                 # A sentinel to stop processing the queue
                 break
-            # Just log everything, filtering will happen on the main process
+            # Just send every log. Filtering will happen on the main process
             # logging handlers
             sock.sendall(msgpack.dumps(record.__dict__, encoding='utf-8'))
-        except (EOFError, KeyboardInterrupt, SystemExit):
+        except (IOError, EOFError, KeyboardInterrupt, SystemExit):
             break
         except Exception as exc:  # pylint: disable=broad-except
             log.warning(
