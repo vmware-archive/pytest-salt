@@ -582,12 +582,14 @@ class SaltDaemonScriptBase(SaltScriptBase):
         # Lets log and kill any child processes which salt left behind
         for child in children[:]:
             try:
+                cmdline = child.cmdline()
+                log.info('Salt left behind a child process. Process cmdline: %s', cmdline)
                 child.send_signal(signal.SIGTERM)
-                log.info('Salt left behind the following child process: %s', child.as_dict())
                 try:
                     child.wait(timeout=5)
                 except psutil.TimeoutExpired:
                     child.kill()
+                log.info('Process terminated. Process cmdline: %s', cmdline)
             except psutil.NoSuchProcess:
                 children.remove(child)
         if children:
