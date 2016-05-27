@@ -763,8 +763,6 @@ class SaltCliScriptBase(SaltScriptBase):
                 if timeout_expire < time.time():
                     timedout = True
                     break
-                if terminal.poll() is not None:
-                    break
                 yield gen.sleep(0.001)
         except (SystemExit, KeyboardInterrupt):
             pass
