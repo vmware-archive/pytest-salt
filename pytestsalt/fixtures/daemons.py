@@ -508,6 +508,7 @@ class SaltScriptBase(object):
     '''
 
     cli_script_name = None
+    cli_display_name = None
 
     def __init__(self,
                  config,
@@ -518,6 +519,13 @@ class SaltScriptBase(object):
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self._io_loop = io_loop
+        if self.cli_display_name is None:
+            self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
+                                                      self.cli_script_name)
+
+    @property
+    def log_prefix(self):
+        return '[pytest-{0}]'.format(self.config['pytest_log_port'])
 
     @property
     def io_loop(self):
@@ -579,13 +587,13 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, start method
         '''
-        log.info('Starting pytest %s DAEMON', self.__class__.__name__)
+        log.info('%s [%s] Starting DAEMON', self.log_prefix, self.cli_display_name)
         proc_args = [
             self.get_script_path(self.cli_script_name),
             '-c',
             self.config_dir,
         ] + self.get_script_args()
-        log.info('Running \'%s\' from %s...', ' '.join(proc_args), self.__class__.__name__)
+        log.info('%s [%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
 
         terminal = nb_popen.NonBlockingPopen(proc_args)
         self.pid = terminal.pid
@@ -625,13 +633,19 @@ class SaltDaemonScriptBase(SaltScriptBase):
         for child in children[:]:
             try:
                 cmdline = child.cmdline()
-                log.info('Salt left behind a child process. Process cmdline: %s', cmdline)
+                log.info('%s [%s] Salt left behind a child process. Process cmdline: %s',
+                         self.log_prefix,
+                         self.cli_display_name,
+                         cmdline)
                 child.send_signal(signal.SIGTERM)
                 try:
                     child.wait(timeout=5)
                 except psutil.TimeoutExpired:
                     child.kill()
-                log.info('Process terminated. Process cmdline: %s', cmdline)
+                log.info('%s [%s] Process terminated. Process cmdline: %s',
+                         self.log_prefix,
+                         self.cli_display_name,
+                         cmdline)
             except psutil.NoSuchProcess:
                 children.remove(child)
         if children:
@@ -655,8 +669,9 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         check_ports = self.get_check_ports()
         log.debug(
-            '%s is checking the following ports to assure running status: %s',
-            self.__class__.__name__,
+            '%s [%s] Checking the following ports to assure running status: %s',
+            self.log_prefix,
+            self.cli_display_name,
             check_ports
         )
         while self._running.is_set():
@@ -664,11 +679,17 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 self._connectable.set()
                 break
             for port in set(check_ports):
-                log.debug('Checking connectable status on port: %s', port)
+                log.debug('%s [%s] Checking connectable status on port: %s',
+                          self.log_prefix,
+                          self.cli_display_name,
+                          port)
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 conn = sock.connect_ex(('localhost', port))
                 if conn == 0:
-                    log.debug('Port %s is connectable!', port)
+                    log.debug('%s [%s] Port %s is connectable!',
+                              self.log_prefix,
+                              self.cli_display_name,
+                              port)
                     check_ports.remove(port)
                     sock.shutdown(socket.SHUT_RDWR)
                     sock.close()
@@ -676,7 +697,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             yield gen.sleep(0.125)
         # A final sleep to allow the ioloop to do other things
         yield gen.sleep(0.125)
-        log.debug('All ports checked. Running!')
+        log.debug('%s [%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         raise gen.Return(self._connectable.is_set())
 
 
@@ -697,8 +718,12 @@ class SaltCliScriptBase(SaltScriptBase):
             return self.io_loop.run_sync(lambda: self._run_script(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
             pytest.xfail(
-                'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
-                    self.cli_script_name, args, kwargs, exc
+                    '{0} [{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
+                    self.log_prefix,
+                    self.cli_display_name,
+                    args,
+                    kwargs,
+                    exc
                 )
             )
 
@@ -712,8 +737,12 @@ class SaltCliScriptBase(SaltScriptBase):
             raise gen.Return(result)
         except gen.TimeoutError as exc:
             pytest.xfail(
-                'Failed to run {0} args: {1!r}; kwargs: {2!r}; Error: {3}'.format(
-                    self.cli_script_name, args, kwargs, exc
+                    '{0} [{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
+                    self.log_prefix,
+                    self.cli_display_name,
+                    args,
+                    kwargs,
+                    exc
                 )
             )
 
@@ -771,8 +800,12 @@ class SaltCliScriptBase(SaltScriptBase):
 
         if timedout:
             raise gen.TimeoutError(
-                'Timed out after {} seconds!'.format(
-                    kwargs.get('timeout', self.DEFAULT_TIMEOUT)))
+                '{0} [{1}] Timed out after {2} seconds!'.format(
+                    self.log_prefix,
+                    self.cli_display_name,
+                    kwargs.get('timeout', self.DEFAULT_TIMEOUT)
+                )
+            )
 
         if six.PY3:
             # pylint: disable=undefined-variable
@@ -784,7 +817,10 @@ class SaltCliScriptBase(SaltScriptBase):
         try:
             json_out = json.loads(stdout)
         except ValueError:
-            log.debug('Failed to load JSON from the following output:\n%r', stdout)
+            log.debug('%s [%s] Failed to load JSON from the following output:\n%r',
+                      self.log_prefix,
+                      self.cli_display_name,
+                      stdout)
             json_out = None
         yield gen.sleep(0.125)
         raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))

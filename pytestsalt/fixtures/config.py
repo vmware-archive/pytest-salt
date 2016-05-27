@@ -261,6 +261,7 @@ def _master_config(root_dir,
     default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
 
     default_options['pytest_log_port'] = salt_log_port
+    default_options['pytest_log_prefix'] = '[pytest-{0}] '.format(salt_log_port)
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -423,6 +424,7 @@ def _minion_config(root_dir,
     default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
 
     default_options['pytest_log_port'] = salt_log_port
+    default_options['pytest_log_prefix'] = '[pytest-{0}] '.format(salt_log_port)
 
     log.info('Writing configuration file to %s', config_file)
 

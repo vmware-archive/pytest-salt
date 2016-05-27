@@ -16,9 +16,13 @@ from __future__ import absolute_import
 import socket
 import threading
 import logging
-import msgpack
-import salt.log.setup
 from multiprocessing import Queue
+
+# Import 3rd-party libs
+import msgpack
+
+# Import Salt libs
+import salt.log.setup
 
 __virtualname__ = 'pytest_log_handler'
 
@@ -34,13 +38,16 @@ def setup_handlers():
     queue = Queue()
     handler = salt.log.setup.QueueHandler(queue)
     handler.setLevel(1)
-    process_queue_thread = threading.Thread(target=process_queue, args=(__opts__['pytest_log_port'], queue))
+    process_queue_thread = threading.Thread(target=process_queue,
+                                            args=(__opts__['pytest_log_port'],
+                                                  __opts__['pytest_log_prefix'],
+                                                  queue))
     process_queue_thread.daemon = True
     process_queue_thread.start()
     return handler
 
 
-def process_queue(port, queue):
+def process_queue(port, prefix, queue):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(('localhost', port))
     while True:
@@ -51,12 +58,15 @@ def process_queue(port, queue):
                 break
             # Just send every log. Filtering will happen on the main process
             # logging handlers
-            sock.sendall(msgpack.dumps(record.__dict__, encoding='utf-8'))
+            record_dict = record.__dict__
+            record_dict['msg'] = prefix + record_dict['msg']
+            sock.sendall(msgpack.dumps(record_dict, encoding='utf-8'))
         except (IOError, EOFError, KeyboardInterrupt, SystemExit):
             break
         except Exception as exc:  # pylint: disable=broad-except
             log.warning(
                 'An exception occurred in the pytest salt logging '
-                'queue thread: {0}'.format(exc),
+                'queue thread: %s',
+                exc,
                 exc_info_on_loglevel=logging.DEBUG
             )
