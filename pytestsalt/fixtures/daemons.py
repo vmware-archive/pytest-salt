@@ -17,8 +17,8 @@ from __future__ import absolute_import, print_function
 import os
 import time
 import sys
-import json
 import errno
+import atexit
 import signal
 import socket
 import logging
@@ -27,6 +27,11 @@ import multiprocessing
 from collections import namedtuple
 
 # Import 3rd-party libs
+try:
+    import ujson as json
+except ImportError:
+    # Use the standard library, slower, json module
+    import json
 import salt.ext.six as six
 import pytest
 import psutil
@@ -60,6 +65,78 @@ def cli_bin_dir(config):
 
     # Default to the directory of the current python executable
     return os.path.dirname(sys.executable)
+
+
+def close_terminal(terminal):
+    '''
+    Close a terminal
+    '''
+    # Let's begin the shutdown routines
+    if terminal.poll() is None:
+        try:
+            terminal.send_signal(signal.SIGINT)
+        except OSError as exc:
+            if exc.errno not in (errno.ESRCH, errno.EACCES):
+                raise
+        timeout = 5
+        while timeout > 0:
+            if terminal.poll() is not None:
+                break
+            timeout -= 0.0125
+            time.sleep(0.0125)
+    if terminal.poll() is None:
+        try:
+            terminal.send_signal(signal.SIGTERM)
+        except OSError as exc:
+            if exc.errno not in (errno.ESRCH, errno.EACCES):
+                raise
+        timeout = 5
+        while timeout > 0:
+            if terminal.poll() is not None:
+                break
+            timeout -= 0.0125
+            time.sleep(0.0125)
+    if terminal.poll() is None:
+        try:
+            terminal.kill()
+        except OSError as exc:
+            if exc.errno not in (errno.ESRCH, errno.EACCES):
+                raise
+    # Let's close the terminal now that we're done with it
+    try:
+        terminal.terminate()
+    except OSError as exc:
+        if exc.errno not in (errno.ESRCH, errno.EACCES):
+            raise
+    terminal.communicate()
+
+
+def terminate_child_processes(pid):
+    '''
+    Try to terminate/kill any started child processes of the provided pid
+    '''
+    # Let's get the child processes of the started subprocess
+    try:
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+    except psutil.NoSuchProcess:
+        children = []
+
+    # Lets log and kill any child processes which salt left behind
+    for child in children[:]:
+        try:
+            cmdline = child.cmdline()
+            log.info('Salt left behind a child process. Process cmdline: %s', cmdline)
+            child.send_signal(signal.SIGTERM)
+            try:
+                child.wait(timeout=5)
+            except psutil.TimeoutExpired:
+                child.kill()
+            log.info('Process terminated. Process cmdline: %s', cmdline)
+        except psutil.NoSuchProcess:
+            children.remove(child)
+    if children:
+        psutil.wait_procs(children, timeout=5)
 
 
 @pytest.yield_fixture
@@ -495,6 +572,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             target=self._start, args=(self._running,))
         self._running.set()
         self._process.start()
+        atexit.register(terminate_child_processes, self._process.pid)
         return True
 
     def _start(self, running_event):
@@ -511,6 +589,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
         terminal = nb_popen.NonBlockingPopen(proc_args)
         self.pid = terminal.pid
+        atexit.register(close_terminal, terminal)
 
         try:
             while running_event.is_set() and terminal.poll() is None:
@@ -523,44 +602,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
 
-        # Let's begin the shutdown routines
-        if terminal.poll() is None:
-            try:
-                terminal.send_signal(signal.SIGINT)
-            except OSError as exc:
-                if exc.errno not in (errno.ESRCH, errno.EACCES):
-                    raise
-            timeout = 5
-            while timeout > 0:
-                if terminal.poll() is not None:
-                    break
-                timeout -= 0.0125
-                time.sleep(0.0125)
-        if terminal.poll() is None:
-            try:
-                terminal.send_signal(signal.SIGTERM)
-            except OSError as exc:
-                if exc.errno not in (errno.ESRCH, errno.EACCES):
-                    raise
-            timeout = 5
-            while timeout > 0:
-                if terminal.poll() is not None:
-                    break
-                timeout -= 0.0125
-                time.sleep(0.0125)
-        if terminal.poll() is None:
-            try:
-                terminal.kill()
-            except OSError as exc:
-                if exc.errno not in (errno.ESRCH, errno.EACCES):
-                    raise
-        # Let's close the terminal now that we're done with it
-        try:
-            terminal.terminate()
-        except OSError as exc:
-            if exc.errno not in (errno.ESRCH, errno.EACCES):
-                raise
-        terminal.communicate()
+        close_terminal(terminal)
 
     def terminate(self):
         '''
@@ -721,54 +763,15 @@ class SaltCliScriptBase(SaltScriptBase):
                 if timeout_expire < time.time():
                     timedout = True
                     break
-                if terminal.poll() is not None:
-                    break
                 yield gen.sleep(0.001)
         except (SystemExit, KeyboardInterrupt):
             pass
 
-        # Let's begin the shutdown routines
-        if terminal.poll() is None:
-            try:
-                terminal.send_signal(signal.SIGINT)
-            except OSError as exc:
-                if exc.errno not in (errno.ESRCH, errno.EACCES):
-                    raise
-            timeout = 5
-            while timeout > 0:
-                if terminal.poll() is not None:
-                    break
-                timeout -= 0.0125
-                time.sleep(0.0125)
-        if terminal.poll() is None:
-            try:
-                terminal.send_signal(signal.SIGTERM)
-            except OSError as exc:
-                if exc.errno not in (errno.ESRCH, errno.EACCES):
-                    raise
-            timeout = 5
-            while timeout > 0:
-                if terminal.poll() is not None:
-                    break
-                timeout -= 0.0125
-                time.sleep(0.0125)
-        if terminal.poll() is None:
-            try:
-                terminal.kill()
-            except OSError as exc:
-                if exc.errno not in (errno.ESRCH, errno.EACCES):
-                    raise
-        # Let's close the terminal now that we're done with it
-        try:
-            terminal.terminate()
-        except OSError as exc:
-            if exc.errno not in (errno.ESRCH, errno.EACCES):
-                raise
-        terminal.communicate()
+        close_terminal(terminal)
 
         if timedout:
             raise gen.TimeoutError(
-                'Timmed out after {} seconds!'.format(
+                'Timed out after {} seconds!'.format(
                     kwargs.get('timeout', self.DEFAULT_TIMEOUT)))
 
         if six.PY3:
@@ -781,6 +784,7 @@ class SaltCliScriptBase(SaltScriptBase):
         try:
             json_out = json.loads(stdout)
         except ValueError:
+            log.debug('Failed to load JSON from the following output:\n%r', stdout)
             json_out = None
         yield gen.sleep(0.125)
         raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
