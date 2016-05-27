@@ -59,7 +59,7 @@ def cli_bin_dir(config):
 
     # The path was not passed as a CLI option
     path = config.getini('cli_bin_dir')
-    if path is not None:
+    if path:
         # We were passed cli_bin_dir as a INI option
         return path
 
@@ -886,3 +886,10 @@ def pytest_runtest_setup(item):
             after_start_fixture = '{0}_after_start'.format(fixture)
             if after_start_fixture not in item.fixturenames:
                 item.fixturenames.append(after_start_fixture)
+
+
+def pytest_report_header(config):
+    '''
+    return a string to be displayed as header info for terminal reporting.
+    '''
+    return 'pytest-salt CLI binaries directory: {0}'.format(cli_bin_dir(config))
