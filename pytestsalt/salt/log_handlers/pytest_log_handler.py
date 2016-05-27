@@ -16,9 +16,13 @@ from __future__ import absolute_import
 import socket
 import threading
 import logging
-import msgpack
-import salt.log.setup
 from multiprocessing import Queue
+
+# Import 3rd-party libs
+import msgpack
+
+# Import Salt libs
+import salt.log.setup
 
 __virtualname__ = 'pytest_log_handler'
 
@@ -62,6 +66,7 @@ def process_queue(port, prefix, queue):
         except Exception as exc:  # pylint: disable=broad-except
             log.warning(
                 'An exception occurred in the pytest salt logging '
-                'queue thread: {0}'.format(exc),
+                'queue thread: %s',
+                exc,
                 exc_info_on_loglevel=logging.DEBUG
             )
