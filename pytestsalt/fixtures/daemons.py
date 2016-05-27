@@ -658,7 +658,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         if self._connectable.is_set():
             return True
         try:
-            return self.io_loop.run_sync(self._wait_until_running, timeout=timeout)
+            return self.io_loop.run_sync(self._wait_until_running, timeout=timeout+1)
         except ioloop.TimeoutError:
             return False
 
@@ -667,6 +667,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, call to wait for the daemon to start listening
         '''
+        yield gen.sleep(1)
         check_ports = self.get_check_ports()
         log.debug(
             '%s [%s] Checking the following ports to assure running status: %s',
@@ -694,7 +695,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     sock.shutdown(socket.SHUT_RDWR)
                     sock.close()
                 del sock
-            yield gen.sleep(0.125)
+            yield gen.sleep(0.5)
         # A final sleep to allow the ioloop to do other things
         yield gen.sleep(0.125)
         log.debug('%s [%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
