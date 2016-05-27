@@ -17,7 +17,6 @@ from __future__ import absolute_import, print_function
 import os
 import time
 import sys
-import json
 import errno
 import atexit
 import signal
@@ -28,6 +27,11 @@ import multiprocessing
 from collections import namedtuple
 
 # Import 3rd-party libs
+try:
+    import ujson as json
+except ImportError:
+    # Use the standard library, slower, json module
+    import json
 import salt.ext.six as six
 import pytest
 import psutil
@@ -782,6 +786,7 @@ class SaltCliScriptBase(SaltScriptBase):
         try:
             json_out = json.loads(stdout)
         except ValueError:
+            log.debug('Failed to load JSON from the following output:\n%r', stdout)
             json_out = None
         yield gen.sleep(0.125)
         raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
