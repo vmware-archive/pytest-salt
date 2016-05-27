@@ -59,7 +59,7 @@ def cli_bin_dir(config):
 
     # The path was not passed as a CLI option
     path = config.getini('cli_bin_dir')
-    if path is not None:
+    if path:
         # We were passed cli_bin_dir as a INI option
         return path
 
