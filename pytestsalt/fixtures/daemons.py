@@ -180,7 +180,8 @@ def salt_master(request,
     '''
     Returns a running salt-master
     '''
-    log.info('Starting pytest salt-master(%s)', master_id)
+    log_prefix = '[pytest-{0}]'.format(master_config['pytest_port'])
+    log.info('%s Starting pytest salt-master(%s)', log_prefix, master_id)
     attempts = 0
     while attempts <= 3:
         attempts += 1
@@ -202,14 +203,15 @@ def salt_master(request,
                                 'after {1} attempts'.format(master_id, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
-                log.exception(exc)
+                log.exception('%s: %s', log_prefix, exc, exc_info=True)
                 master_process.terminate()
                 if attempts >= 3:
                     pytest.xfail(str(exc))
                 continue
             log.info(
-                'The pytest salt-master(%s) is running and accepting connections '
+                '%s The pytest salt-master(%s) is running and accepting connections '
                 'after %d attempts',
+                log_prefix,
                 master_id,
                 attempts
             )
@@ -224,9 +226,9 @@ def salt_master(request,
                 master_id, attempts-1
             )
         )
-    log.info('Stopping pytest salt-master(%s)', master_id)
+    log.info('%s Stopping pytest salt-master(%s)', log_prefix, master_id)
     master_process.terminate()
-    log.info('Pytest salt-master(%s) stopped', master_id)
+    log.info('%s Pytest salt-master(%s) stopped', log_prefix, master_id)
 
 
 @pytest.fixture(scope='session')
@@ -284,7 +286,8 @@ def salt_minion(salt_master,
     '''
     Returns a running salt-minion
     '''
-    log.info('Starting pytest salt-minion(%s)', minion_id)
+    log_prefix = '[pytest-{0}]'.format(minion_config['pytest_port'])
+    log.info('%s Starting pytest salt-minion(%s)', log_prefix, minion_id)
     attempts = 0
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
@@ -306,14 +309,15 @@ def salt_minion(salt_master,
                                 'running status after {1} attempts'.format(minion_id, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
-                log.exception(exc)
+                log.exception('%s: %s', log_prefix, exc, exc_info=True)
                 minion_process.terminate()
                 if attempts >= 3:
                     pytest.xfail(str(exc))
                 continue
             log.info(
-                'The pytest salt-minion(%s) is running and accepting commands '
+                '%s The pytest salt-minion(%s) is running and accepting commands '
                 'after %d attempts',
+                log_prefix,
                 minion_id,
                 attempts
             )
@@ -329,9 +333,9 @@ def salt_minion(salt_master,
                 attempts-1
             )
         )
-    log.info('Stopping pytest salt-minion(%s)', minion_id)
+    log.info('%s Stopping pytest salt-minion(%s)', log_prefix, minion_id)
     minion_process.terminate()
-    log.info('pytest salt-minion(%s) stopped', minion_id)
+    log.info('%s pytest salt-minion(%s) stopped', log_prefix, minion_id)
 
 
 @pytest.yield_fixture
