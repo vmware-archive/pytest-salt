@@ -525,7 +525,7 @@ class SaltScriptBase(object):
 
     @property
     def log_prefix(self):
-        return '[pytest-{0}]'.format(self.config['pytest_log_port'])
+        return '[pytest-{0}]'.format(self.config['pytest_port'])
 
     @property
     def io_loop(self):
