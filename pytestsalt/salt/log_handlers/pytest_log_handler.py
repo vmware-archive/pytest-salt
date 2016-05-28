@@ -36,7 +36,12 @@ def __virtual__():
 
 
 def setup_handlers():
-    queue = Queue()
+    # One million log messages is more than enough to queue.
+    # Above that value, if `process_queue` can't process fast enough,
+    # start dropping. This will contain a memory leak in case `process_queue`
+    # can't process fast enough of in case it can't deliver the log records at all.
+    queue_size = 10000000
+    queue = Queue(queue_size)
     handler = salt.log.setup.QueueHandler(queue)
     handler.setLevel(1)
     pytest_log_prefix = os.environ.get('PYTEST_LOG_PREFIX') or __opts__['pytest_log_prefix']
