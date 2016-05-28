@@ -176,18 +176,19 @@ def salt_master(request,
                 master_config,
                 salt_master_before_start,  # pylint: disable=unused-argument
                 io_loop,
-                log_server):
+                log_server,
+                master_log_prefix):
     '''
     Returns a running salt-master
     '''
-    log_prefix = '[pytest-{0}]'.format(master_config['pytest_port'])
-    log.info('%s Starting pytest salt-master(%s)', log_prefix, master_id)
+    log.info('[%s] Starting pytest salt-master(%s)', master_log_prefix, master_id)
     attempts = 0
     while attempts <= 3:
         attempts += 1
         master_process = SaltMaster(master_config,
                                     conf_dir.strpath,
                                     cli_bin_dir(request.config),
+                                    master_log_prefix,
                                     io_loop)
         master_process.start()
         if master_process.is_alive():
@@ -203,15 +204,15 @@ def salt_master(request,
                                 'after {1} attempts'.format(master_id, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
-                log.exception('%s: %s', log_prefix, exc, exc_info=True)
+                log.exception('[%s]: %s', master_log_prefix, exc, exc_info=True)
                 master_process.terminate()
                 if attempts >= 3:
                     pytest.xfail(str(exc))
                 continue
             log.info(
-                '%s The pytest salt-master(%s) is running and accepting connections '
+                '[%s] The pytest salt-master(%s) is running and accepting connections '
                 'after %d attempts',
-                log_prefix,
+                master_log_prefix,
                 master_id,
                 attempts
             )
@@ -226,9 +227,9 @@ def salt_master(request,
                 master_id, attempts-1
             )
         )
-    log.info('%s Stopping pytest salt-master(%s)', log_prefix, master_id)
+    log.info('[%s] Stopping pytest salt-master(%s)', master_log_prefix, master_id)
     master_process.terminate()
-    log.info('%s Pytest salt-master(%s) stopped', log_prefix, master_id)
+    log.info('[%s] Pytest salt-master(%s) stopped', master_log_prefix, master_id)
 
 
 @pytest.fixture(scope='session')
@@ -282,18 +283,19 @@ def salt_minion(salt_master,
                 minion_id,
                 minion_config,
                 salt_minion_before_start,  # pylint: disable=unused-argument
+                minion_log_prefix,
                 log_server):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
     '''
-    log_prefix = '[pytest-{0}]'.format(minion_config['pytest_port'])
-    log.info('%s Starting pytest salt-minion(%s)', log_prefix, minion_id)
+    log.info('[%s] Starting pytest salt-minion(%s)', minion_log_prefix, minion_id)
     attempts = 0
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
         minion_process = SaltMinion(minion_config,
                                     salt_master.config_dir,
                                     salt_master.bin_dir_path,
+                                    minion_log_prefix,
                                     salt_master.io_loop)
         minion_process.start()
         if minion_process.is_alive():
@@ -309,15 +311,15 @@ def salt_minion(salt_master,
                                 'running status after {1} attempts'.format(minion_id, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
-                log.exception('%s: %s', log_prefix, exc, exc_info=True)
+                log.exception('[%s] %s', minion_log_prefix, exc, exc_info=True)
                 minion_process.terminate()
                 if attempts >= 3:
                     pytest.xfail(str(exc))
                 continue
             log.info(
-                '%s The pytest salt-minion(%s) is running and accepting commands '
+                '[%s] The pytest salt-minion(%s) is running and accepting commands '
                 'after %d attempts',
-                log_prefix,
+                minion_log_prefix,
                 minion_id,
                 attempts
             )
@@ -333,9 +335,9 @@ def salt_minion(salt_master,
                 attempts-1
             )
         )
-    log.info('%s Stopping pytest salt-minion(%s)', log_prefix, minion_id)
+    log.info('[%s] Stopping pytest salt-minion(%s)', minion_log_prefix, minion_id)
     minion_process.terminate()
-    log.info('%s pytest salt-minion(%s) stopped', log_prefix, minion_id)
+    log.info('[%s] pytest salt-minion(%s) stopped', minion_log_prefix, minion_id)
 
 
 @pytest.yield_fixture
@@ -369,13 +371,17 @@ def salt_after_start(salt):
 
 
 @pytest.yield_fixture
-def salt(salt_minion, salt_before_start, log_server):  # pylint: disable=unused-argument
+def salt(salt_minion,
+        salt_before_start,
+        log_server,
+        salt_log_prefix):  # pylint: disable=unused-argument
     '''
     Returns a salt fixture
     '''
     salt = Salt(salt_minion.config,
                 salt_minion.config_dir,
                 salt_minion.bin_dir_path,
+                salt_log_prefix,
                 salt_minion.io_loop)
     yield salt
 
@@ -411,13 +417,17 @@ def salt_call_after_start(salt_call):
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion, salt_call_before_start, log_server):  # pylint: disable=unused-argument
+def salt_call(salt_minion,
+              salt_call_before_start,
+              salt_call_log_prefix,
+              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
     salt_call = SaltCall(salt_minion.config,
                          salt_minion.config_dir,
                          salt_minion.bin_dir_path,
+                         salt_call_log_prefix,
                          salt_minion.io_loop)
     yield salt_call
 
@@ -453,13 +463,17 @@ def salt_key_after_start(salt_key):
 
 
 @pytest.yield_fixture
-def salt_key(salt_master, salt_key_before_start, log_server):  # pylint: disable=unused-argument
+def salt_key(salt_master,
+             salt_key_before_start,
+             salt_key_log_prefix,
+             log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_key fixture
     '''
     salt_key = SaltKey(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
+                       salt_key_log_prefix,
                        salt_master.io_loop)
     yield salt_key
 
@@ -495,13 +509,17 @@ def salt_run_after_start(salt_run):
 
 
 @pytest.yield_fixture
-def salt_run(salt_master, salt_run_before_start, log_server):  # pylint: disable=unused-argument
+def salt_run(salt_master,
+             salt_run_before_start,
+             salt_run_log_prefix,
+             log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
     '''
     salt_run = SaltRun(salt_master.config,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
+                       salt_run_log_prefix,
                        salt_master.io_loop)
     yield salt_run
 
@@ -518,18 +536,16 @@ class SaltScriptBase(object):
                  config,
                  config_dir,
                  bin_dir_path,
+                 log_prefix,
                  io_loop=None):
         self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
+        self.log_prefix = log_prefix
         self._io_loop = io_loop
         if self.cli_display_name is None:
             self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
-
-    @property
-    def log_prefix(self):
-        return '[pytest-{0}]'.format(self.config['pytest_port'])
 
     @property
     def io_loop(self):
@@ -591,16 +607,18 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, start method
         '''
-        log.info('%s [%s] Starting DAEMON', self.log_prefix, self.cli_display_name)
+        log.info('[%s][%s] Starting DAEMON', self.log_prefix, self.cli_display_name)
         proc_args = [
             self.get_script_path(self.cli_script_name),
             '-c',
             self.config_dir,
         ] + self.get_script_args()
-        log.info('%s [%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
+        log.info('[%s][%s] Running \'%s\'...',
+                 self.log_prefix,
+                 self.cli_display_name,
+                 ' '.join(proc_args))
 
         terminal = nb_popen.NonBlockingPopen(proc_args)
-        self.pid = terminal.pid
         atexit.register(close_terminal, terminal)
 
         try:
@@ -637,7 +655,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         for child in children[:]:
             try:
                 cmdline = child.cmdline()
-                log.info('%s [%s] Salt left behind a child process. Process cmdline: %s',
+                log.info('[%s][%s] Salt left behind a child process. Process cmdline: %s',
                          self.log_prefix,
                          self.cli_display_name,
                          cmdline)
@@ -646,7 +664,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     child.wait(timeout=5)
                 except psutil.TimeoutExpired:
                     child.kill()
-                log.info('%s [%s] Process terminated. Process cmdline: %s',
+                log.info('[%s][%s] Process terminated. Process cmdline: %s',
                          self.log_prefix,
                          self.cli_display_name,
                          cmdline)
@@ -674,7 +692,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         yield gen.sleep(1)
         check_ports = self.get_check_ports()
         log.debug(
-            '%s [%s] Checking the following ports to assure running status: %s',
+            '[%s][%s] Checking the following ports to assure running status: %s',
             self.log_prefix,
             self.cli_display_name,
             check_ports
@@ -684,14 +702,14 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 self._connectable.set()
                 break
             for port in set(check_ports):
-                log.debug('%s [%s] Checking connectable status on port: %s',
+                log.debug('[%s][%s] Checking connectable status on port: %s',
                           self.log_prefix,
                           self.cli_display_name,
                           port)
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 conn = sock.connect_ex(('localhost', port))
                 if conn == 0:
-                    log.debug('%s [%s] Port %s is connectable!',
+                    log.debug('[%s][%s] Port %s is connectable!',
                               self.log_prefix,
                               self.cli_display_name,
                               port)
@@ -702,7 +720,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             yield gen.sleep(0.5)
         # A final sleep to allow the ioloop to do other things
         yield gen.sleep(0.125)
-        log.debug('%s [%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
+        log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         raise gen.Return(self._connectable.is_set())
 
 
@@ -723,7 +741,7 @@ class SaltCliScriptBase(SaltScriptBase):
             return self.io_loop.run_sync(lambda: self._run_script(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
             pytest.xfail(
-                    '{0} [{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
+                '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                     self.log_prefix,
                     self.cli_display_name,
                     args,
@@ -742,7 +760,7 @@ class SaltCliScriptBase(SaltScriptBase):
             raise gen.Return(result)
         except gen.TimeoutError as exc:
             pytest.xfail(
-                    '{0} [{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
+                '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                     self.log_prefix,
                     self.cli_display_name,
                     args,
@@ -758,6 +776,8 @@ class SaltCliScriptBase(SaltScriptBase):
         processing of it.
         '''
         timeout_expire = time.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
+        environ = os.environ.copy()
+        environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
         proc_args = [
             self.get_script_path(self.cli_script_name),
             '-c',
@@ -765,11 +785,15 @@ class SaltCliScriptBase(SaltScriptBase):
             '--out', 'json'
         ] + self.get_script_args() + list(args)
 
+        log.info('[%s][%s] Running \'%s\'...',
+                 self.log_prefix,
+                 self.cli_display_name,
+                 ' '.join(proc_args))
+
         terminal = nb_popen.NonBlockingPopen(proc_args,
+                                             env=environ,
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
-        self.pid = terminal.pid
-
         # Consume the output
         stdout = six.b('')
         stderr = six.b('')
@@ -805,7 +829,7 @@ class SaltCliScriptBase(SaltScriptBase):
 
         if timedout:
             raise gen.TimeoutError(
-                '{0} [{1}] Timed out after {2} seconds!'.format(
+                '[{0}][{1}] Timed out after {2} seconds!'.format(
                     self.log_prefix,
                     self.cli_display_name,
                     kwargs.get('timeout', self.DEFAULT_TIMEOUT)
@@ -822,7 +846,7 @@ class SaltCliScriptBase(SaltScriptBase):
         try:
             json_out = json.loads(stdout)
         except ValueError:
-            log.debug('%s [%s] Failed to load JSON from the following output:\n%r',
+            log.debug('[%s][%s] Failed to load JSON from the following output:\n%r',
                       self.log_prefix,
                       self.cli_display_name,
                       stdout)

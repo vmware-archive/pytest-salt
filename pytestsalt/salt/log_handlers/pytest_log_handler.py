@@ -13,6 +13,7 @@
 
 # Import python libs
 from __future__ import absolute_import
+import os
 import socket
 import threading
 import logging
@@ -38,9 +39,10 @@ def setup_handlers():
     queue = Queue()
     handler = salt.log.setup.QueueHandler(queue)
     handler.setLevel(1)
+    pytest_log_prefix = os.environ.get('PYTEST_LOG_PREFIX') or __opts__['pytest_log_prefix']
     process_queue_thread = threading.Thread(target=process_queue,
                                             args=(__opts__['pytest_log_port'],
-                                                  __opts__['pytest_log_prefix'],
+                                                  pytest_log_prefix,
                                                   queue))
     process_queue_thread.daemon = True
     process_queue_thread.start()

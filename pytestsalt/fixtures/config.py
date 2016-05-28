@@ -185,6 +185,36 @@ def session_minion_config_overrides():
     '''
 
 
+@pytest.fixture
+def master_log_prefix(master_id):
+    return 'salt-master/{0}'.format(master_id)
+
+
+@pytest.fixture
+def minion_log_prefix(minion_id):
+    return 'salt-minion/{0}'.format(minion_id)
+
+
+@pytest.fixture
+def salt_log_prefix(minion_id):
+    return 'salt/{0}'.format(minion_id)
+
+
+@pytest.fixture
+def salt_call_log_prefix(master_id):
+    return 'salt-call/{0}'.format(master_id)
+
+
+@pytest.fixture
+def salt_key_log_prefix(master_id):
+    return 'salt-key/{0}'.format(master_id)
+
+
+@pytest.fixture
+def salt_run_log_prefix(master_id):
+    return 'salt-run/{0}'.format(master_id)
+
+
 def _master_config(root_dir,
                    config_file,
                    publish_port,
@@ -197,7 +227,8 @@ def _master_config(root_dir,
                    base_env_pillar_tree_root_dirs,
                    prod_env_pillar_tree_root_dirs,
                    running_username,
-                   salt_log_port):
+                   salt_log_port,
+                   master_log_prefix):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
@@ -261,7 +292,7 @@ def _master_config(root_dir,
     default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
 
     default_options['pytest_log_port'] = salt_log_port
-    default_options['pytest_log_prefix'] = '[pytest-{0}] '.format(engine_port)
+    default_options['pytest_log_prefix'] = '[{0}] '.format(master_log_prefix)
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -321,7 +352,8 @@ def master_config(root_dir,
                   base_env_pillar_tree_root_dir,
                   prod_env_pillar_tree_root_dir,
                   running_username,
-                  salt_log_port):
+                  salt_log_port,
+                  master_log_prefix):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
@@ -338,7 +370,8 @@ def master_config(root_dir,
                           [base_env_pillar_tree_root_dir.strpath],
                           [prod_env_pillar_tree_root_dir.strpath],
                           running_username,
-                          salt_log_port)
+                          salt_log_port,
+                          master_log_prefix)
 
 
 @pytest.fixture(scope='session')
@@ -381,7 +414,8 @@ def _minion_config(root_dir,
                    config_overrides,
                    minion_id,
                    running_username,
-                   salt_log_port):
+                   salt_log_port,
+                   minion_log_prefix):
     '''
     This fixture will return the salt minion configuration options after being
     overridden with any options passed from ``config_overrides``
@@ -424,7 +458,7 @@ def _minion_config(root_dir,
     default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
 
     default_options['pytest_log_port'] = salt_log_port
-    default_options['pytest_log_prefix'] = '[pytest-{0}] '.format(engine_port)
+    default_options['pytest_log_prefix'] = '[{0}] '.format(minion_log_prefix)
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -465,7 +499,8 @@ def minion_config(root_dir,
                   minion_config_overrides,
                   minion_id,
                   running_username,
-                  salt_log_port):
+                  salt_log_port,
+                  minion_log_prefix):
     '''
     This fixture will return the salt minion configuration options after being
     overrided with any options passed from ``minion_config_overrides``
@@ -477,7 +512,8 @@ def minion_config(root_dir,
                           minion_config_overrides,
                           minion_id,
                           running_username,
-                          salt_log_port)
+                          salt_log_port,
+                          minion_log_prefix)
 
 
 @pytest.fixture(scope='session')
