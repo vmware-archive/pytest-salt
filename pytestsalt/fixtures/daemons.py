@@ -284,6 +284,7 @@ def salt_minion(salt_master,
                 minion_config,
                 salt_minion_before_start,  # pylint: disable=unused-argument
                 minion_log_prefix,
+                salt_run,
                 log_server):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -296,7 +297,8 @@ def salt_minion(salt_master,
                                     salt_master.config_dir,
                                     salt_master.bin_dir_path,
                                     minion_log_prefix,
-                                    salt_master.io_loop)
+                                    salt_master.io_loop,
+                                    salt_run=salt_run)
         minion_process.start()
         if minion_process.is_alive():
             try:
@@ -537,12 +539,14 @@ class SaltScriptBase(object):
                  config_dir,
                  bin_dir_path,
                  log_prefix,
-                 io_loop=None):
+                 io_loop=None,
+                 salt_run=None):
         self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self.log_prefix = log_prefix
         self._io_loop = io_loop
+        self.salt_run = salt_run
         if self.cli_display_name is None:
             self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
@@ -702,21 +706,31 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 self._connectable.set()
                 break
             for port in set(check_ports):
-                log.debug('[%s][%s] Checking connectable status on port: %s',
-                          self.log_prefix,
-                          self.cli_display_name,
-                          port)
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                conn = sock.connect_ex(('localhost', port))
-                if conn == 0:
-                    log.debug('[%s][%s] Port %s is connectable!',
+                if isinstance(port, int):
+                    log.debug('[%s][%s] Checking connectable status on port: %s',
                               self.log_prefix,
                               self.cli_display_name,
                               port)
-                    check_ports.remove(port)
-                    sock.shutdown(socket.SHUT_RDWR)
-                    sock.close()
-                del sock
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    conn = sock.connect_ex(('localhost', port))
+                    if conn == 0:
+                        log.debug('[%s][%s] Port %s is connectable!',
+                                  self.log_prefix,
+                                  self.cli_display_name,
+                                  port)
+                        check_ports.remove(port)
+                        sock.shutdown(socket.SHUT_RDWR)
+                        sock.close()
+                    del sock
+                elif isinstance(port, six.string_types):
+                    if not self.salt_run:
+                        raise RuntimeError(
+                            'We can\'t check to ID\'s without an instance of salt-run as self.salt_run'
+                        )
+                    minions_joined = yield self.salt_run.run('manage.joined')
+                    if minions_joined.exitcode == 0:
+                        if port in minions_joined.json:
+                            check_ports.remove(port)
             yield gen.sleep(0.5)
         # A final sleep to allow the ioloop to do other things
         yield gen.sleep(0.125)
@@ -901,7 +915,7 @@ class SaltMinion(SaltDaemonScriptBase):
         return ['--disable-keepalive', '-l', 'quiet']
 
     def get_check_ports(self):
-        return set([self.config['pytest_port']])
+        return set([self.config['id'], self.config['pytest_port']])
 
 
 class SaltMaster(SaltDaemonScriptBase):
