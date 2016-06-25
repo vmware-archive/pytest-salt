@@ -74,19 +74,7 @@ def close_terminal(terminal):
     # Let's begin the shutdown routines
     if terminal.poll() is None:
         try:
-            terminal.send_signal(signal.SIGINT)
-        except OSError as exc:
-            if exc.errno not in (errno.ESRCH, errno.EACCES):
-                raise
-        timeout = 5
-        while timeout > 0:
-            if terminal.poll() is not None:
-                break
-            timeout -= 0.0125
-            time.sleep(0.0125)
-    if terminal.poll() is None:
-        try:
-            terminal.send_signal(signal.SIGTERM)
+            terminal.send_signal(signal.SIGKILL)
         except OSError as exc:
             if exc.errno not in (errno.ESRCH, errno.EACCES):
                 raise
@@ -127,7 +115,7 @@ def terminate_child_processes(pid):
         try:
             cmdline = child.cmdline()
             log.info('Salt left behind a child process. Process cmdline: %s', cmdline)
-            child.send_signal(signal.SIGTERM)
+            child.send_signal(signal.SIGKILL)
             try:
                 child.wait(timeout=5)
             except psutil.TimeoutExpired:
@@ -653,7 +641,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._connectable.clear()
         time.sleep(0.0125)
         self._process.terminate()
-        self._process.join()
 
         # Lets log and kill any child processes which salt left behind
         for child in children[:]:
@@ -663,7 +650,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                          self.log_prefix,
                          self.cli_display_name,
                          cmdline)
-                child.send_signal(signal.SIGTERM)
+                child.send_signal(signal.SIGKILL)
                 try:
                     child.wait(timeout=5)
                 except psutil.TimeoutExpired:
@@ -728,7 +715,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                             'We can\'t check to ID\'s without an instance of salt-run as self.salt_run'
                         )
                     minions_joined = yield self.salt_run.run('manage.joined')
-                    if minions_joined.exitcode == 0:
+                    if minions_joined.exitcode == 0 and minions_joined.json:
                         if port in minions_joined.json:
                             check_ports.remove(port)
             yield gen.sleep(0.5)
