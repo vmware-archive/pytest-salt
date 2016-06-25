@@ -715,9 +715,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
                             'We can\'t check to ID\'s without an instance of salt-run as self.salt_run'
                         )
                     minions_joined = yield self.salt_run.run('manage.joined')
-                    if minions_joined.exitcode == 0 and minions_joined.json:
-                        if port in minions_joined.json:
+                    if minions_joined.exitcode == 0:
+                        if minions_joined.json and port in minions_joined.json:
                             check_ports.remove(port)
+                        elif not minions_joined.json:
+                            log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
             yield gen.sleep(0.5)
         # A final sleep to allow the ioloop to do other things
         yield gen.sleep(0.125)
