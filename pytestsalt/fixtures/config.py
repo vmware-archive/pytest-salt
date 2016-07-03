@@ -16,6 +16,7 @@
 from __future__ import absolute_import, print_function
 import os
 import pwd
+import sys
 import logging
 
 # Import 3rd-party libs
@@ -55,6 +56,63 @@ class Counter(object):  # pylint: disable=too-few-public-methods
             self.counter += 1
 
 
+def pytest_addoption(parser):
+    '''
+    Add pytest salt plugin daemons related options
+    '''
+    saltparser = parser.getgroup('Salt Plugin Options')
+    saltparser.addoption(
+        '--cli-bin-dir',
+        default=None,
+        help=('Path to the bin directory where the salt CLI scripts can be '
+              'found. Defaults to the directory name of the python executable '
+              'running py.test')
+    )
+    parser.addini(
+        'cli_bin_dir',
+        default=None,
+        help=('Path to the bin directory where the salt CLI scripts can be '
+              'found. Defaults to the directory name of the python executable '
+              'running py.test')
+    )
+
+
+@pytest.fixture(scope='session')
+def python_executable_path():
+    '''
+    return the python executable path
+    '''
+    return sys.executable
+
+
+@pytest.fixture(scope='session')
+def cli_bin_dir(request, python_executable_path):
+    '''
+    Return the path to the CLI script directory to use
+    '''
+    # Default to the directory of the current python executable
+    return os.path.dirname(python_executable_path)
+
+
+@pytest.fixture(scope='session')
+def _cli_bin_dir(request, cli_bin_dir):
+    '''
+    Return the path to the CLI script directory to use
+    '''
+    path = request.config.getoption('cli_bin_dir')
+    if path is not None:
+        # We were passed --cli-bin-dir as a CLI option
+        return path
+
+    # The path was not passed as a CLI option
+    path = request.config.getini('cli_bin_dir')
+    if path:
+        # We were passed cli_bin_dir as a INI option
+        return path
+
+    return _cli_bin_dir
+
+
 @pytest.fixture(scope='session')
 def running_username():
     '''
@@ -79,6 +137,62 @@ def salt_minion_id_counter():
     Every call to this fixture increases the counter.
     '''
     return Counter()
+
+
+@pytest.fixture(scope='session')
+def cli_master_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-master'
+
+
+@pytest.fixture(scope='session')
+def cli_minion_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-minion'
+
+
+@pytest.fixture(scope='session')
+def cli_salt_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt'
+
+
+@pytest.fixture(scope='session')
+def cli_run_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-run'
+
+
+@pytest.fixture(scope='session')
+def cli_key_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-key'
+
+
+@pytest.fixture(scope='session')
+def cli_call_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-call'
+
+
+@pytest.fixture(scope='session')
+def cli_syndic_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-syndic'
 
 
 @pytest.fixture
