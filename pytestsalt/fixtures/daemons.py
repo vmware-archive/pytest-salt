@@ -48,25 +48,6 @@ from salt.utils.process import SignalHandlingMultiprocessingProcess
 log = logging.getLogger(__name__)
 
 
-def cli_bin_dir(config):
-    '''
-    Return the path to the CLI script directory to use
-    '''
-    path = config.getoption('cli_bin_dir')
-    if path is not None:
-        # We were passed --cli-bin-dir as a CLI option
-        return path
-
-    # The path was not passed as a CLI option
-    path = config.getini('cli_bin_dir')
-    if path:
-        # We were passed cli_bin_dir as a INI option
-        return path
-
-    # Default to the directory of the current python executable
-    return os.path.dirname(sys.executable)
-
-
 def close_terminal(terminal):
     '''
     Close a terminal
@@ -164,8 +145,10 @@ def salt_master(request,
                 master_config,
                 salt_master_before_start,  # pylint: disable=unused-argument
                 io_loop,
-                log_server,
-                master_log_prefix):
+                log_server,  # pylint: disable=unused-argument
+                master_log_prefix,
+                cli_master_script_name,
+                _cli_bin_dir):
     '''
     Returns a running salt-master
     '''
@@ -175,9 +158,10 @@ def salt_master(request,
         attempts += 1
         master_process = SaltMaster(master_config,
                                     conf_dir.strpath,
-                                    cli_bin_dir(request.config),
+                                    _cli_bin_dir,
                                     master_log_prefix,
-                                    io_loop)
+                                    io_loop,
+                                    cli_script_name=cli_master_script_name)
         master_process.start()
         if master_process.is_alive():
             try:
@@ -221,14 +205,19 @@ def salt_master(request,
 
 
 @pytest.fixture(scope='session')
-def salt_version(request):
-    proc = subprocess.Popen(
-        [
-            '{0}/salt-master'.format(cli_bin_dir(request.config)),
-            '--version'
-        ],
-        stdout=subprocess.PIPE
-    )
+def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
+    '''
+    Return the salt version for the CLI install
+    '''
+    args = [
+        os.path.join(_cli_bin_dir, cli_master_script_name),
+        '--version'
+    ]
+    if sys.platform.startswith('win'):
+        # We always need to prefix the call arguments with the python executable on windows
+        args.insert(0, python_executable_path)
+
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     version = stdout.split()[1]
     if six.PY3:
@@ -273,6 +262,7 @@ def salt_minion(salt_master,
                 salt_minion_before_start,  # pylint: disable=unused-argument
                 minion_log_prefix,
                 salt_run,
+                cli_minion_script_name,
                 log_server):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -286,7 +276,8 @@ def salt_minion(salt_master,
                                     salt_master.bin_dir_path,
                                     minion_log_prefix,
                                     salt_master.io_loop,
-                                    salt_run=salt_run)
+                                    salt_run=salt_run,
+                                    cli_script_name=cli_minion_script_name)
         minion_process.start()
         if minion_process.is_alive():
             try:
@@ -362,9 +353,10 @@ def salt_after_start(salt):
 
 @pytest.yield_fixture
 def salt(salt_minion,
-        salt_before_start,
-        log_server,
-        salt_log_prefix):  # pylint: disable=unused-argument
+         cli_salt_script_name,
+         salt_before_start,  # pylint: disable=unused-argument
+         log_server,         # pylint: disable=unused-argument
+         salt_log_prefix):   # pylint: disable=unused-argument
     '''
     Returns a salt fixture
     '''
@@ -372,7 +364,8 @@ def salt(salt_minion,
                 salt_minion.config_dir,
                 salt_minion.bin_dir_path,
                 salt_log_prefix,
-                salt_minion.io_loop)
+                salt_minion.io_loop,
+                cli_script_name=cli_salt_script_name)
     yield salt
 
 
@@ -410,6 +403,7 @@ def salt_call_after_start(salt_call):
 def salt_call(salt_minion,
               salt_call_before_start,
               salt_call_log_prefix,
+              cli_call_script_name,
               log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
@@ -418,7 +412,8 @@ def salt_call(salt_minion,
                          salt_minion.config_dir,
                          salt_minion.bin_dir_path,
                          salt_call_log_prefix,
-                         salt_minion.io_loop)
+                         salt_minion.io_loop,
+                         cli_script_name=cli_call_script_name)
     yield salt_call
 
 
@@ -456,6 +451,7 @@ def salt_key_after_start(salt_key):
 def salt_key(salt_master,
              salt_key_before_start,
              salt_key_log_prefix,
+             cli_key_script_name,
              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_key fixture
@@ -464,7 +460,8 @@ def salt_key(salt_master,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
                        salt_key_log_prefix,
-                       salt_master.io_loop)
+                       salt_master.io_loop,
+                       cli_script_name=cli_key_script_name)
     yield salt_key
 
 
@@ -500,8 +497,9 @@ def salt_run_after_start(salt_run):
 
 @pytest.yield_fixture
 def salt_run(salt_master,
-             salt_run_before_start,
+             salt_run_before_start,  # pylint: disable=unused-argument
              salt_run_log_prefix,
+             cli_run_script_name,
              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
@@ -510,7 +508,8 @@ def salt_run(salt_master,
                        salt_master.config_dir,
                        salt_master.bin_dir_path,
                        salt_run_log_prefix,
-                       salt_master.io_loop)
+                       salt_master.io_loop,
+                       cli_script_name=cli_run_script_name)
     yield salt_run
 
 
@@ -519,7 +518,6 @@ class SaltScriptBase(object):
     Base class for Salt CLI scripts
     '''
 
-    cli_script_name = None
     cli_display_name = None
 
     def __init__(self,
@@ -528,13 +526,17 @@ class SaltScriptBase(object):
                  bin_dir_path,
                  log_prefix,
                  io_loop=None,
-                 salt_run=None):
+                 salt_run=None,
+                 cli_script_name=None):
         self.config = config
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self.log_prefix = log_prefix
         self._io_loop = io_loop
         self.salt_run = salt_run
+        if cli_script_name is None:
+            raise RuntimeError('Please provide a value for the cli_script_name keyword argument')
+        self.cli_script_name = cli_script_name
         if self.cli_display_name is None:
             self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
@@ -923,27 +925,6 @@ class SaltMaster(SaltDaemonScriptBase):
         return ['-l', 'quiet']
 
 
-def pytest_addoption(parser):
-    '''
-    Add pytest salt plugin daemons related options
-    '''
-    saltparser = parser.getgroup('Salt Plugin Options')
-    saltparser.addoption(
-        '--cli-bin-dir',
-        default=None,
-        help=('Path to the bin directory where the salt daemon\'s scripts can be '
-              'found. Defaults to the directory name of the python executable '
-              'running py.test')
-    )
-    parser.addini(
-        'cli_bin_dir',
-        default=None,
-        help=('Path to the bin directory where the salt daemon\'s scripts can be '
-              'found. Defaults to the directory name of the python executable '
-              'running py.test')
-    )
-
-
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_setup(item):
     '''
@@ -956,8 +937,8 @@ def pytest_runtest_setup(item):
                 item.fixturenames.append(after_start_fixture)
 
 
-def pytest_report_header(config):
+def pytest_report_header(config, _cli_bin_dir):
     '''
     return a string to be displayed as header info for terminal reporting.
     '''
-    return 'pytest-salt CLI binaries directory: {0}'.format(cli_bin_dir(config))
+    return 'pytest-salt CLI binaries directory: {0}'.format(_cli_bin_dir)
