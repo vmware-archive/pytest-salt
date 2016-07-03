@@ -33,6 +33,10 @@ import salt.serializers.yaml as yamlserialize
 import pytestsalt.salt.engines
 import pytestsalt.salt.log_handlers
 
+IS_WINDOWS = sys.platform.startswith('win')
+
+if IS_WINDOWS:
+    import win32api
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
@@ -126,6 +130,8 @@ def running_username():
     '''
     Returns the current username
     '''
+    if IS_WINDOWS:
+        return win32api.GetUserName()
     return pwd.getpwuid(os.getuid()).pw_name
 
 
