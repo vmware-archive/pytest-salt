@@ -77,6 +77,14 @@ def pytest_addoption(parser):
     )
 
 
+#@pytest.hookimpl(trylast=True)
+#def pytest_report_header(config, _cli_bin_dir):
+#    '''
+#    return a string to be displayed as header info for terminal reporting.
+#    '''
+#    return 'pytest-salt CLI binaries directory: {0}'.format(_cli_bin_dir)
+
+
 @pytest.fixture(scope='session')
 def python_executable_path():
     '''
