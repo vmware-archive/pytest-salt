@@ -42,8 +42,11 @@ from tornado.process import Subprocess
 
 # Import salt libs
 #import salt
+import salt.utils as salt_utils
 import salt.utils.nb_popen as nb_popen
 from salt.utils.process import SignalHandlingMultiprocessingProcess
+
+pytest_plugins = ['tornado']
 
 log = logging.getLogger(__name__)
 
@@ -513,6 +516,194 @@ def salt_run(salt_master,
     yield salt_run
 
 
+@pytest.yield_fixture
+def sshd_server_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the sshd server and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the sshd server
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def sshd_server_after_start(sshd_server):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the sshd server and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def sshd_server(io_loop,
+                write_sshd_config,  # pylint: disable=unused-argument
+                sshd_server_before_start,  # pylint: disable=unused-argument
+                sshd_server_log_prefix,
+                sshd_port,
+                sshd_config_dir,
+                log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a running sshd server
+    '''
+    log.info('[%s] Starting pytest sshd server at port %s', sshd_server_log_prefix, sshd_port)
+    attempts = 0
+    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
+        attempts += 1
+        process = SSHD({'port': sshd_port},
+                       sshd_config_dir.realpath().strpath,
+                       None,  #salt_master.bin_dir_path,
+                       sshd_server_log_prefix,
+                       io_loop,
+                       cli_script_name='sshd')
+        process.start()
+        if process.is_alive():
+            try:
+                connectable = process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest sshd server({0}) has failed to confirm '
+                                'running status after {1} attempts'.format(sshd_port, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception('[%s] %s', sshd_server_log_prefix, exc, exc_info=True)
+                process.terminate()
+                if attempts >= 3:
+                    pytest.xfail(str(exc))
+                continue
+            log.info(
+                '[%s] The pytest sshd server(%s) is running and accepting commands '
+                'after %d attempts',
+                sshd_server_log_prefix,
+                sshd_port,
+                attempts
+            )
+            yield process
+            break
+        else:
+            process.terminate()
+            continue
+    else:
+        pytest.xfail(
+            'The pytest sshd server({0}) has failed to start after {1} attempts'.format(
+                sshd_port,
+                attempts-1
+            )
+        )
+    log.info('[%s] Stopping pytest sshd server(%s)', sshd_server_log_prefix, sshd_port)
+    process.terminate()
+    log.info('[%s] pytest sshd server(%s) stopped', sshd_server_log_prefix, sshd_port)
+
+
+@pytest.yield_fixture
+def session_sshd_server_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the sshd server and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the sshd server
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def session_sshd_server_after_start(sshd_server):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the sshd server and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def session_sshd_server(io_loop,
+                        session_write_sshd_config,  # pylint: disable=unused-argument
+                        session_sshd_server_before_start,  # pylint: disable=unused-argument
+                        session_sshd_server_log_prefix,
+                        session_sshd_port,
+                        session_sshd_config_dir,
+                        log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a running sshd server
+    '''
+    log.info('[%s] Starting pytest sshd server at port %s', session_sshd_server_log_prefix, session_sshd_port)
+    attempts = 0
+    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
+        attempts += 1
+        process = SSHD({'port': session_sshd_port},
+                       session_sshd_config_dir.realpath().strpath,
+                       None,  #salt_master.bin_dir_path,
+                       session_sshd_server_log_prefix,
+                       io_loop,
+                       cli_script_name='sshd')
+        process.start()
+        if process.is_alive():
+            try:
+                connectable = process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest sshd server({0}) has failed to confirm '
+                                'running status after {1} attempts'.format(session_sshd_port, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception('[%s] %s', session_sshd_server_log_prefix, exc, exc_info=True)
+                process.terminate()
+                if attempts >= 3:
+                    pytest.xfail(str(exc))
+                continue
+            log.info(
+                '[%s] The pytest sshd server(%s) is running and accepting commands '
+                'after %d attempts',
+                session_sshd_server_log_prefix,
+                session_sshd_port,
+                attempts
+            )
+            yield process
+            break
+        else:
+            process.terminate()
+            continue
+    else:
+        pytest.xfail(
+            'The pytest sshd server({0}) has failed to start after {1} attempts'.format(
+                session_sshd_port,
+                attempts-1
+            )
+        )
+    log.info('[%s] Stopping pytest sshd server(%s)', session_sshd_server_log_prefix, session_sshd_port)
+    process.terminate()
+    log.info('[%s] pytest sshd server(%s) stopped', session_sshd_server_log_prefix, session_sshd_port)
+
+
 class SaltScriptBase(object):
     '''
     Base class for Salt CLI scripts
@@ -555,6 +746,12 @@ class SaltScriptBase(object):
         Returns the path to the script to run
         '''
         return os.path.join(self.bin_dir_path, script_name)
+
+    def get_base_script_args(self):  # pylint: disable=no-self-use
+        '''
+        Returns any additional arguments to pass to the CLI script
+        '''
+        return ['-c', self.config_dir]
 
     def get_script_args(self):  # pylint: disable=no-self-use
         '''
@@ -603,10 +800,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         log.info('[%s][%s] Starting DAEMON', self.log_prefix, self.cli_display_name)
         proc_args = [
-            self.get_script_path(self.cli_script_name),
-            '-c',
-            self.config_dir,
-        ] + self.get_script_args()
+            self.get_script_path(self.cli_script_name)
+        ] + self.get_base_script_args() + self.get_script_args()
         log.info('[%s][%s] Running \'%s\'...',
                  self.log_prefix,
                  self.cli_display_name,
@@ -923,6 +1118,27 @@ class SaltMaster(SaltDaemonScriptBase):
 
     def get_script_args(self):
         return ['-l', 'quiet']
+
+
+class SSHD(SaltDaemonScriptBase):
+    '''
+    Class which runs an sshd daemon
+    '''
+
+    def get_script_path(self, script_name):
+        '''
+        Returns the path to the script to run
+        '''
+        sshd = salt_utils.which(self.cli_script_name)
+        if not sshd:
+            pytest.skip('"sshd" not found')
+        return sshd
+
+    def get_base_script_args(self):
+        return ['-D', '-f', os.path.join(self.config_dir, 'sshd_config')]
+
+    def get_check_ports(self):
+        return [self.config['port']]
 
 
 @pytest.hookimpl(tryfirst=True)

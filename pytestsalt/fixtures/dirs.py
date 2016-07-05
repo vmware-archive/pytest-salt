@@ -261,3 +261,23 @@ def session_prod_env_pillar_tree_root_dir(session_pillar_tree_root_dir):
     dirname = session_pillar_tree_root_dir.join('prod')
     dirname.ensure(dir=True)
     return dirname
+
+
+@pytest.fixture
+def sshd_config_dir(tempdir):
+    '''
+    Return the path to a configuration directory for the sshd server
+    '''
+    config_dir = tempdir.join('sshd')
+    config_dir.ensure(dir=True)
+    return config_dir
+
+
+@pytest.fixture
+def session_sshd_config_dir(tempdir):
+    '''
+    Return the path to a configuration directory for a session scoped sshd server
+    '''
+    config_dir = tempdir.join('session-sshd')
+    config_dir.ensure(dir=True)
+    return config_dir

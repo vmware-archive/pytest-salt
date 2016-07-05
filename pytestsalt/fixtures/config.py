@@ -18,6 +18,7 @@ import os
 import pwd
 import sys
 import logging
+import subprocess
 
 # Import 3rd-party libs
 import pytest
@@ -36,7 +37,7 @@ import pytestsalt.salt.log_handlers
 IS_WINDOWS = sys.platform.startswith('win')
 
 if IS_WINDOWS:
-    import win32api
+    import win32api  # pylint: disable=import-error
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
@@ -665,3 +666,187 @@ def session_minion_config(session_root_dir,
                           session_minion_id,
                           running_username,
                           salt_log_port)
+
+
+@pytest.fixture
+def ssh_client_key(tempdir):
+    '''
+    The ssh client key
+    '''
+    ssh_dir = tempdir.join('ssh')
+    ssh_dir.ensure(dir=True)
+    return _generate_ssh_key(ssh_dir.join('test_key').realpath().strpath)
+
+
+@pytest.fixture
+def session_ssh_client_key(tempdir):
+    '''
+    The ssh client key
+    '''
+    ssh_dir = tempdir.join('session-ssh')
+    ssh_dir.ensure(dir=True)
+    return _generate_ssh_key(ssh_dir.join('test_key').realpath().strpath)
+
+
+def _sshd_config_lines(sshd_port):
+    '''
+    Return a list of lines which will make the sshd_config file
+    '''
+    return [
+        'Port {0}'.format(sshd_port),
+        'ListenAddress 127.0.0.1',
+        'Protocol 2',
+        'UsePrivilegeSeparation yes',
+        '# Turn strict modes off so that we can operate in /tmp',
+        'StrictModes no',
+        '# Lifetime and size of ephemeral version 1 server key',
+        'KeyRegenerationInterval 3600',
+        'ServerKeyBits 1024',
+        '# Logging',
+        'SyslogFacility AUTH',
+        'LogLevel INFO',
+        '# Authentication:',
+        'LoginGraceTime 120',
+        'PermitRootLogin without-password',
+        'StrictModes yes',
+        'RSAAuthentication yes',
+        'PubkeyAuthentication yes',
+        '#AuthorizedKeysFile	%h/.ssh/authorized_keys',
+        '#AuthorizedKeysFile	key_test.pub',
+        '# Don\'t read the user\'s ~/.rhosts and ~/.shosts files',
+        'IgnoreRhosts yes',
+        '# For this to work you will also need host keys in /etc/ssh_known_hosts',
+        'RhostsRSAAuthentication no',
+        '# similar for protocol version 2',
+        'HostbasedAuthentication no',
+        '#IgnoreUserKnownHosts yes',
+        '# To enable empty passwords, change to yes (NOT RECOMMENDED)',
+        'PermitEmptyPasswords no',
+        '# Change to yes to enable challenge-response passwords (beware issues with',
+        '# some PAM modules and threads)',
+        'ChallengeResponseAuthentication no',
+        '# Change to no to disable tunnelled clear text passwords',
+        'PasswordAuthentication no',
+        'X11Forwarding no',
+        'X11DisplayOffset 10',
+        'PrintMotd no',
+        'PrintLastLog yes',
+        'TCPKeepAlive yes',
+        '#UseLogin no',
+        'AcceptEnv LANG LC_*',
+        'Subsystem sftp /usr/lib/openssh/sftp-server',
+        '#UsePAM yes',
+    ]
+
+
+@pytest.fixture
+def sshd_config_lines(sshd_port):
+    '''
+    Return a list of lines which will make the sshd_config file
+    '''
+    return _sshd_config_lines(sshd_port)
+
+
+@pytest.fixture(scope='session')
+def session_sshd_config_lines(session_sshd_port):
+    '''
+    Return a list of lines which will make the sshd_config file
+    '''
+    return _sshd_config_lines(session_sshd_port)
+
+
+@pytest.fixture
+def write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
+    '''
+    This fixture will write the necessary configuration to run an SSHD server to be used in tests
+    '''
+    return _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key)
+
+
+@pytest.fixture
+def session_write_sshd_config(session_sshd_config_dir, session_sshd_config_lines, session_ssh_client_key):
+    '''
+    This fixture will write the necessary configuration to run an SSHD server to be used in tests
+    '''
+    return _write_sshd_config(session_sshd_config_dir, session_sshd_config_lines, session_ssh_client_key)
+
+
+@pytest.fixture
+def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
+    '''
+    This fixture will write the necessary configuration to run an SSHD server to be used in tests
+    '''
+    sshd = salt.utils.which('sshd')
+
+    if not sshd:
+        pytest.skip('"sshd" not found.')
+
+    # Generate server key
+    server_key_dir = sshd_config_dir.realpath().strpath
+    server_dsa_key_file = os.path.join(server_key_dir, 'ssh_host_dsa_key')
+    server_ecdsa_key_file = os.path.join(server_key_dir, 'ssh_host_ecdsa_key')
+    server_ed25519_key_file = os.path.join(server_key_dir, 'ssh_host_ed25519_key')
+
+    _generate_ssh_key(server_dsa_key_file, 'dsa', 1024)
+    _generate_ssh_key(server_ecdsa_key_file, 'ecdsa', 521)
+    _generate_ssh_key(server_ed25519_key_file, 'ed25519', 521)
+
+    sshd_config = sshd_config_lines[:]
+    sshd_config.append('AuthorizedKeysFile {0}'.format(ssh_client_key))
+    sshd_config.append('HostKey {0}'.format(server_dsa_key_file))
+    sshd_config.append('HostKey {0}'.format(server_ecdsa_key_file))
+    sshd_config.append('HostKey {0}'.format(server_ed25519_key_file))
+
+    with salt.utils.fopen(sshd_config_dir.join('sshd_config').realpath().strpath, 'w') as wfh:
+        wfh.write('\n'.join(sshd_config))
+
+
+@pytest.fixture
+def sshd_server_log_prefix(sshd_port):
+    '''
+    The log prefix to use for the sshd server fixture
+    '''
+    return 'sshd-server/{0}'.format(sshd_port)
+
+
+@pytest.fixture(scope='session')
+def session_sshd_server_log_prefix(session_sshd_port):
+    '''
+    The log prefix to use for the sshd server fixture
+    '''
+    return 'session-sshd-server/{0}'.format(session_sshd_port)
+
+
+def _generate_ssh_key(key_path, key_type='ecdsa', key_size=521):
+    '''
+    Generate an SSH key
+    '''
+    log.debug('Generating ssh key(type: %s; size: %d; path: %s;)', key_type, key_size, key_path)
+    keygen = salt.utils.which('ssh-keygen')
+    if not keygen:
+        pytest.skip('"ssh-keygen" not found')
+
+    keygen_process = subprocess.Popen(
+        [
+            keygen,
+            '-t', key_type,
+            '-b', str(key_size),
+            '-C', '"$(whoami)@$(hostname)-$(date -I)"',
+            '-f', os.path.basename(key_path),
+            '-P', ''
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        close_fds=True,
+        cwd=os.path.dirname(key_path)
+    )
+    _, keygen_err = keygen_process.communicate()
+    if keygen_err:
+        pytest.skip(
+            'ssh-keygen had errors generating {0}({1}:{2}): {3}'.format(
+                os.path.basename(key_path),
+                key_type,
+                key_size,
+                keygen_err
+            )
+        )
