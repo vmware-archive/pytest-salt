@@ -24,6 +24,7 @@ import socket
 import logging
 import subprocess
 import multiprocessing
+from operator import itemgetter
 from collections import namedtuple
 
 # Import 3rd-party libs
@@ -1042,13 +1043,40 @@ class SaltDaemonScriptBase(SaltScriptBase):
         raise gen.Return(self._connectable.is_set())
 
 
+class ShellResult(namedtuple('Result', ('exitcode', 'stdout', 'stderr', 'json'))):
+    '''
+    This class serves the purpose of having a common result class which will hold the
+    data from the bigret backend(despite the backend being used).
+
+    This will allow filtering by access permissions and/or object ownership.
+
+    '''
+    __slots__ = ()
+
+    def __new__(cls, exitcode, stdout, stderr, json):
+        return super(ShellResult, cls).__new__(cls, exitcode, stdout, stderr, json)
+
+    # These are copied from the namedtuple verbose output in order to quiet down PyLint
+    exitcode = property(itemgetter(0), doc='Alias for field number 0')
+    stdout = property(itemgetter(1), doc='Alias for field number 1')
+    stderr = property(itemgetter(2), doc='Alias for field number 2')
+    json = property(itemgetter(3), doc='Alias for field number 3')
+
+    def __eq__(self, other):
+        '''
+        Allow comparison against the parsed JSON or the output
+        '''
+        if self.json:
+            return self.json == other
+        return self.stdout == other
+
+
 class SaltCliScriptBase(SaltScriptBase):
     '''
     Base class which runs Salt's non daemon CLI scripts
     '''
 
     DEFAULT_TIMEOUT = 5
-    ShellResult = namedtuple('Result', ('exitcode', 'stdout', 'stderr', 'json'))
 
     def get_base_script_args(self):
         return SaltScriptBase.get_base_script_args(self) + ['--out=json']
@@ -1163,7 +1191,7 @@ class SaltCliScriptBase(SaltScriptBase):
         exitcode = terminal.returncode
         stdout, stderr, json_out = self.process_output(stdout, stderr)
         yield gen.sleep(0.125)
-        raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
+        raise gen.Return(ShellResult(exitcode, stdout, stderr, json_out))
 
     def process_output(self, stdout, stderr):
         if stdout:
@@ -1225,7 +1253,7 @@ class SaltSSH(SaltCliScriptBase):
     def process_output(self, stdout, stderr):
         stdout, stderr, json_out = SaltCliScriptBase.process_output(self, stdout, stderr)
         if json_out:
-            json_out = json_out['localhost']
+            return stdout, stderr, json_out['localhost']
         return stdout, stderr, json_out
 
 
