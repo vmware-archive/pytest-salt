@@ -273,11 +273,31 @@ def sshd_config_dir(tempdir):
     return config_dir
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def session_sshd_config_dir(tempdir):
     '''
     Return the path to a configuration directory for a session scoped sshd server
     '''
     config_dir = tempdir.join('session-sshd')
+    config_dir.ensure(dir=True)
+    return config_dir
+
+
+@pytest.fixture
+def ssh_config_dir(tempdir):
+    '''
+    Return the path to a configuration directory for the ssh client
+    '''
+    config_dir = tempdir.join('ssh-client')
+    config_dir.ensure(dir=True)
+    return config_dir
+
+
+@pytest.fixture(scope='session')
+def session_ssh_config_dir(tempdir):
+    '''
+    Return the path to a configuration directory for a session scoped ssh client
+    '''
+    config_dir = tempdir.join('session-ssh-client')
     config_dir.ensure(dir=True)
     return config_dir

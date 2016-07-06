@@ -111,6 +111,20 @@ def terminate_child_processes(pid):
         psutil.wait_procs(children, timeout=5)
 
 
+@pytest.yield_fixture(scope='session')
+def session_io_loop():
+    """Create an instance of the `tornado.ioloop.IOLoop` for each test case.
+    """
+    io_loop = ioloop.IOLoop()
+    io_loop.make_current()
+
+    yield io_loop
+
+    io_loop.clear_current()
+    if (not ioloop.IOLoop.initialized() or io_loop is not ioloop.IOLoop.instance()):
+        io_loop.close(all_fds=True)
+
+
 @pytest.yield_fixture
 def salt_master_before_start():
     '''
@@ -517,6 +531,110 @@ def salt_run(salt_master,
 
 
 @pytest.yield_fixture
+def salt_ssh_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-ssh and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_ssh_after_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-ssh and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_ssh(sshd_server,
+             conf_dir,
+             io_loop,
+             salt_ssh_before_start,  # pylint: disable=unused-argument
+             salt_ssh_log_prefix,
+             cli_bin_dir,
+             cli_ssh_script_name,
+             roster_config,
+             log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a salt_ssh fixture
+    '''
+    salt_ssh = SaltSSH(roster_config,
+                       conf_dir.realpath().strpath,
+                       cli_bin_dir,
+                       salt_ssh_log_prefix,
+                       io_loop,
+                       cli_script_name=cli_ssh_script_name)
+    yield salt_ssh
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_ssh_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-ssh and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_ssh_after_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-ssh and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_ssh(session_sshd_server,
+                     session_conf_dir,
+                     session_io_loop,
+                     session_salt_ssh_before_start,  # pylint: disable=unused-argument
+                     session_salt_ssh_log_prefix,
+                     cli_bin_dir,
+                     cli_ssh_script_name,
+                     session_roster_config,
+                     log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a salt_ssh fixture
+    '''
+    salt_ssh = SaltSSH(session_roster_config,
+                       session_conf_dir.realpath().strpath,
+                       cli_bin_dir,
+                       session_salt_ssh_log_prefix,
+                       session_io_loop,
+                       cli_script_name=cli_ssh_script_name)
+    yield salt_ssh
+
+
+@pytest.yield_fixture
 def sshd_server_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -610,7 +728,7 @@ def sshd_server(io_loop,
     log.info('[%s] pytest sshd server(%s) stopped', sshd_server_log_prefix, sshd_port)
 
 
-@pytest.yield_fixture
+@pytest.yield_fixture(scope='session')
 def session_sshd_server_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -640,8 +758,8 @@ def session_sshd_server_after_start(sshd_server):
     # Clean routines go here
 
 
-@pytest.yield_fixture
-def session_sshd_server(io_loop,
+@pytest.yield_fixture(scope='session')
+def session_sshd_server(session_io_loop,
                         session_write_sshd_config,  # pylint: disable=unused-argument
                         session_sshd_server_before_start,  # pylint: disable=unused-argument
                         session_sshd_server_log_prefix,
@@ -659,7 +777,7 @@ def session_sshd_server(io_loop,
                        session_sshd_config_dir.realpath().strpath,
                        None,  #salt_master.bin_dir_path,
                        session_sshd_server_log_prefix,
-                       io_loop,
+                       session_io_loop,
                        cli_script_name='sshd')
         process.start()
         if process.is_alive():
@@ -932,6 +1050,9 @@ class SaltCliScriptBase(SaltScriptBase):
     DEFAULT_TIMEOUT = 5
     ShellResult = namedtuple('Result', ('exitcode', 'stdout', 'stderr', 'json'))
 
+    def get_base_script_args(self):
+        return SaltScriptBase.get_base_script_args(self) + ['--out=json']
+
     def run_sync(self, *args, **kwargs):
         '''
         Run the given command synchronously
@@ -979,11 +1100,8 @@ class SaltCliScriptBase(SaltScriptBase):
         environ = os.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
         proc_args = [
-            self.get_script_path(self.cli_script_name),
-            '-c',
-            self.config_dir,
-            '--out', 'json'
-        ] + self.get_script_args() + list(args)
+            self.get_script_path(self.cli_script_name)
+        ] + self.get_base_script_args() + self.get_script_args() + list(args)
 
         log.info('[%s][%s] Running \'%s\'...',
                  self.log_prefix,
@@ -1043,16 +1161,23 @@ class SaltCliScriptBase(SaltScriptBase):
             # pylint: enable=undefined-variable
 
         exitcode = terminal.returncode
-        try:
-            json_out = json.loads(stdout)
-        except ValueError:
-            log.debug('[%s][%s] Failed to load JSON from the following output:\n%r',
-                      self.log_prefix,
-                      self.cli_display_name,
-                      stdout)
-            json_out = None
+        stdout, stderr, json_out = self.process_output(stdout, stderr)
         yield gen.sleep(0.125)
         raise gen.Return(self.ShellResult(exitcode, stdout, stderr, json_out))
+
+    def process_output(self, stdout, stderr):
+        if stdout:
+            try:
+                json_out = json.loads(stdout)
+            except ValueError:
+                log.debug('[%s][%s] Failed to load JSON from the following output:\n%r',
+                          self.log_prefix,
+                          self.cli_display_name,
+                          stdout)
+                json_out = None
+        else:
+            json_out = None
+        return stdout, stderr, json_out
 
 
 class Salt(SaltCliScriptBase):
@@ -1060,15 +1185,11 @@ class Salt(SaltCliScriptBase):
     Class which runs salt-call commands
     '''
 
-    cli_script_name = 'salt'
-
 
 class SaltCall(SaltCliScriptBase):
     '''
     Class which runs salt-call commands
     '''
-
-    cli_script_name = 'salt-call'
 
     def get_script_args(self):
         return ['--retcode-passthrough']
@@ -1079,23 +1200,39 @@ class SaltKey(SaltCliScriptBase):
     Class which runs salt-key commands
     '''
 
-    cli_script_name = 'salt-key'
-
 
 class SaltRun(SaltCliScriptBase):
     '''
     Class which runs salt-run commands
     '''
 
-    cli_script_name = 'salt-run'
+
+class SaltSSH(SaltCliScriptBase):
+    '''
+    Class which runs salt-ssh commands
+    '''
+
+    def get_script_args(self):
+        return [
+            '-l', 'trace',
+            '-w',
+            '--rand-thin-dir',
+            '--roster-file={0}'.format(os.path.join(self.config_dir, 'roster')),
+            '--ignore-host-keys',
+            'localhost'
+        ]
+
+    def process_output(self, stdout, stderr):
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, stdout, stderr)
+        if json_out:
+            json_out = json_out['localhost']
+        return stdout, stderr, json_out
 
 
 class SaltMinion(SaltDaemonScriptBase):
     '''
     Class which runs the salt-minion daemon
     '''
-
-    cli_script_name = 'salt-minion'
 
     def get_script_args(self):
         return ['--disable-keepalive', '-l', 'quiet']
@@ -1108,8 +1245,6 @@ class SaltMaster(SaltDaemonScriptBase):
     '''
     Class which runs the salt-minion daemon
     '''
-
-    cli_script_name = 'salt-master'
 
     def get_check_ports(self):
         return set([self.config['ret_port'],
