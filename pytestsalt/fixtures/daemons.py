@@ -1076,7 +1076,7 @@ class SaltCliScriptBase(SaltScriptBase):
     Base class which runs Salt's non daemon CLI scripts
     '''
 
-    DEFAULT_TIMEOUT = 5
+    DEFAULT_TIMEOUT = 10
 
     def get_base_script_args(self):
         return SaltScriptBase.get_base_script_args(self) + ['--out=json']
