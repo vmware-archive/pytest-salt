@@ -856,9 +856,10 @@ class SaltScriptBase(object):
         '''
         Return an IOLoop
         '''
-        if self._io_loop is None:
-            self._io_loop = ioloop.IOLoop.current()
-        return self._io_loop
+        return ioloop.IOLoop.current()
+        #if self._io_loop is None:
+        #    self._io_loop = ioloop.IOLoop.current()
+        #return self._io_loop
 
     def get_script_path(self, script_name):
         '''
@@ -996,7 +997,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, call to wait for the daemon to start listening
         '''
-        yield gen.sleep(1)
+        yield gen.moment
+        #yield gen.sleep(1)
         check_ports = self.get_check_ports()
         log.debug(
             '[%s][%s] Checking the following ports to assure running status: %s',
@@ -1005,10 +1007,12 @@ class SaltDaemonScriptBase(SaltScriptBase):
             check_ports
         )
         while self._running.is_set():
+            yield gen.moment
             if not check_ports:
                 self._connectable.set()
                 break
             for port in set(check_ports):
+                yield gen.moment
                 if isinstance(port, int):
                     log.debug('[%s][%s] Checking connectable status on port: %s',
                               self.log_prefix,
@@ -1036,9 +1040,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
                             check_ports.remove(port)
                         elif not minions_joined.json:
                             log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
+            #yield gen.moment
             yield gen.sleep(0.5)
         # A final sleep to allow the ioloop to do other things
-        yield gen.sleep(0.125)
+        yield gen.moment
+        #yield gen.sleep(0.125)
         log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         raise gen.Return(self._connectable.is_set())
 
@@ -1076,7 +1082,7 @@ class SaltCliScriptBase(SaltScriptBase):
     Base class which runs Salt's non daemon CLI scripts
     '''
 
-    DEFAULT_TIMEOUT = 10
+    DEFAULT_TIMEOUT = 25
 
     def get_base_script_args(self):
         return SaltScriptBase.get_base_script_args(self) + ['--out=json']
@@ -1147,6 +1153,7 @@ class SaltCliScriptBase(SaltScriptBase):
 
         try:
             while True:
+                yield gen.moment
                 # We're not actually interested in processing the output, just consume it
                 if terminal.stdout is not None:
                     try:
@@ -1167,7 +1174,7 @@ class SaltCliScriptBase(SaltScriptBase):
                 if timeout_expire < time.time():
                     timedout = True
                     break
-                yield gen.sleep(0.001)
+                #yield gen.sleep(0.001)
         except (SystemExit, KeyboardInterrupt):
             pass
 
@@ -1190,7 +1197,8 @@ class SaltCliScriptBase(SaltScriptBase):
 
         exitcode = terminal.returncode
         stdout, stderr, json_out = self.process_output(stdout, stderr)
-        yield gen.sleep(0.125)
+        yield gen.moment
+        #yield gen.sleep(0.125)
         raise gen.Return(ShellResult(exitcode, stdout, stderr, json_out))
 
     def process_output(self, stdout, stderr):
