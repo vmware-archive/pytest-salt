@@ -23,9 +23,7 @@ load-plugins=saltpylint.pep8,
   saltpylint.pep263,
   saltpylint.strings,
   saltpylint.fileperms,
-  saltpylint.py3modernize,
   saltpylint.smartup,
-  saltpylint.minpyver
 
 # Use multiple processes to speed up Pylint.
 jobs=1
@@ -39,11 +37,9 @@ unsafe-load-any-extension=no
 # run arbitrary code
 extension-pkg-whitelist=
 
-# Py3 Modernize PyLint Plugin Settings
-modernize-nofix = libmodernize.fixes.fix_dict_six
-
-# Minimum Python Version To Enforce
-minimum-python-version = 2.6
+# Fileperms Lint Plugin Settings
+fileperms-default=0644
+fileperms-ignore-paths=setup.py
 
 [MESSAGES CONTROL]
 
@@ -114,7 +110,8 @@ disable=R,
   E8266,
   E8402,
   E8731,
-  locally-disabled
+  locally-disabled,
+  repr-flag-used-in-string
 
 # Disabled:
 # R* [refactoring suggestions & reports]
@@ -158,7 +155,7 @@ disable=R,
 # E8402 module level import not at top of file
 # E8731 do not assign a lambda expression, use a def
 #
-#
+# E1322(repr-flag-used-in-string)
 [REPORTS]
 
 # Set the output format. Available formats are text, parseable, colorized, msvs
@@ -256,14 +253,11 @@ notes=FIXME,XXX,TODO
 
 [BASIC]
 
-# Required attributes for module, separated by a comma
-required-attributes=
-
 # List of builtins function names that should not be used, separated by a comma
 bad-functions=map,filter,input
 
 # Good variable names which should always be accepted, separated by a comma
-good-names=i,j,k,ex,Run,_,log
+good-names=i,j,k,ex,Run,_,log,pytest_plugins
 
 # Bad variable names which should always be refused, separated by a comma
 bad-names=foo,bar,baz,toto,tutu,tata
@@ -451,10 +445,6 @@ max-public-methods=20
 
 
 [CLASSES]
-
-# List of interface methods to ignore, separated by a comma. This is used for
-# instance to not check methods defines in Zope's Interface base class.
-ignore-iface-methods=
 
 # List of method names used to declare (i.e. assign) instance attributes.
 defining-attr-methods=__init__,__new__,setUp

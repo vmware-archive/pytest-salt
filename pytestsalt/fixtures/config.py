@@ -16,7 +16,9 @@
 from __future__ import absolute_import, print_function
 import os
 import pwd
+import sys
 import logging
+import subprocess
 
 # Import 3rd-party libs
 import pytest
@@ -32,6 +34,10 @@ import salt.serializers.yaml as yamlserialize
 import pytestsalt.salt.engines
 import pytestsalt.salt.log_handlers
 
+IS_WINDOWS = sys.platform.startswith('win')
+
+if IS_WINDOWS:
+    import win32api  # pylint: disable=import-error
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
@@ -55,11 +61,79 @@ class Counter(object):  # pylint: disable=too-few-public-methods
             self.counter += 1
 
 
+def pytest_addoption(parser):
+    '''
+    Add pytest salt plugin daemons related options
+    '''
+    saltparser = parser.getgroup('Salt Plugin Options')
+    saltparser.addoption(
+        '--cli-bin-dir',
+        default=None,
+        help=('Path to the bin directory where the salt CLI scripts can be '
+              'found. Defaults to the directory name of the python executable '
+              'running py.test')
+    )
+    parser.addini(
+        'cli_bin_dir',
+        default=None,
+        help=('Path to the bin directory where the salt CLI scripts can be '
+              'found. Defaults to the directory name of the python executable '
+              'running py.test')
+    )
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_report_header(config, startdir):
+    '''
+    return a string to be displayed as header info for terminal reporting.
+    '''
+    # Store a reference to where the base directory of the project is
+    config.startdir = startdir
+
+
+@pytest.fixture(scope='session')
+def python_executable_path():
+    '''
+    return the python executable path
+    '''
+    return sys.executable
+
+
+@pytest.fixture(scope='session')
+def cli_bin_dir(request, python_executable_path):
+    '''
+    Return the path to the CLI script directory to use
+    '''
+    # Default to the directory of the current python executable
+    return os.path.dirname(python_executable_path)
+
+
+@pytest.fixture(scope='session')
+def _cli_bin_dir(request, cli_bin_dir):
+    '''
+    Return the path to the CLI script directory to use
+    '''
+    path = request.config.getoption('cli_bin_dir')
+    if path is not None:
+        # We were passed --cli-bin-dir as a CLI option
+        return path
+
+    # The path was not passed as a CLI option
+    path = request.config.getini('cli_bin_dir')
+    if path:
+        # We were passed cli_bin_dir as a INI option
+        return path
+
+    return _cli_bin_dir
+
+
 @pytest.fixture(scope='session')
 def running_username():
     '''
     Returns the current username
     '''
+    if IS_WINDOWS:
+        return win32api.GetUserName()
     return pwd.getpwuid(os.getuid()).pw_name
 
 
@@ -79,6 +153,70 @@ def salt_minion_id_counter():
     Every call to this fixture increases the counter.
     '''
     return Counter()
+
+
+@pytest.fixture(scope='session')
+def cli_master_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-master'
+
+
+@pytest.fixture(scope='session')
+def cli_minion_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-minion'
+
+
+@pytest.fixture(scope='session')
+def cli_salt_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt'
+
+
+@pytest.fixture(scope='session')
+def cli_run_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-run'
+
+
+@pytest.fixture(scope='session')
+def cli_key_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-key'
+
+
+@pytest.fixture(scope='session')
+def cli_call_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-call'
+
+
+@pytest.fixture(scope='session')
+def cli_syndic_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-syndic'
+
+
+@pytest.fixture(scope='session')
+def cli_ssh_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-ssh'
 
 
 @pytest.fixture
@@ -404,7 +542,8 @@ def session_master_config(session_root_dir,
                           [session_base_env_pillar_tree_root_dir.strpath],
                           [session_prod_env_pillar_tree_root_dir.strpath],
                           running_username,
-                          salt_log_port)
+                          salt_log_port,
+                          master_log_prefix)
 
 
 def _minion_config(root_dir,
@@ -537,3 +676,275 @@ def session_minion_config(session_root_dir,
                           session_minion_id,
                           running_username,
                           salt_log_port)
+
+
+@pytest.fixture
+def salt_ssh_log_prefix(sshd_port):
+    return 'salt-ssh/{0}'.format(sshd_port)
+
+
+@pytest.fixture(scope='session')
+def session_salt_ssh_log_prefix(session_sshd_port):
+    return 'salt-ssh/{0}'.format(session_sshd_port)
+
+
+@pytest.fixture
+def ssh_client_key(ssh_config_dir):
+    '''
+    The ssh client key
+    '''
+    return _generate_ssh_key(ssh_config_dir.join('test_key').realpath().strpath)
+
+
+@pytest.fixture(scope='session')
+def session_ssh_client_key(session_ssh_config_dir):
+    '''
+    The ssh client key
+    '''
+    return _generate_ssh_key(session_ssh_config_dir.join('test_key').realpath().strpath)
+
+
+def _sshd_config_lines(sshd_port):
+    '''
+    Return a list of lines which will make the sshd_config file
+    '''
+    return [
+        'Port {0}'.format(sshd_port),
+        'ListenAddress 127.0.0.1',
+        'Protocol 2',
+        'UsePrivilegeSeparation yes',
+        '# Turn strict modes off so that we can operate in /tmp',
+        'StrictModes no',
+        '# Lifetime and size of ephemeral version 1 server key',
+        'KeyRegenerationInterval 3600',
+        'ServerKeyBits 1024',
+        '# Logging',
+        'SyslogFacility AUTH',
+        'LogLevel INFO',
+        '# Authentication:',
+        'LoginGraceTime 120',
+        'PermitRootLogin without-password',
+        'StrictModes yes',
+        'RSAAuthentication yes',
+        'PubkeyAuthentication yes',
+        '#AuthorizedKeysFile	%h/.ssh/authorized_keys',
+        '#AuthorizedKeysFile	key_test.pub',
+        '# Don\'t read the user\'s ~/.rhosts and ~/.shosts files',
+        'IgnoreRhosts yes',
+        '# For this to work you will also need host keys in /etc/ssh_known_hosts',
+        'RhostsRSAAuthentication no',
+        '# similar for protocol version 2',
+        'HostbasedAuthentication no',
+        '#IgnoreUserKnownHosts yes',
+        '# To enable empty passwords, change to yes (NOT RECOMMENDED)',
+        'PermitEmptyPasswords no',
+        '# Change to yes to enable challenge-response passwords (beware issues with',
+        '# some PAM modules and threads)',
+        'ChallengeResponseAuthentication no',
+        '# Change to no to disable tunnelled clear text passwords',
+        'PasswordAuthentication no',
+        'X11Forwarding no',
+        'X11DisplayOffset 10',
+        'PrintMotd no',
+        'PrintLastLog yes',
+        'TCPKeepAlive yes',
+        '#UseLogin no',
+        'AcceptEnv LANG LC_*',
+        'Subsystem sftp /usr/lib/openssh/sftp-server',
+        '#UsePAM yes',
+    ]
+
+
+@pytest.fixture
+def sshd_config_lines(sshd_port):
+    '''
+    Return a list of lines which will make the sshd_config file
+    '''
+    return _sshd_config_lines(sshd_port)
+
+
+@pytest.fixture(scope='session')
+def session_sshd_config_lines(session_sshd_port):
+    '''
+    Return a list of lines which will make the sshd_config file
+    '''
+    return _sshd_config_lines(session_sshd_port)
+
+
+@pytest.fixture
+def write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
+    '''
+    This fixture will write the necessary configuration to run an SSHD server to be used in tests
+    '''
+    return _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key)
+
+
+@pytest.fixture(scope='session')
+def session_write_sshd_config(session_sshd_config_dir, session_sshd_config_lines, session_ssh_client_key):
+    '''
+    This fixture will write the necessary configuration to run an SSHD server to be used in tests
+    '''
+    return _write_sshd_config(session_sshd_config_dir, session_sshd_config_lines, session_ssh_client_key)
+
+
+@pytest.fixture
+def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
+    '''
+    This fixture will write the necessary configuration to run an SSHD server to be used in tests
+    '''
+    sshd = salt.utils.which('sshd')
+
+    if not sshd:
+        pytest.skip('"sshd" not found.')
+
+    # Generate server key
+    server_key_dir = sshd_config_dir.realpath().strpath
+    server_dsa_key_file = os.path.join(server_key_dir, 'ssh_host_dsa_key')
+    server_ecdsa_key_file = os.path.join(server_key_dir, 'ssh_host_ecdsa_key')
+    server_ed25519_key_file = os.path.join(server_key_dir, 'ssh_host_ed25519_key')
+
+    _generate_ssh_key(server_dsa_key_file, 'dsa', 1024)
+    _generate_ssh_key(server_ecdsa_key_file, 'ecdsa', 521)
+    _generate_ssh_key(server_ed25519_key_file, 'ed25519', 521)
+
+    sshd_config = sshd_config_lines[:]
+    sshd_config.append('AuthorizedKeysFile {0}.pub'.format(ssh_client_key))
+    sshd_config.append('HostKey {0}'.format(server_dsa_key_file))
+    sshd_config.append('HostKey {0}'.format(server_ecdsa_key_file))
+    sshd_config.append('HostKey {0}'.format(server_ed25519_key_file))
+
+    with salt.utils.fopen(sshd_config_dir.join('sshd_config').realpath().strpath, 'w') as wfh:
+        wfh.write('\n'.join(sshd_config))
+
+
+@pytest.fixture
+def sshd_server_log_prefix(sshd_port):
+    '''
+    The log prefix to use for the sshd server fixture
+    '''
+    return 'sshd-server/{0}'.format(sshd_port)
+
+
+@pytest.fixture(scope='session')
+def session_sshd_server_log_prefix(session_sshd_port):
+    '''
+    The log prefix to use for the sshd server fixture
+    '''
+    return 'session-sshd-server/{0}'.format(session_sshd_port)
+
+
+def _generate_ssh_key(key_path, key_type='ecdsa', key_size=521):
+    '''
+    Generate an SSH key
+    '''
+    log.debug('Generating ssh key(type: %s; size: %d; path: %s;)', key_type, key_size, key_path)
+    keygen = salt.utils.which('ssh-keygen')
+    if not keygen:
+        pytest.skip('"ssh-keygen" not found')
+
+    keygen_process = subprocess.Popen(
+        [
+            keygen,
+            '-t', key_type,
+            '-b', str(key_size),
+            '-C', '"$(whoami)@$(hostname)-$(date -I)"',
+            '-f', os.path.basename(key_path),
+            '-P', ''
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        close_fds=True,
+        cwd=os.path.dirname(key_path)
+    )
+    _, keygen_err = keygen_process.communicate()
+    if keygen_err:
+        pytest.skip(
+            'ssh-keygen had errors generating {0}({1}:{2}): {3}'.format(
+                os.path.basename(key_path),
+                key_type,
+                key_size,
+                keygen_err
+            )
+        )
+    return key_path
+
+
+@pytest.fixture
+def roster_config_file(conf_dir):
+    '''
+    Returns the path to the salt-ssh roster configuration file
+    '''
+    return conf_dir.join('roster').realpath().strpath
+
+
+@pytest.fixture(scope='session')
+def session_roster_config_file(session_conf_dir):
+    '''
+    Returns the path to the salt-ssh roster configuration file
+    '''
+    return session_conf_dir.join('roster').realpath().strpath
+
+
+@pytest.fixture
+def roster_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt-ssh roster
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture(scope='session')
+def session_roster_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt-ssh roster
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+def _roster_config(config_file, config, config_overrides):
+    if config_overrides:
+        config.update(config_overrides)
+
+    with salt.utils.fopen(config_file, 'w') as wfh:
+        wfh.write(yamlserialize.serialize(config))
+    return config
+
+
+@pytest.fixture
+def roster_config(roster_config_file,
+                  roster_config_overrides,
+                  running_username,
+                  ssh_client_key,
+                  master_config,
+                  sshd_port):
+    config = {
+        'localhost': {
+            'host': '127.0.0.1',
+            'port': sshd_port,
+            'user': running_username,
+            'priv': ssh_client_key
+        }
+    }
+    return _roster_config(roster_config_file, config, roster_config_overrides)
+
+
+@pytest.fixture(scope='session')
+def session_roster_config(session_roster_config_file,
+                          session_roster_config_overrides,
+                          running_username,
+                          session_ssh_client_key,
+                          session_sshd_port,
+                          session_master_config):
+    config = {
+        'localhost': {
+            'host': '127.0.0.1',
+            'port': session_sshd_port,
+            'user': running_username,
+            'priv': session_ssh_client_key
+        }
+    }
+    return _roster_config(session_roster_config_file, config, session_roster_config_overrides)

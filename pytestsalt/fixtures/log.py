@@ -54,12 +54,14 @@ class ThreadedSocketServer(ThreadingMixIn, socketserver.TCPServer):
 
     def server_activate(self):
         self.shutting_down = threading.Event()
-        super(ThreadedSocketServer, self).server_activate()
+        socketserver.TCPServer.server_activate(self)
+        #super(ThreadedSocketServer, self).server_activate()
 
 
     def server_close(self):
         self.shutting_down.set()
-        super(ThreadedSocketServer, self).server_close()
+        socketserver.TCPServer.server_close(self)
+        #super(ThreadedSocketServer, self).server_close()
 
 
 class SocketServerRequestHandler(socketserver.StreamRequestHandler):

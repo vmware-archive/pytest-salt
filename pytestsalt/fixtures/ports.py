@@ -91,3 +91,19 @@ def salt_log_port():
     Returns an unused localhost port for the pytest logging manager
     '''
     return get_unused_localhost_port()
+
+
+@pytest.fixture
+def sshd_port():
+    '''
+    Returns an unused localhost port to run an sshd server
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_sshd_port():
+    '''
+    Returns an unused localhost port to run a session scoped sshd server
+    '''
+    return get_unused_localhost_port()
