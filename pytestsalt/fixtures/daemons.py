@@ -33,16 +33,14 @@ try:
 except ImportError:
     # Use the standard library, slower, json module
     import json
-import salt.ext.six as six
 import pytest
 import psutil
 from tornado import gen
 from tornado import ioloop
-from tornado import concurrent
-from tornado.process import Subprocess
 
 # Import salt libs
 #import salt
+import salt.ext.six as six
 import salt.utils as salt_utils
 import salt.utils.nb_popen as nb_popen
 from salt.utils.process import SignalHandlingMultiprocessingProcess
@@ -114,15 +112,16 @@ def terminate_child_processes(pid):
 
 @pytest.yield_fixture(scope='session')
 def session_io_loop():
-    """Create an instance of the `tornado.ioloop.IOLoop` for each test case.
-    """
+    '''
+    Create an instance of the `tornado.ioloop.IOLoop` for a test run session.
+    '''
     io_loop = ioloop.IOLoop()
     io_loop.make_current()
 
     yield io_loop
 
     io_loop.clear_current()
-    if (not ioloop.IOLoop.initialized() or io_loop is not ioloop.IOLoop.instance()):
+    if not ioloop.IOLoop.initialized() or io_loop is not ioloop.IOLoop.instance():
         io_loop.close(all_fds=True)
 
 
@@ -682,7 +681,7 @@ def sshd_server(io_loop,
         attempts += 1
         process = SSHD({'port': sshd_port},
                        sshd_config_dir.realpath().strpath,
-                       None,  #salt_master.bin_dir_path,
+                       None,  # bin_dir_path,
                        sshd_server_log_prefix,
                        io_loop,
                        cli_script_name='sshd')
@@ -776,7 +775,7 @@ def session_sshd_server(session_io_loop,
         attempts += 1
         process = SSHD({'port': session_sshd_port},
                        session_sshd_config_dir.realpath().strpath,
-                       None,  #salt_master.bin_dir_path,
+                       None,  # bin_dir_path,
                        session_sshd_server_log_prefix,
                        session_io_loop,
                        cli_script_name='sshd')
