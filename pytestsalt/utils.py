@@ -15,7 +15,13 @@
 from __future__ import absolute_import
 import socket
 
+# Import 3rd party libs
+import pytest
 
+pytest_plugins = ['helpers_namespace']
+
+
+@pytest.helpers.utils.register
 def get_unused_localhost_port():
     '''
     Return a random unused port on localhost
