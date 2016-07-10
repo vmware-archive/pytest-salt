@@ -43,8 +43,10 @@ pytest_plugins = ['helpers_namespace']
 
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
+DEFAULT_SYNDIC_ID = 'pytest-salt-syndic'
 DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
 DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
+DEFAULT_SESSION_SYNDIC_ID = 'pytest-session-salt-syndic'
 
 log = logging.getLogger(__name__)
 
@@ -246,10 +248,18 @@ def minion_id(salt_minion_id_counter):
     return DEFAULT_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
 
+@pytest.fixture
+def syndic_id(salt_syndic_id_counter):
+    '''
+    Returns the syndic id
+    '''
+    return DEFAULT_SESSION_SYNDIC_ID + '-{0}'.format(salt_syndic_id_counter())
+
+
 @pytest.fixture(scope='session')
 def session_master_id(salt_master_id_counter):
     '''
-    Returns the session scope master id
+    Returns the session scoped master id
     '''
     return DEFAULT_SESSION_MASTER_ID + '-{0}'.format(salt_master_id_counter())
 
@@ -257,9 +267,17 @@ def session_master_id(salt_master_id_counter):
 @pytest.fixture(scope='session')
 def session_minion_id(salt_minion_id_counter):
     '''
-    Returns the session scope minion id
+    Returns the session scoped minion id
     '''
     return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+
+
+@pytest.fixture(scope='session')
+def session_syndic_id(salt_syndic_id_counter):
+    '''
+    Returns the session scoped syndic id
+    '''
+    return DEFAULT_SESSION_SYNDIC_ID + '-{0}'.format(salt_syndic_id_counter())
 
 
 @pytest.fixture
