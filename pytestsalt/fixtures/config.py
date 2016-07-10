@@ -39,6 +39,8 @@ IS_WINDOWS = sys.platform.startswith('win')
 if IS_WINDOWS:
     import win32api  # pylint: disable=import-error
 
+pytest_plugins = ['helpers_namespace']
+
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
 DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
@@ -353,7 +355,8 @@ def salt_run_log_prefix(master_id):
     return 'salt-run/{0}'.format(master_id)
 
 
-def _master_config(root_dir,
+@pytest.helpers.salt.config.register
+def apply_master_config(root_dir,
                    config_file,
                    publish_port,
                    return_port,
@@ -392,9 +395,9 @@ def _master_config(root_dir,
                 'test.*'
             ]
         },
-        'log_file': 'logs/master',
+        'log_file': 'logs/master.log',
         'log_level_logfile': 'debug',
-        'key_logfile': 'logs/key',
+        'key_logfile': 'logs/key.log',
         'token_dir': 'tokens',
         'token_file': root_dir.join('ksfjhdgiuebfgnkefvsikhfjdgvkjahcsidk').strpath,
         'file_buffer_size': 8192,
@@ -496,20 +499,20 @@ def master_config(root_dir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
-    return _master_config(root_dir,
-                          master_config_file,
-                          master_publish_port,
-                          master_return_port,
-                          master_engine_port,
-                          master_config_overrides,
-                          master_id,
-                          [base_env_state_tree_root_dir.strpath],
-                          [prod_env_state_tree_root_dir.strpath],
-                          [base_env_pillar_tree_root_dir.strpath],
-                          [prod_env_pillar_tree_root_dir.strpath],
-                          running_username,
-                          salt_log_port,
-                          master_log_prefix)
+    return apply_master_config(root_dir,
+                               master_config_file,
+                               master_publish_port,
+                               master_return_port,
+                               master_engine_port,
+                               master_config_overrides,
+                               master_id,
+                               [base_env_state_tree_root_dir.strpath],
+                               [prod_env_state_tree_root_dir.strpath],
+                               [base_env_pillar_tree_root_dir.strpath],
+                               [prod_env_pillar_tree_root_dir.strpath],
+                               running_username,
+                               salt_log_port,
+                               master_log_prefix)
 
 
 @pytest.fixture(scope='session')
@@ -530,23 +533,24 @@ def session_master_config(session_root_dir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``session_master_config_overrides``
     '''
-    return _master_config(session_root_dir,
-                          session_master_config_file,
-                          session_master_publish_port,
-                          session_master_return_port,
-                          session_master_engine_port,
-                          session_master_config_overrides,
-                          session_master_id,
-                          [session_base_env_state_tree_root_dir.strpath],
-                          [session_prod_env_state_tree_root_dir.strpath],
-                          [session_base_env_pillar_tree_root_dir.strpath],
-                          [session_prod_env_pillar_tree_root_dir.strpath],
-                          running_username,
-                          salt_log_port,
-                          master_log_prefix)
+    return apply_master_config(session_root_dir,
+                               session_master_config_file,
+                               session_master_publish_port,
+                               session_master_return_port,
+                               session_master_engine_port,
+                               session_master_config_overrides,
+                               session_master_id,
+                               [session_base_env_state_tree_root_dir.strpath],
+                               [session_prod_env_state_tree_root_dir.strpath],
+                               [session_base_env_pillar_tree_root_dir.strpath],
+                               [session_prod_env_pillar_tree_root_dir.strpath],
+                               running_username,
+                               salt_log_port,
+                               master_log_prefix)
 
 
-def _minion_config(root_dir,
+@pytest.helpers.salt.config.register
+def apply_minion_config(root_dir,
                    config_file,
                    return_port,
                    engine_port,
@@ -644,15 +648,15 @@ def minion_config(root_dir,
     This fixture will return the salt minion configuration options after being
     overrided with any options passed from ``minion_config_overrides``
     '''
-    return _minion_config(root_dir,
-                          minion_config_file,
-                          master_return_port,
-                          minion_engine_port,
-                          minion_config_overrides,
-                          minion_id,
-                          running_username,
-                          salt_log_port,
-                          minion_log_prefix)
+    return apply_minion_config(root_dir,
+                               minion_config_file,
+                               master_return_port,
+                               minion_engine_port,
+                               minion_config_overrides,
+                               minion_id,
+                               running_username,
+                               salt_log_port,
+                               minion_log_prefix)
 
 
 @pytest.fixture(scope='session')
@@ -668,14 +672,14 @@ def session_minion_config(session_root_dir,
     This fixture will return the session salt minion configuration options after being
     overrided with any options passed from ``session_minion_config_overrides``
     '''
-    return _minion_config(session_root_dir,
-                          session_minion_config_file,
-                          session_master_return_port,
-                          session_minion_engine_port,
-                          session_minion_config_overrides,
-                          session_minion_id,
-                          running_username,
-                          salt_log_port)
+    return apply_minion_config(session_root_dir,
+                               session_minion_config_file,
+                               session_master_return_port,
+                               session_minion_engine_port,
+                               session_minion_config_overrides,
+                               session_minion_id,
+                               running_username,
+                               salt_log_port)
 
 
 @pytest.fixture
