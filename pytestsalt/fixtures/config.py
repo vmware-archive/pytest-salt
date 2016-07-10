@@ -158,6 +158,15 @@ def salt_minion_id_counter():
 
 
 @pytest.fixture(scope='session')
+def salt_syndic_id_counter():
+    '''
+    Fixture which return a number to include in the syndic ID.
+    Every call to this fixture increases the counter.
+    '''
+    return Counter()
+
+
+@pytest.fixture(scope='session')
 def cli_master_script_name():
     '''
     Return the CLI script basename
