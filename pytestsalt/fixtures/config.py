@@ -316,6 +316,16 @@ def minion_config_overrides():
     '''
 
 
+@pytest.fixture
+def syndic_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt syndic
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
 @pytest.fixture(scope='session')
 def session_master_config_file(session_conf_dir):
     '''
@@ -346,6 +356,16 @@ def session_master_config_overrides():
 def session_minion_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt minion
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture(scope='session')
+def session_syndic_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt syndic
     configuration options.
 
     It will be applied over the loaded default options
