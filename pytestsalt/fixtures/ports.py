@@ -69,6 +69,14 @@ def minion_engine_port():
     return get_unused_localhost_port()
 
 
+@pytest.fixture
+def syndic_engine_port():
+    '''
+    Returns an unused localhost port for the pytest salt syndic engine
+    '''
+    return get_unused_localhost_port()
+
+
 @pytest.fixture(scope='session')
 def session_master_engine_port():
     '''
@@ -81,6 +89,14 @@ def session_master_engine_port():
 def session_minion_engine_port():
     '''
     Returns an unused localhost port for the pytest session salt minion engine
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_syndic_engine_port():
+    '''
+    Returns an unused localhost port for the pytest session salt syndic engine
     '''
     return get_unused_localhost_port()
 
