@@ -21,7 +21,6 @@ import pytest
 pytest_plugins = ['helpers_namespace']
 
 
-@pytest.helpers.utils.register
 def get_unused_localhost_port():
     '''
     Return a random unused port on localhost
@@ -31,3 +30,8 @@ def get_unused_localhost_port():
     port = usock.getsockname()[1]
     usock.close()
     return port
+
+
+@pytest.mark.trylast
+def pytest_configure(config):
+    pytest.helpers.utils.register(get_unused_localhost_port)

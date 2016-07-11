@@ -557,7 +557,6 @@ def salt_run_log_prefix(master_id):
     return 'salt-run/{0}'.format(master_id)
 
 
-@pytest.helpers.salt.config.register
 def apply_master_config(root_dir,
                         config_file,
                         publish_port,
@@ -836,7 +835,6 @@ def session_master_of_masters_config(session_master_of_masters_root_dir,
                                direct_overrides=direct_overrides)
 
 
-@pytest.helpers.salt.config.register
 def apply_minion_config(root_dir,
                         config_file,
                         return_port,
@@ -1291,3 +1289,9 @@ def session_roster_config(session_roster_config_file,
         }
     }
     return _roster_config(session_roster_config_file, config, session_roster_config_overrides)
+
+
+@pytest.mark.trylast
+def pytest_configure(config):
+    pytest.helpers.utils.register(apply_master_config)
+    pytest.helpers.utils.register(apply_minion_config)
