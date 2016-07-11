@@ -130,7 +130,7 @@ def _cli_bin_dir(request, cli_bin_dir):
         # We were passed cli_bin_dir as a INI option
         return path
 
-    return _cli_bin_dir
+    return cli_bin_dir
 
 
 @pytest.fixture(scope='session')

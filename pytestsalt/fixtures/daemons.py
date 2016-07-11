@@ -474,7 +474,7 @@ def session_salt_master_of_masters(request,
                                    log_server,  # pylint: disable=unused-argument
                                    session_master_of_masters_log_prefix,
                                    cli_master_script_name,
-                                  _cli_bin_dir):
+                                   _cli_bin_dir):
     '''
     Returns a running salt-master
     '''
