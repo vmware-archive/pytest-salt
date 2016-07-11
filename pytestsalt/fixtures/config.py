@@ -249,6 +249,14 @@ def minion_id(salt_minion_id_counter):
 
 
 @pytest.fixture
+def secondary_minion_id(salt_minion_id_counter):
+    '''
+    Returns the secondary minion id
+    '''
+    return DEFAULT_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+
+
+@pytest.fixture
 def syndic_id(salt_syndic_id_counter):
     '''
     Returns the syndic id
@@ -268,6 +276,14 @@ def session_master_id(salt_master_id_counter):
 def session_minion_id(salt_minion_id_counter):
     '''
     Returns the session scoped minion id
+    '''
+    return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+
+
+@pytest.fixture(scope='session')
+def session_secondary_minion_id(salt_minion_id_counter):
+    '''
+    Returns the session scoped secondary minion id
     '''
     return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
 
@@ -297,6 +313,14 @@ def minion_config_file(conf_dir):
 
 
 @pytest.fixture
+def secondary_minion_config_file(secondary_conf_dir):
+    '''
+    Returns the path to the salt secondary minion configuration file
+    '''
+    return secondary_conf_dir.join('minion').realpath().strpath
+
+
+@pytest.fixture
 def master_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt master
@@ -310,6 +334,16 @@ def master_config_overrides():
 def minion_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt minion
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture
+def secondary_minion_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default secondary salt minion
     configuration options.
 
     It will be applied over the loaded default options
@@ -343,6 +377,14 @@ def session_minion_config_file(session_conf_dir):
 
 
 @pytest.fixture(scope='session')
+def session_secondary_minion_config_file(session_secondary_conf_dir):
+    '''
+    Returns the path to the salt secondary minion configuration file
+    '''
+    return session_secondary_conf_dir.join('minion').realpath().strpath
+
+
+@pytest.fixture(scope='session')
 def session_master_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt master
@@ -356,6 +398,16 @@ def session_master_config_overrides():
 def session_minion_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt minion
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture(scope='session')
+def session_secondary_minion_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default secondary salt minion
     configuration options.
 
     It will be applied over the loaded default options
@@ -390,6 +442,16 @@ def minion_log_prefix(minion_id):
 @pytest.fixture(scope='session')
 def session_minion_log_prefix(session_minion_id):
     return 'salt-minion/{0}'.format(session_minion_id)
+
+
+@pytest.fixture
+def secondary_minion_log_prefix(secondary_minion_id):
+    return 'salt-minion/{0}'.format(secondary_minion_id)
+
+
+@pytest.fixture(scope='session')
+def session_secondary_minion_log_prefix(session_secondary_minion_id):
+    return 'salt-minion/{0}'.format(session_secondary_minion_id)
 
 
 @pytest.fixture
@@ -750,6 +812,56 @@ def session_minion_config(session_root_dir,
                                running_username,
                                salt_log_port,
                                session_minion_log_prefix)
+
+
+@pytest.fixture
+def secondary_minion_config(secondary_root_dir,
+                            secondary_minion_config_file,
+                            master_return_port,
+                            secondary_minion_engine_port,
+                            secondary_minion_config_overrides,
+                            secondary_minion_id,
+                            running_username,
+                            salt_log_port,
+                            secondary_minion_log_prefix):
+    '''
+    This fixture will return the secondary salt minion configuration options after being
+    overrided with any options passed from ``secondary_minion_config_overrides``
+    '''
+    return apply_minion_config(secondary_root_dir,
+                               secondary_minion_config_file,
+                               master_return_port,
+                               secondary_minion_engine_port,
+                               secondary_minion_config_overrides,
+                               secondary_minion_id,
+                               running_username,
+                               salt_log_port,
+                               secondary_minion_log_prefix)
+
+
+@pytest.fixture(scope='session')
+def session_secondary_minion_config(session_secondary_root_dir,
+                                    session_secondary_minion_config_file,
+                                    session_master_return_port,
+                                    session_secondary_minion_engine_port,
+                                    session_secondary_minion_config_overrides,
+                                    session_secondary_minion_id,
+                                    running_username,
+                                    salt_log_port,
+                                    session_secondary_minion_log_prefix):
+    '''
+    This fixture will return the session salt minion configuration options after being
+    overrided with any options passed from ``session_secondary_minion_config_overrides``
+    '''
+    return apply_minion_config(session_secondary_root_dir,
+                               session_secondary_minion_config_file,
+                               session_master_return_port,
+                               session_secondary_minion_engine_port,
+                               session_secondary_minion_config_overrides,
+                               session_secondary_minion_id,
+                               running_username,
+                               salt_log_port,
+                               session_secondary_minion_log_prefix)
 
 
 @pytest.fixture

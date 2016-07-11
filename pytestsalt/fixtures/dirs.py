@@ -24,7 +24,9 @@ pytest_plugins = ('tempdir', 'catchlog')  # pylint: disable=invalid-name
 log = logging.getLogger(__name__)
 
 ROOT_DIR = 'root'
+SECONDARY_ROOT = 'secondary-root'
 SESSION_ROOT_DIR = 'session-root'
+SESSION_SECONDARY_ROOT_DIR = 'session-secondary-root'
 
 
 @pytest.fixture
@@ -35,12 +37,28 @@ def root_dir(tempdir):
     return tempdir.mkdir(ROOT_DIR)
 
 
+@pytest.fixture
+def secondary_root_dir(tempdir):
+    '''
+    Return the function scoped salt secondary root dir
+    '''
+    return tempdir.mkdir(SECONDARY_ROOT_DIR)
+
+
 @pytest.fixture(scope='session')
 def session_root_dir(tempdir):
     '''
     Return the session scoped salt root dir
     '''
     return tempdir.mkdir(SESSION_ROOT_DIR)
+
+
+@pytest.fixture(scope='session')
+def session_secondary_root_dir(tempdir):
+    '''
+    Return the session scoped salt secondary root dir
+    '''
+    return tempdir.mkdir(SESSION_SECONDARY_ROOT_DIR)
 
 
 @pytest.fixture
@@ -50,6 +68,17 @@ def conf_dir(root_dir):
     Creates the directory if it does not yet exist.
     '''
     dirname = root_dir.join('conf')
+    dirname.ensure(dir=True)
+    return dirname
+
+
+@pytest.fixture
+def secondary_conf_dir(secondary_root_dir):
+    '''
+    Fixture which returns the salt secondary configuration directory path.
+    Creates the directory if it does not yet exist.
+    '''
+    dirname = secondary_root_dir.join('conf')
     dirname.ensure(dir=True)
     return dirname
 
@@ -72,6 +101,17 @@ def minion_config_includes_dir(conf_dir):
     Creates the directory if it does not yet exist.
     '''
     dirname = conf_dir.join('minion.d')
+    dirname.ensure(dir=True)
+    return dirname
+
+
+@pytest.fixture
+def secondary_minion_config_includes_dir(secondary_conf_dir):
+    '''
+    Fixture which returns the salt secondary minion configuration includes directory path.
+    Creates the directory if it does not yet exist.
+    '''
+    dirname = secondary_conf_dir.join('minion.d')
     dirname.ensure(dir=True)
     return dirname
 
@@ -165,6 +205,17 @@ def session_conf_dir(session_root_dir):
 
 
 @pytest.fixture(scope='session')
+def session_secondary_conf_dir(session_secondary_root_dir):
+    '''
+    Fixture which returns the salt secondary configuration directory path.
+    Creates the directory if it does not yet exist.
+    '''
+    dirname = session_secondary_root_dir.join('conf')
+    dirname.ensure(dir=True)
+    return dirname
+
+
+@pytest.fixture(scope='session')
 def session_master_config_includes_dir(session_conf_dir):
     '''
     Fixture which returns the salt master configuration includes directory path.
@@ -182,6 +233,17 @@ def session_minion_config_includes_dir(session_conf_dir):
     Creates the directory if it does not yet exist.
     '''
     dirname = session_conf_dir.join('minion.d')
+    dirname.ensure(dir=True)
+    return dirname
+
+
+@pytest.fixture(scope='session')
+def session_secondary_minion_config_includes_dir(session_secondary_conf_dir):
+    '''
+    Fixture which returns the salt secondary minion configuration includes directory path.
+    Creates the directory if it does not yet exist.
+    '''
+    dirname = session_secondary_conf_dir.join('minion.d')
     dirname.ensure(dir=True)
     return dirname
 
