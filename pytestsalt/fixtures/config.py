@@ -578,6 +578,7 @@ def apply_master_config(root_dir,
     '''
     default_options = {
         'id': master_id,
+        'interface': '127.0.0.1',
         'root_dir': root_dir.strpath,
         'publish_port': publish_port,
         'ret_port': return_port,
@@ -850,6 +851,7 @@ def apply_minion_config(root_dir,
     '''
     default_options = {
         'root_dir': root_dir.strpath,
+        'interface': '127.0.0.1',
         'master': 'localhost',
         'master_port': return_port,
         'id': minion_id,
