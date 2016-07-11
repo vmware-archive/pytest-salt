@@ -629,6 +629,102 @@ def salt_minion(salt_master,
     log.info('[%s] pytest salt-minion(%s) stopped', minion_log_prefix, minion_id)
 
 
+@pytest.yield_fixture(scope='session')
+def session_salt_minion_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-minion and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-minion
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_minion_after_start(salt_minion):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-minion and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_minion(session_salt_master,
+                        session_minion_id,
+                        session_minion_config,
+                        session_salt_minion_before_start,  # pylint: disable=unused-argument
+                        session_minion_log_prefix,
+                        session_salt_run,
+                        cli_minion_script_name,
+                        log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a running salt-minion
+    '''
+    log.info('[%s] Starting pytest salt-minion(%s)', session_minion_log_prefix, session_minion_id)
+    attempts = 0
+    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
+        attempts += 1
+        minion_process = SaltMinion(session_minion_config,
+                                    session_salt_master.config_dir,
+                                    session_salt_master.bin_dir_path,
+                                    session_minion_log_prefix,
+                                    session_salt_master.io_loop,
+                                    salt_run=session_salt_run,
+                                    cli_script_name=cli_minion_script_name)
+        minion_process.start()
+        if minion_process.is_alive():
+            try:
+                connectable = minion_process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = minion_process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        minion_process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest salt-minion({0}) has failed to confirm '
+                                'running status after {1} attempts'.format(session_minion_id, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception('[%s] %s', session_minion_log_prefix, exc, exc_info=True)
+                minion_process.terminate()
+                if attempts >= 3:
+                    pytest.xfail(str(exc))
+                continue
+            log.info(
+                '[%s] The pytest salt-minion(%s) is running and accepting commands '
+                'after %d attempts',
+                session_minion_log_prefix,
+                session_minion_id,
+                attempts
+            )
+            yield minion_process
+            break
+        else:
+            minion_process.terminate()
+            continue
+    else:
+        pytest.xfail(
+            'The pytest salt-minion({0}) has failed to start after {1} attempts'.format(
+                session_minion_id,
+                attempts-1
+            )
+        )
+    log.info('[%s] Stopping pytest salt-minion(%s)', session_minion_log_prefix, session_minion_id)
+    minion_process.terminate()
+    log.info('[%s] pytest salt-minion(%s) stopped', session_minion_log_prefix, session_minion_id)
+
+
 @pytest.yield_fixture
 def salt_before_start():
     '''
