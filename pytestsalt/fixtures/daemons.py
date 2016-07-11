@@ -339,6 +339,201 @@ def session_salt_master(request,
 
 
 @pytest.yield_fixture
+def salt_master_of_masters_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-master and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-master
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_master_of_masters_after_start(salt_master_of_masters):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-master and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_master_of_masters(request,
+                           master_of_masters_conf_dir,
+                           master_of_masters_id,
+                           master_of_masters_config,
+                           salt_master_of_masters_before_start,  # pylint: disable=unused-argument
+                           io_loop,
+                           log_server,  # pylint: disable=unused-argument
+                           master_of_masters_log_prefix,
+                           cli_master_script_name,
+                           _cli_bin_dir):
+    '''
+    Returns a running salt-master
+    '''
+    log.info('[%s] Starting pytest salt-master(%s)', master_of_masters_log_prefix, master_of_masters_id)
+    attempts = 0
+    while attempts <= 3:
+        attempts += 1
+        master_process = SaltMaster(master_of_masters_config,
+                                    master_of_masters_conf_dir.strpath,
+                                    _cli_bin_dir,
+                                    master_of_masters_log_prefix,
+                                    io_loop,
+                                    cli_script_name=cli_master_script_name)
+        master_process.start()
+        if master_process.is_alive():
+            try:
+                connectable = master_process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = master_process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        master_process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest salt-master({0}) has failed to confirm running status '
+                                'after {1} attempts'.format(master_of_masters_id, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception('[%s]: %s', master_of_masters_log_prefix, exc, exc_info=True)
+                master_process.terminate()
+                if attempts >= 3:
+                    pytest.xfail(str(exc))
+                continue
+            log.info(
+                '[%s] The pytest salt-master(%s) is running and accepting connections '
+                'after %d attempts',
+                master_of_masters_log_prefix,
+                master_of_masters_id,
+                attempts
+            )
+            yield master_process
+            break
+        else:
+            master_process.terminate()
+            continue
+    else:
+        pytest.xfail(
+            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
+                master_of_masters_id, attempts-1
+            )
+        )
+    log.info('[%s] Stopping pytest salt-master(%s)', master_of_masters_log_prefix, master_of_masters_id)
+    master_process.terminate()
+    log.info('[%s] Pytest salt-master(%s) stopped', master_of_masters_log_prefix, master_of_masters_id)
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_master_of_masters_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-master and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-master
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_master_of_masters_after_start(session_salt_master_of_masters):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-master and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_master_of_masters(request,
+                                   session_master_of_masters_conf_dir,
+                                   session_master_of_masters_id,
+                                   session_master_of_masters_config,
+                                   session_salt_master_of_masters_before_start,  # pylint: disable=unused-argument
+                                   session_io_loop,
+                                   log_server,  # pylint: disable=unused-argument
+                                   session_master_of_masters_log_prefix,
+                                   cli_master_script_name,
+                                  _cli_bin_dir):
+    '''
+    Returns a running salt-master
+    '''
+    log.info('[%s] Starting pytest salt-master(%s)',
+             session_master_of_masters_log_prefix, session_master_of_masters_id)
+    attempts = 0
+    while attempts <= 3:
+        attempts += 1
+        master_process = SaltMaster(session_master_of_masters_config,
+                                    session_master_of_masters_conf_dir.strpath,
+                                    _cli_bin_dir,
+                                    session_master_of_masters_log_prefix,
+                                    session_io_loop,
+                                    cli_script_name=cli_master_script_name)
+        master_process.start()
+        if master_process.is_alive():
+            try:
+                connectable = master_process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = master_process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        master_process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest salt-master({0}) has failed to confirm running status '
+                                'after {1} attempts'.format(session_master_of_masters_id, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception('[%s]: %s', session_master_of_masters_log_prefix, exc, exc_info=True)
+                master_process.terminate()
+                if attempts >= 3:
+                    pytest.xfail(str(exc))
+                continue
+            log.info(
+                '[%s] The pytest salt-master(%s) is running and accepting connections '
+                'after %d attempts',
+                session_master_of_masters_log_prefix,
+                session_master_of_masters_id,
+                attempts
+            )
+            yield master_process
+            break
+        else:
+            master_process.terminate()
+            continue
+    else:
+        pytest.xfail(
+            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
+                session_master_of_masters_id, attempts-1
+            )
+        )
+    log.info('[%s] Stopping pytest salt-master(%s)',
+             session_master_of_masters_log_prefix, session_master_of_masters_id)
+    master_process.terminate()
+    log.info('[%s] Pytest salt-master(%s) stopped',
+             session_master_of_masters_log_prefix, session_master_of_masters_id)
+
+
+@pytest.yield_fixture
 def salt_minion_before_start():
     '''
     This fixture should be overridden if you need to do

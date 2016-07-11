@@ -62,6 +62,46 @@ def master_engine_port():
 
 
 @pytest.fixture
+def master_of_masters_publish_port():
+    '''
+    Returns an unused localhost port for the master publish interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def master_of_masters_return_port():
+    '''
+    Returns an unused localhost port for the master return interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_publish_port():
+    '''
+    Returns an unused localhost port for the master publish interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_return_port():
+    '''
+    Returns an unused localhost port for the master return interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def master_of_masters_engine_port():
+    '''
+    Returns an unused localhost port for the pytest salt master engine
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
 def minion_engine_port():
     '''
     Returns an unused localhost port for the pytest salt minion engine
@@ -87,6 +127,14 @@ def syndic_engine_port():
 
 @pytest.fixture(scope='session')
 def session_master_engine_port():
+    '''
+    Returns an unused localhost port for the pytest session salt master engine
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_engine_port():
     '''
     Returns an unused localhost port for the pytest session salt master engine
     '''

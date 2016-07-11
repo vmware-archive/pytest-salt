@@ -41,9 +41,11 @@ if IS_WINDOWS:
 
 pytest_plugins = ['helpers_namespace']
 
+DEFAULT_MOM_ID = 'pytest-salt-mom'
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
 DEFAULT_SYNDIC_ID = 'pytest-salt-syndic'
+DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-mom'
 DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
 DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
 DEFAULT_SESSION_SYNDIC_ID = 'pytest-session-salt-syndic'
@@ -151,6 +153,15 @@ def salt_master_id_counter():
 
 
 @pytest.fixture(scope='session')
+def salt_master_of_masters_id_counter():
+    '''
+    Fixture which return a number to include in the master ID.
+    Every call to this fixture increases the counter.
+    '''
+    return Counter()
+
+
+@pytest.fixture(scope='session')
 def salt_minion_id_counter():
     '''
     Fixture which return a number to include in the minion ID.
@@ -233,6 +244,14 @@ def cli_ssh_script_name():
 
 
 @pytest.fixture
+def master_of_masters_id(salt_master_of_masters_id_counter):
+    '''
+    Returns the master of masters id
+    '''
+    return DEFAULT_MOM_ID + '-{0}'.format(salt_master_of_masters_id_counter())
+
+
+@pytest.fixture
 def master_id(salt_master_id_counter):
     '''
     Returns the master id
@@ -262,6 +281,14 @@ def syndic_id(salt_syndic_id_counter):
     Returns the syndic id
     '''
     return DEFAULT_SESSION_SYNDIC_ID + '-{0}'.format(salt_syndic_id_counter())
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_id(salt_master_of_masters_id_counter):
+    '''
+    Returns the master of masters id
+    '''
+    return DEFAULT_MOM_ID + '-{0}'.format(salt_master_of_masters_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -305,6 +332,14 @@ def master_config_file(conf_dir):
 
 
 @pytest.fixture
+def master_of_masters_config_file(master_of_masters_conf_dir):
+    '''
+    Returns the path to the salt master configuration file
+    '''
+    return master_of_masters_conf_dir.join('master').realpath().strpath
+
+
+@pytest.fixture
 def minion_config_file(conf_dir):
     '''
     Returns the path to the salt minion configuration file
@@ -322,6 +357,16 @@ def secondary_minion_config_file(secondary_conf_dir):
 
 @pytest.fixture
 def master_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt master
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture
+def master_of_masters_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt master
     configuration options.
@@ -369,6 +414,14 @@ def session_master_config_file(session_conf_dir):
 
 
 @pytest.fixture(scope='session')
+def session_master_of_masters_config_file(session_master_of_masters_conf_dir):
+    '''
+    Returns the path to the salt master configuration file
+    '''
+    return session_master_of_masters_conf_dir.join('master').realpath().strpath
+
+
+@pytest.fixture(scope='session')
 def session_minion_config_file(session_conf_dir):
     '''
     Returns the path to the salt minion configuration file
@@ -386,6 +439,16 @@ def session_secondary_minion_config_file(session_secondary_conf_dir):
 
 @pytest.fixture(scope='session')
 def session_master_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt master
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt master
     configuration options.
@@ -432,6 +495,16 @@ def master_log_prefix(master_id):
 @pytest.fixture(scope='session')
 def session_master_log_prefix(session_master_id):
     return 'salt-master/{0}'.format(session_master_id)
+
+
+@pytest.fixture
+def master_of_masters_log_prefix(master_of_masters_id):
+    return 'salt-master/{0}'.format(master_of_masters_id)
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_log_prefix(session_master_of_masters_id):
+    return 'salt-master/{0}'.format(session_master_of_masters_id)
 
 
 @pytest.fixture
@@ -498,7 +571,8 @@ def apply_master_config(root_dir,
                         prod_env_pillar_tree_root_dirs,
                         running_username,
                         salt_log_port,
-                        master_log_prefix):
+                        master_log_prefix,
+                        direct_overrides=None):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
@@ -563,6 +637,11 @@ def apply_master_config(root_dir,
 
     default_options['pytest_log_port'] = salt_log_port
     default_options['pytest_log_prefix'] = '[{0}] '.format(master_log_prefix)
+
+    if direct_overrides is not None:
+        # We've been passed some direct override configuration.
+        # Apply it!
+        dictupdate.update(default_options, direct_overrides, merge_lists=True)
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -677,6 +756,84 @@ def session_master_config(session_root_dir,
                                running_username,
                                salt_log_port,
                                session_master_log_prefix)
+
+
+@pytest.fixture
+def master_of_masters_config(master_of_masters_root_dir,
+                             master_of_masters_config_file,
+                             master_of_masters_publish_port,
+                             master_of_masters_return_port,
+                             master_of_masters_engine_port,
+                             master_of_masters_config_overrides,
+                             master_of_masters_id,
+                             master_of_masters_base_env_state_tree_root_dir,
+                             master_of_masters_prod_env_state_tree_root_dir,
+                             master_of_masters_base_env_pillar_tree_root_dir,
+                             master_of_masters_prod_env_pillar_tree_root_dir,
+                             running_username,
+                             salt_log_port,
+                             master_of_masters_log_prefix):
+    '''
+    This fixture will return the salt master configuration options after being
+    overridden with any options passed from ``master_config_overrides``
+    '''
+    direct_overrides = {
+        'order_masters': True
+    }
+    return apply_master_config(master_of_masters_root_dir,
+                               master_of_masters_config_file,
+                               master_of_masters_publish_port,
+                               master_of_masters_return_port,
+                               master_of_masters_engine_port,
+                               master_of_masters_config_overrides,
+                               master_of_masters_id,
+                               [master_of_masters_base_env_state_tree_root_dir.strpath],
+                               [master_of_masters_prod_env_state_tree_root_dir.strpath],
+                               [master_of_masters_base_env_pillar_tree_root_dir.strpath],
+                               [master_of_masters_prod_env_pillar_tree_root_dir.strpath],
+                               running_username,
+                               salt_log_port,
+                               master_of_masters_log_prefix,
+                               direct_overrides=direct_overrides)
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_config(session_master_of_masters_root_dir,
+                                     session_master_of_masters_config_file,
+                                     session_master_of_masters_publish_port,
+                                     session_master_of_masters_return_port,
+                                     session_master_of_masters_engine_port,
+                                     session_master_of_masters_config_overrides,
+                                     session_master_of_masters_id,
+                                     session_base_env_state_tree_root_dir,
+                                     session_prod_env_state_tree_root_dir,
+                                     session_base_env_pillar_tree_root_dir,
+                                     session_prod_env_pillar_tree_root_dir,
+                                     running_username,
+                                     salt_log_port,
+                                     session_master_of_masters_log_prefix):
+    '''
+    This fixture will return the salt master configuration options after being
+    overridden with any options passed from ``session_master_config_overrides``
+    '''
+    direct_overrides = {
+        'order_masters': True
+    }
+    return apply_master_config(session_master_of_masters_root_dir,
+                               session_master_of_masters_config_file,
+                               session_master_of_masters_publish_port,
+                               session_master_of_masters_return_port,
+                               session_master_of_masters_engine_port,
+                               session_master_of_masters_config_overrides,
+                               session_master_of_masters_id,
+                               [session_base_env_state_tree_root_dir.strpath],
+                               [session_prod_env_state_tree_root_dir.strpath],
+                               [session_base_env_pillar_tree_root_dir.strpath],
+                               [session_prod_env_pillar_tree_root_dir.strpath],
+                               running_username,
+                               salt_log_port,
+                               session_master_of_masters_log_prefix,
+                               direct_overrides=direct_overrides)
 
 
 @pytest.helpers.salt.config.register
