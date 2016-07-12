@@ -542,9 +542,19 @@ def salt_log_prefix(minion_id):
     return 'salt/{0}'.format(minion_id)
 
 
+@pytest.fixture(scope='session')
+def session_salt_log_prefix(session_minion_id):
+    return 'salt/{0}'.format(session_minion_id)
+
+
 @pytest.fixture
 def salt_call_log_prefix(master_id):
     return 'salt-call/{0}'.format(master_id)
+
+
+@pytest.fixture(scope='session')
+def session_salt_call_log_prefix(session_master_id):
+    return 'salt-call/{0}'.format(session_master_id)
 
 
 @pytest.fixture
@@ -552,9 +562,19 @@ def salt_key_log_prefix(master_id):
     return 'salt-key/{0}'.format(master_id)
 
 
+@pytest.fixture(scope='session')
+def session_salt_key_log_prefix(session_master_id):
+    return 'salt-key/{0}'.format(session_master_id)
+
+
 @pytest.fixture
 def salt_run_log_prefix(master_id):
     return 'salt-run/{0}'.format(master_id)
+
+
+@pytest.fixture(scope='session')
+def session_salt_run_log_prefix(session_master_id):
+    return 'salt-run/{0}'.format(session_master_id)
 
 
 def apply_master_config(root_dir,

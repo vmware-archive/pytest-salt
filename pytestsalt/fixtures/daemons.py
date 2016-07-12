@@ -613,6 +613,58 @@ def salt(salt_minion,
     yield salt
 
 
+@pytest.yield_fixture(scope='session')
+def session_salt_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-call and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_after_start(session_salt):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt CLI script and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt(session_salt_minion,
+                 session_minion_config,
+                 _cli_bin_dir,
+                 session_io_loop,
+                 session_conf_dir,
+                 cli_salt_script_name,
+                 session_salt_before_start,  # pylint: disable=unused-argument
+                 log_server,         # pylint: disable=unused-argument
+                 session_salt_log_prefix):   # pylint: disable=unused-argument
+    '''
+    Returns a salt fixture
+    '''
+    salt = Salt(session_minion_config,
+                session_conf_dir,
+                _cli_bin_dir,
+                session_salt_log_prefix,
+                session_io_loop,
+                cli_script_name=cli_salt_script_name)
+    yield salt
+
+
 @pytest.yield_fixture
 def salt_call_before_start():
     '''
@@ -665,11 +717,11 @@ def salt_call(salt_minion,
     yield salt_call
 
 
-@pytest.yield_fixture
-def salt_key_before_start():
+@pytest.yield_fixture(scope='session')
+def session_salt_call_before_start():
     '''
     This fixture should be overridden if you need to do
-    some preparation work before running salt-key and
+    some preparation work before running salt-call and
     clean up after ending it.
     '''
     # Prep routines go here
@@ -680,12 +732,12 @@ def salt_key_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
-def salt_key_after_start(salt_key):
+@pytest.yield_fixture(scope='session')
+def session_salt_call_after_start(session_salt_call):
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work after starting
-    the salt-key and before ending it.
+    the salt-call and before ending it.
     '''
     # Prep routines go here
 
@@ -693,6 +745,58 @@ def salt_key_after_start(salt_key):
     yield
 
     # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_call(session_salt_minion,
+                      session_salt_call_before_start,
+                      session_salt_call_log_prefix,
+                      cli_call_script_name,
+                      session_minion_config,
+                      session_conf_dir,
+                      _cli_bin_dir,
+                      session_io_loop,
+                      log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a salt_call fixture
+    '''
+    salt_call = SaltCall(session_minion_config,
+                         session_conf_dir,
+                         _cli_bin_dir,
+                         session_salt_call_log_prefix,
+                         session_io_loop,
+                         cli_script_name=cli_call_script_name)
+    yield salt_call
+
+
+@pytest.yield_fixture
+def salt_key_before_start():
+    '''
+    this fixture should be overridden if you need to do
+    some preparation work before running salt-key and
+    clean up after ending it.
+    '''
+    # prep routines go here
+
+    # run!
+    yield
+
+    # clean routines go here
+
+
+@pytest.yield_fixture
+def salt_key_after_start(salt_key):
+    '''
+    this fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-key and before ending it.
+    '''
+    # prep routines go here
+
+    # resume test execution
+    yield
+
+    # clean routines go here
 
 
 @pytest.yield_fixture
@@ -706,13 +810,65 @@ def salt_key(salt_master,
              _cli_bin_dir,
              log_server):  # pylint: disable=unused-argument
     '''
-    Returns a salt_key fixture
+    returns a salt_key fixture
     '''
     salt_key = SaltKey(master_config,
                        conf_dir,
                        _cli_bin_dir,
                        salt_key_log_prefix,
                        io_loop,
+                       cli_script_name=cli_key_script_name)
+    yield salt_key
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_key_before_start():
+    '''
+    this fixture should be overridden if you need to do
+    some preparation work before running salt-key and
+    clean up after ending it.
+    '''
+    # prep routines go here
+
+    # run!
+    yield
+
+    # clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_key_after_start(session_salt_key):
+    '''
+    this fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-key and before ending it.
+    '''
+    # prep routines go here
+
+    # resume test execution
+    yield
+
+    # clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_key(session_salt_master,
+                     session_salt_key_before_start,
+                     session_salt_key_log_prefix,
+                     cli_key_script_name,
+                     session_master_config,
+                     session_conf_dir,
+                     session_io_loop,
+                     _cli_bin_dir,
+                     log_server):  # pylint: disable=unused-argument
+    '''
+    returns a salt_key fixture
+    '''
+    salt_key = SaltKey(session_master_config,
+                       session_conf_dir,
+                       _cli_bin_dir,
+                       session_salt_key_log_prefix,
+                       session_io_loop,
                        cli_script_name=cli_key_script_name)
     yield salt_key
 
@@ -765,6 +921,58 @@ def salt_run(salt_master,
                        _cli_bin_dir,
                        salt_run_log_prefix,
                        io_loop,
+                       cli_script_name=cli_run_script_name)
+    yield salt_run
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_run_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation work before running salt-run and
+    clean up after ending it.
+    '''
+    # Prep routines go here
+
+    # Run!
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_run_after_start(session_salt_run):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-run and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_run(session_salt_master,
+                     session_salt_run_before_start,  # pylint: disable=unused-argument
+                     session_salt_run_log_prefix,
+                     cli_run_script_name,
+                     session_conf_dir,
+                     session_io_loop,
+                     session_master_config,
+                     _cli_bin_dir,
+                     log_server):  # pylint: disable=unused-argument
+    '''
+    Returns a salt_run fixture
+    '''
+    salt_run = SaltRun(session_master_config,
+                       session_conf_dir,
+                       _cli_bin_dir,
+                       session_salt_run_log_prefix,
+                       session_io_loop,
                        cli_script_name=cli_run_script_name)
     yield salt_run
 
