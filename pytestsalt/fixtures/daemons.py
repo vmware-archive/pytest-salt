@@ -146,6 +146,79 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     return version
 
 
+def start_daemon(request,
+                 daemon_name=None,
+                 daemon_id=None,
+                 daemon_log_prefix=None,
+                 daemon_cli_script_name=None,
+                 daemon_config=None,
+                 daemon_config_dir=None,
+                 daemon_class=None,
+                 bin_dir_path=None,
+                 io_loop=None,
+                 salt_run=None):
+    '''
+    Returns a running salt daemon
+    '''
+    log.info('[%s] Starting pytest %s(%s)', daemon_name, daemon_log_prefix, daemon_id)
+    attempts = 0
+    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
+        attempts += 1
+        process = daemon_class(daemon_config,
+                               daemon_config_dir,
+                               bin_dir_path,
+                               daemon_log_prefix,
+                               io_loop,
+                               cli_script_name=daemon_cli_script_name,
+                               salt_run=salt_run)
+        process.start()
+        if process.is_alive():
+            try:
+                connectable = process.wait_until_running(timeout=10)
+                if connectable is False:
+                    connectable = process.wait_until_running(timeout=5)
+                    if connectable is False:
+                        process.terminate()
+                        if attempts >= 3:
+                            pytest.xfail(
+                                'The pytest {0}({1}) has failed to confirm running status '
+                                'after {2} attempts'.format(daemon_name, daemon_id, attempts))
+                        continue
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
+                process.terminate()
+                if attempts >= 3:
+                    pytest.xfail(str(exc))
+                continue
+            log.info(
+                '[%s] The pytest %s(%s) is running and accepting commands '
+                'after %d attempts',
+                daemon_log_prefix,
+                daemon_name,
+                daemon_id,
+                attempts
+            )
+
+            def stop_daemon():
+                log.info('[%s] Stopping pytest %s(%s)', daemon_log_prefix, daemon_name, daemon_id)
+                process.terminate()
+                log.info('[%s] pytest %s(%s) stopped', daemon_log_prefix, daemon_name, daemon_id)
+
+            request.addfinalizer(stop_daemon)
+            return process
+        else:
+            process.terminate()
+            continue
+    else:
+        pytest.xfail(
+            'The pytest {0}({1}) has failed to start after {2} attempts'.format(
+                daemon_name,
+                daemon_id,
+                attempts-1
+            )
+        )
+
+
 @pytest.yield_fixture
 def salt_master_before_start():
     '''
@@ -176,7 +249,7 @@ def salt_master_after_start(salt_master):
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_master(request,
                 conf_dir,
                 master_id,
@@ -190,56 +263,16 @@ def salt_master(request,
     '''
     Returns a running salt-master
     '''
-    log.info('[%s] Starting pytest salt-master(%s)', master_log_prefix, master_id)
-    attempts = 0
-    while attempts <= 3:
-        attempts += 1
-        master_process = SaltMaster(master_config,
-                                    conf_dir.strpath,
-                                    _cli_bin_dir,
-                                    master_log_prefix,
-                                    io_loop,
-                                    cli_script_name=cli_master_script_name)
-        master_process.start()
-        if master_process.is_alive():
-            try:
-                connectable = master_process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = master_process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        master_process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest salt-master({0}) has failed to confirm running status '
-                                'after {1} attempts'.format(master_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s]: %s', master_log_prefix, exc, exc_info=True)
-                master_process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest salt-master(%s) is running and accepting connections '
-                'after %d attempts',
-                master_log_prefix,
-                master_id,
-                attempts
-            )
-            yield master_process
-            break
-        else:
-            master_process.terminate()
-            continue
-    else:
-        pytest.xfail(
-            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
-                master_id, attempts-1
-            )
-        )
-    log.info('[%s] Stopping pytest salt-master(%s)', master_log_prefix, master_id)
-    master_process.terminate()
-    log.info('[%s] Pytest salt-master(%s) stopped', master_log_prefix, master_id)
+    return start_daemon(request,
+                        daemon_name='salt-master',
+                        daemon_id=master_id,
+                        daemon_log_prefix=master_log_prefix,
+                        daemon_cli_script_name=cli_master_script_name,
+                        daemon_config=master_config,
+                        daemon_config_dir=conf_dir,
+                        daemon_class=SaltMaster,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=io_loop)
 
 
 @pytest.yield_fixture(scope='session')
@@ -272,7 +305,7 @@ def session_salt_master_after_start(session_salt_master):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_master(request,
                         session_conf_dir,
                         session_master_id,
@@ -286,56 +319,16 @@ def session_salt_master(request,
     '''
     Returns a running salt-master
     '''
-    log.info('[%s] Starting pytest salt-master(%s)', session_master_log_prefix, session_master_id)
-    attempts = 0
-    while attempts <= 3:
-        attempts += 1
-        master_process = SaltMaster(session_master_config,
-                                    session_conf_dir.strpath,
-                                    _cli_bin_dir,
-                                    session_master_log_prefix,
-                                    session_io_loop,
-                                    cli_script_name=cli_master_script_name)
-        master_process.start()
-        if master_process.is_alive():
-            try:
-                connectable = master_process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = master_process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        master_process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest salt-master({0}) has failed to confirm running status '
-                                'after {1} attempts'.format(session_master_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s]: %s', session_master_log_prefix, exc, exc_info=True)
-                master_process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest salt-master(%s) is running and accepting connections '
-                'after %d attempts',
-                session_master_log_prefix,
-                session_master_id,
-                attempts
-            )
-            yield master_process
-            break
-        else:
-            master_process.terminate()
-            continue
-    else:
-        pytest.xfail(
-            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
-                session_master_id, attempts-1
-            )
-        )
-    log.info('[%s] Stopping pytest salt-master(%s)', session_master_log_prefix, session_master_id)
-    master_process.terminate()
-    log.info('[%s] Pytest salt-master(%s) stopped', session_master_log_prefix, session_master_id)
+    return start_daemon(request,
+                        daemon_name='salt-master',
+                        daemon_id=session_master_id,
+                        daemon_log_prefix=session_master_log_prefix,
+                        daemon_cli_script_name=cli_master_script_name,
+                        daemon_config=session_master_config,
+                        daemon_config_dir=session_conf_dir,
+                        daemon_class=SaltMaster,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=session_io_loop)
 
 
 @pytest.yield_fixture
@@ -368,7 +361,7 @@ def salt_master_of_masters_after_start(salt_master_of_masters):
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_master_of_masters(request,
                            master_of_masters_conf_dir,
                            master_of_masters_id,
@@ -382,56 +375,16 @@ def salt_master_of_masters(request,
     '''
     Returns a running salt-master
     '''
-    log.info('[%s] Starting pytest salt-master(%s)', master_of_masters_log_prefix, master_of_masters_id)
-    attempts = 0
-    while attempts <= 3:
-        attempts += 1
-        master_process = SaltMaster(master_of_masters_config,
-                                    master_of_masters_conf_dir.strpath,
-                                    _cli_bin_dir,
-                                    master_of_masters_log_prefix,
-                                    io_loop,
-                                    cli_script_name=cli_master_script_name)
-        master_process.start()
-        if master_process.is_alive():
-            try:
-                connectable = master_process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = master_process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        master_process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest salt-master({0}) has failed to confirm running status '
-                                'after {1} attempts'.format(master_of_masters_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s]: %s', master_of_masters_log_prefix, exc, exc_info=True)
-                master_process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest salt-master(%s) is running and accepting connections '
-                'after %d attempts',
-                master_of_masters_log_prefix,
-                master_of_masters_id,
-                attempts
-            )
-            yield master_process
-            break
-        else:
-            master_process.terminate()
-            continue
-    else:
-        pytest.xfail(
-            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
-                master_of_masters_id, attempts-1
-            )
-        )
-    log.info('[%s] Stopping pytest salt-master(%s)', master_of_masters_log_prefix, master_of_masters_id)
-    master_process.terminate()
-    log.info('[%s] Pytest salt-master(%s) stopped', master_of_masters_log_prefix, master_of_masters_id)
+    return start_daemon(request,
+                        daemon_name='salt-master',
+                        daemon_id=master_of_masters_id,
+                        daemon_log_prefix=master_of_masters_log_prefix,
+                        daemon_cli_script_name=cli_master_script_name,
+                        daemon_config=master_of_masters_config,
+                        daemon_config_dir=master_of_masters_conf_dir,
+                        daemon_class=SaltMaster,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=io_loop)
 
 
 @pytest.yield_fixture(scope='session')
@@ -464,7 +417,7 @@ def session_salt_master_of_masters_after_start(session_salt_master_of_masters):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_master_of_masters(request,
                                    session_master_of_masters_conf_dir,
                                    session_master_of_masters_id,
@@ -478,59 +431,16 @@ def session_salt_master_of_masters(request,
     '''
     Returns a running salt-master
     '''
-    log.info('[%s] Starting pytest salt-master(%s)',
-             session_master_of_masters_log_prefix, session_master_of_masters_id)
-    attempts = 0
-    while attempts <= 3:
-        attempts += 1
-        master_process = SaltMaster(session_master_of_masters_config,
-                                    session_master_of_masters_conf_dir.strpath,
-                                    _cli_bin_dir,
-                                    session_master_of_masters_log_prefix,
-                                    session_io_loop,
-                                    cli_script_name=cli_master_script_name)
-        master_process.start()
-        if master_process.is_alive():
-            try:
-                connectable = master_process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = master_process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        master_process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest salt-master({0}) has failed to confirm running status '
-                                'after {1} attempts'.format(session_master_of_masters_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s]: %s', session_master_of_masters_log_prefix, exc, exc_info=True)
-                master_process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest salt-master(%s) is running and accepting connections '
-                'after %d attempts',
-                session_master_of_masters_log_prefix,
-                session_master_of_masters_id,
-                attempts
-            )
-            yield master_process
-            break
-        else:
-            master_process.terminate()
-            continue
-    else:
-        pytest.xfail(
-            'The pytest salt-master({0}) has failed to start after {1} attempts'.format(
-                session_master_of_masters_id, attempts-1
-            )
-        )
-    log.info('[%s] Stopping pytest salt-master(%s)',
-             session_master_of_masters_log_prefix, session_master_of_masters_id)
-    master_process.terminate()
-    log.info('[%s] Pytest salt-master(%s) stopped',
-             session_master_of_masters_log_prefix, session_master_of_masters_id)
+    return start_daemon(request,
+                        daemon_name='salt-master',
+                        daemon_id=session_master_of_masters_id,
+                        daemon_log_prefix=session_master_of_masters_log_prefix,
+                        daemon_cli_script_name=cli_master_script_name,
+                        daemon_config=session_master_of_masters_config,
+                        daemon_config_dir=session_master_of_masters_conf_dir,
+                        daemon_class=SaltMaster,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=session_io_loop)
 
 
 @pytest.yield_fixture
@@ -563,70 +473,33 @@ def salt_minion_after_start(salt_minion):
     # Clean routines go here
 
 
-@pytest.yield_fixture
-def salt_minion(salt_master,
+@pytest.fixture
+def salt_minion(request,
+                salt_master,
                 minion_id,
                 minion_config,
                 salt_minion_before_start,  # pylint: disable=unused-argument
                 minion_log_prefix,
                 salt_run,
                 cli_minion_script_name,
-                log_server):  # pylint: disable=unused-argument
+                log_server,
+                io_loop,
+                _cli_bin_dir,
+                conf_dir):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
     '''
-    log.info('[%s] Starting pytest salt-minion(%s)', minion_log_prefix, minion_id)
-    attempts = 0
-    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
-        attempts += 1
-        minion_process = SaltMinion(minion_config,
-                                    salt_master.config_dir,
-                                    salt_master.bin_dir_path,
-                                    minion_log_prefix,
-                                    salt_master.io_loop,
-                                    salt_run=salt_run,
-                                    cli_script_name=cli_minion_script_name)
-        minion_process.start()
-        if minion_process.is_alive():
-            try:
-                connectable = minion_process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = minion_process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        minion_process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest salt-minion({0}) has failed to confirm '
-                                'running status after {1} attempts'.format(minion_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s] %s', minion_log_prefix, exc, exc_info=True)
-                minion_process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest salt-minion(%s) is running and accepting commands '
-                'after %d attempts',
-                minion_log_prefix,
-                minion_id,
-                attempts
-            )
-            yield minion_process
-            break
-        else:
-            minion_process.terminate()
-            continue
-    else:
-        pytest.xfail(
-            'The pytest salt-minion({0}) has failed to start after {1} attempts'.format(
-                minion_id,
-                attempts-1
-            )
-        )
-    log.info('[%s] Stopping pytest salt-minion(%s)', minion_log_prefix, minion_id)
-    minion_process.terminate()
-    log.info('[%s] pytest salt-minion(%s) stopped', minion_log_prefix, minion_id)
+    return start_daemon(request,
+                        daemon_name='salt-minion',
+                        daemon_id=minion_id,
+                        daemon_log_prefix=minion_log_prefix,
+                        daemon_cli_script_name=cli_minion_script_name,
+                        daemon_config=minion_config,
+                        daemon_config_dir=conf_dir,
+                        daemon_class=SaltMinion,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=io_loop,
+                        salt_run=salt_run)
 
 
 @pytest.yield_fixture(scope='session')
@@ -659,70 +532,33 @@ def session_salt_minion_after_start(salt_minion):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
-def session_salt_minion(session_salt_master,
+@pytest.fixture(scope='session')
+def session_salt_minion(request,
+                        session_salt_master,
                         session_minion_id,
                         session_minion_config,
                         session_salt_minion_before_start,  # pylint: disable=unused-argument
                         session_minion_log_prefix,
                         session_salt_run,
                         cli_minion_script_name,
-                        log_server):  # pylint: disable=unused-argument
+                        log_server,
+                        _cli_bin_dir,
+                        session_conf_dir,
+                        session_io_loop):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
     '''
-    log.info('[%s] Starting pytest salt-minion(%s)', session_minion_log_prefix, session_minion_id)
-    attempts = 0
-    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
-        attempts += 1
-        minion_process = SaltMinion(session_minion_config,
-                                    session_salt_master.config_dir,
-                                    session_salt_master.bin_dir_path,
-                                    session_minion_log_prefix,
-                                    session_salt_master.io_loop,
-                                    salt_run=session_salt_run,
-                                    cli_script_name=cli_minion_script_name)
-        minion_process.start()
-        if minion_process.is_alive():
-            try:
-                connectable = minion_process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = minion_process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        minion_process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest salt-minion({0}) has failed to confirm '
-                                'running status after {1} attempts'.format(session_minion_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s] %s', session_minion_log_prefix, exc, exc_info=True)
-                minion_process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest salt-minion(%s) is running and accepting commands '
-                'after %d attempts',
-                session_minion_log_prefix,
-                session_minion_id,
-                attempts
-            )
-            yield minion_process
-            break
-        else:
-            minion_process.terminate()
-            continue
-    else:
-        pytest.xfail(
-            'The pytest salt-minion({0}) has failed to start after {1} attempts'.format(
-                session_minion_id,
-                attempts-1
-            )
-        )
-    log.info('[%s] Stopping pytest salt-minion(%s)', session_minion_log_prefix, session_minion_id)
-    minion_process.terminate()
-    log.info('[%s] pytest salt-minion(%s) stopped', session_minion_log_prefix, session_minion_id)
+    return start_daemon(request,
+                        daemon_name='salt-minion',
+                        daemon_id=session_minion_id,
+                        daemon_log_prefix=session_minion_log_prefix,
+                        daemon_cli_script_name=cli_minion_script_name,
+                        daemon_config=session_minion_config,
+                        daemon_config_dir=session_conf_dir,
+                        daemon_class=SaltMinion,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=session_io_loop,
+                        salt_run=session_salt_run)
 
 
 @pytest.yield_fixture
@@ -757,6 +593,10 @@ def salt_after_start(salt):
 
 @pytest.yield_fixture
 def salt(salt_minion,
+         minion_config,
+         _cli_bin_dir,
+         io_loop,
+         conf_dir,
          cli_salt_script_name,
          salt_before_start,  # pylint: disable=unused-argument
          log_server,         # pylint: disable=unused-argument
@@ -764,11 +604,11 @@ def salt(salt_minion,
     '''
     Returns a salt fixture
     '''
-    salt = Salt(salt_minion.config,
-                salt_minion.config_dir,
-                salt_minion.bin_dir_path,
+    salt = Salt(minion_config,
+                conf_dir,
+                _cli_bin_dir,
                 salt_log_prefix,
-                salt_minion.io_loop,
+                io_loop,
                 cli_script_name=cli_salt_script_name)
     yield salt
 
@@ -808,15 +648,19 @@ def salt_call(salt_minion,
               salt_call_before_start,
               salt_call_log_prefix,
               cli_call_script_name,
+              minion_config,
+              conf_dir,
+              _cli_bin_dir,
+              io_loop,
               log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
     '''
-    salt_call = SaltCall(salt_minion.config,
-                         salt_minion.config_dir,
-                         salt_minion.bin_dir_path,
+    salt_call = SaltCall(minion_config,
+                         conf_dir,
+                         _cli_bin_dir,
                          salt_call_log_prefix,
-                         salt_minion.io_loop,
+                         io_loop,
                          cli_script_name=cli_call_script_name)
     yield salt_call
 
@@ -856,15 +700,19 @@ def salt_key(salt_master,
              salt_key_before_start,
              salt_key_log_prefix,
              cli_key_script_name,
+             master_config,
+             conf_dir,
+             io_loop,
+             _cli_bin_dir,
              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_key fixture
     '''
-    salt_key = SaltKey(salt_master.config,
-                       salt_master.config_dir,
-                       salt_master.bin_dir_path,
+    salt_key = SaltKey(master_config,
+                       conf_dir,
+                       _cli_bin_dir,
                        salt_key_log_prefix,
-                       salt_master.io_loop,
+                       io_loop,
                        cli_script_name=cli_key_script_name)
     yield salt_key
 
@@ -904,15 +752,19 @@ def salt_run(salt_master,
              salt_run_before_start,  # pylint: disable=unused-argument
              salt_run_log_prefix,
              cli_run_script_name,
+             conf_dir,
+             io_loop,
+             master_config,
+             _cli_bin_dir,
              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
     '''
-    salt_run = SaltRun(salt_master.config,
-                       salt_master.config_dir,
-                       salt_master.bin_dir_path,
+    salt_run = SaltRun(master_config,
+                       conf_dir,
+                       _cli_bin_dir,
                        salt_run_log_prefix,
-                       salt_master.io_loop,
+                       io_loop,
                        cli_script_name=cli_run_script_name)
     yield salt_run
 
@@ -953,7 +805,7 @@ def salt_ssh(sshd_server,
              io_loop,
              salt_ssh_before_start,  # pylint: disable=unused-argument
              salt_ssh_log_prefix,
-             cli_bin_dir,
+             _cli_bin_dir,
              cli_ssh_script_name,
              roster_config,
              log_server):  # pylint: disable=unused-argument
@@ -961,8 +813,8 @@ def salt_ssh(sshd_server,
     Returns a salt_ssh fixture
     '''
     salt_ssh = SaltSSH(roster_config,
-                       conf_dir.realpath().strpath,
-                       cli_bin_dir,
+                       conf_dir,
+                       _cli_bin_dir,
                        salt_ssh_log_prefix,
                        io_loop,
                        cli_script_name=cli_ssh_script_name)
@@ -1005,7 +857,7 @@ def session_salt_ssh(session_sshd_server,
                      session_io_loop,
                      session_salt_ssh_before_start,  # pylint: disable=unused-argument
                      session_salt_ssh_log_prefix,
-                     cli_bin_dir,
+                     _cli_bin_dir,
                      cli_ssh_script_name,
                      session_roster_config,
                      log_server):  # pylint: disable=unused-argument
@@ -1013,8 +865,8 @@ def session_salt_ssh(session_sshd_server,
     Returns a salt_ssh fixture
     '''
     salt_ssh = SaltSSH(session_roster_config,
-                       session_conf_dir.realpath().strpath,
-                       cli_bin_dir,
+                       session_conf_dir,
+                       _cli_bin_dir,
                        session_salt_ssh_log_prefix,
                        session_io_loop,
                        cli_script_name=cli_ssh_script_name)
@@ -1067,7 +919,7 @@ def sshd_server(io_loop,
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
         process = SSHD({'port': sshd_port},
-                       sshd_config_dir.realpath().strpath,
+                       sshd_config_dir,
                        None,  # bin_dir_path,
                        sshd_server_log_prefix,
                        io_loop,
@@ -1161,7 +1013,7 @@ def session_sshd_server(session_io_loop,
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
         process = SSHD({'port': session_sshd_port},
-                       session_sshd_config_dir.realpath().strpath,
+                       session_sshd_config_dir,
                        None,  # bin_dir_path,
                        session_sshd_server_log_prefix,
                        session_io_loop,
@@ -1225,6 +1077,8 @@ class SaltScriptBase(object):
                  salt_run=None,
                  cli_script_name=None):
         self.config = config
+        if not isinstance(config_dir, str):
+            config_dir = config_dir.realpath().strpath
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self.log_prefix = log_prefix
