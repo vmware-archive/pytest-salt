@@ -792,13 +792,17 @@ def master_of_masters_config(master_of_masters_root_dir,
                              master_of_masters_prod_env_pillar_tree_root_dir,
                              running_username,
                              salt_log_port,
-                             master_of_masters_log_prefix):
+                             master_of_masters_log_prefix,
+                             master_of_masters_tcp_master_workers,
+                             master_of_masters_tcp_master_publish_pull):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
     direct_overrides = {
-        'order_masters': True
+        'order_masters': True,
+        'tcp_master_publish_pull': master_of_masters_tcp_master_publish_pull,
+        'tcp_master_workers': master_of_masters_tcp_master_workers
     }
     return apply_master_config(master_of_masters_root_dir,
                                master_of_masters_config_file,
@@ -831,13 +835,17 @@ def session_master_of_masters_config(session_master_of_masters_root_dir,
                                      session_prod_env_pillar_tree_root_dir,
                                      running_username,
                                      salt_log_port,
-                                     session_master_of_masters_log_prefix):
+                                     session_master_of_masters_log_prefix,
+                                     session_master_of_masters_tcp_master_workers,
+                                     session_master_of_masters_tcp_master_publish_pull):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``session_master_config_overrides``
     '''
     direct_overrides = {
-        'order_masters': True
+        'order_masters': True,
+        'tcp_master_publish_pull': session_master_of_masters_tcp_master_publish_pull,
+        'tcp_master_workers': session_master_of_masters_tcp_master_workers
     }
     return apply_master_config(session_master_of_masters_root_dir,
                                session_master_of_masters_config_file,

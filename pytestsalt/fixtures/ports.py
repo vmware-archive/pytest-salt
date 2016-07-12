@@ -77,6 +77,22 @@ def master_of_masters_return_port():
     return get_unused_localhost_port()
 
 
+@pytest.fixture
+def master_of_masters_tcp_master_publish_pull():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def master_of_masters_tcp_master_workers():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
 @pytest.fixture(scope='session')
 def session_master_of_masters_publish_port():
     '''
@@ -89,6 +105,22 @@ def session_master_of_masters_publish_port():
 def session_master_of_masters_return_port():
     '''
     Returns an unused localhost port for the master return interface
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_tcp_master_publish_pull():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_tcp_master_workers():
+    '''
+    Returns an unused localhost port
     '''
     return get_unused_localhost_port()
 
