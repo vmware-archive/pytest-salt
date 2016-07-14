@@ -79,9 +79,7 @@ class PyTestEngine(object):
     def listen_to_minion_connected_event(self):
         log.info('Listening for minion connected event...')
         minion_start_event_match = 'salt/minion/{0}/start'.format(self.opts['id'])
-        event_bus = salt.utils.event.get_master_event(self.opts,
-                                                      self.opts['sock_dir'],
-                                                      listen=True)
+        event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=True)
         event_bus.subscribe(minion_start_event_match)
         while True:
             event = event_bus.get_event(full=True, no_block=True)

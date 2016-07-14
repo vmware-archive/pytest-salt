@@ -56,6 +56,7 @@ def close_terminal(terminal):
     '''
     # Let's begin the shutdown routines
     if terminal.poll() is None:
+        terminate_child_processes(terminal.pid)
         try:
             terminal.send_signal(signal.SIGKILL)
         except OSError as exc:
@@ -155,8 +156,7 @@ def start_daemon(request,
                  daemon_config_dir=None,
                  daemon_class=None,
                  bin_dir_path=None,
-                 io_loop=None,
-                 salt_run=None):
+                 io_loop=None):
     '''
     Returns a running salt daemon
     '''
@@ -164,13 +164,13 @@ def start_daemon(request,
     attempts = 0
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
-        process = daemon_class(daemon_config,
+        process = daemon_class(request,
+                               daemon_config,
                                daemon_config_dir,
                                bin_dir_path,
                                daemon_log_prefix,
                                io_loop,
-                               cli_script_name=daemon_cli_script_name,
-                               salt_run=salt_run)
+                               cli_script_name=daemon_cli_script_name)
         process.start()
         if process.is_alive():
             try:
@@ -480,7 +480,6 @@ def salt_minion(request,
                 minion_config,
                 salt_minion_before_start,  # pylint: disable=unused-argument
                 minion_log_prefix,
-                salt_run,
                 cli_minion_script_name,
                 log_server,
                 io_loop,
@@ -498,8 +497,7 @@ def salt_minion(request,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
-                        io_loop=io_loop,
-                        salt_run=salt_run)
+                        io_loop=io_loop)
 
 
 @pytest.yield_fixture(scope='session')
@@ -518,7 +516,7 @@ def session_salt_minion_before_start():
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt_minion_after_start(salt_minion):
+def session_salt_minion_after_start(session_salt_minion):
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work after starting
@@ -539,7 +537,6 @@ def session_salt_minion(request,
                         session_minion_config,
                         session_salt_minion_before_start,  # pylint: disable=unused-argument
                         session_minion_log_prefix,
-                        session_salt_run,
                         cli_minion_script_name,
                         log_server,
                         _cli_bin_dir,
@@ -557,8 +554,233 @@ def session_salt_minion(request,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
-                        io_loop=session_io_loop,
-                        salt_run=session_salt_run)
+                        io_loop=session_io_loop)
+
+
+@pytest.yield_fixture
+def secondary_salt_minion_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-minion and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-minion
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def secondary_salt_minion_after_start(secondary_salt_minion):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-minion and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.fixture
+def secondary_salt_minion(request,
+                          salt_master,
+                          secondary_minion_id,
+                          secondary_minion_config,
+                          secondary_salt_minion_before_start,  # pylint: disable=unused-argument
+                          secondary_minion_log_prefix,
+                          cli_minion_script_name,
+                          log_server,
+                          io_loop,
+                          _cli_bin_dir,
+                          secondary_conf_dir):  # pylint: disable=unused-argument
+    '''
+    Returns a running salt-minion
+    '''
+    return start_daemon(request,
+                        daemon_name='salt-minion',
+                        daemon_id=secondary_minion_id,
+                        daemon_log_prefix=secondary_minion_log_prefix,
+                        daemon_cli_script_name=cli_minion_script_name,
+                        daemon_config=secondary_minion_config,
+                        daemon_config_dir=secondary_conf_dir,
+                        daemon_class=SaltMinion,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=io_loop)
+
+
+@pytest.yield_fixture(scope='session')
+def session_secondary_salt_minion_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-minion and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-minion
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_secondary_salt_minion_after_start(session_secondary_salt_minion):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-minion and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.fixture(scope='session')
+def session_secondary_salt_minion(request,
+                                  session_salt_master,
+                                  session_secondary_minion_id,
+                                  session_secondary_minion_config,
+                                  session_secondary_salt_minion_before_start,  # pylint: disable=unused-argument
+                                  session_secondary_minion_log_prefix,
+                                  cli_minion_script_name,
+                                  log_server,
+                                  _cli_bin_dir,
+                                  session_secondary_conf_dir,
+                                  session_io_loop):  # pylint: disable=unused-argument
+    '''
+    Returns a running salt-minion
+    '''
+    return start_daemon(request,
+                        daemon_name='salt-minion',
+                        daemon_id=session_secondary_minion_id,
+                        daemon_log_prefix=session_secondary_minion_log_prefix,
+                        daemon_cli_script_name=cli_minion_script_name,
+                        daemon_config=session_secondary_minion_config,
+                        daemon_config_dir=session_secondary_conf_dir,
+                        daemon_class=SaltMinion,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=session_io_loop)
+
+
+@pytest.yield_fixture
+def salt_syndic_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-syndic and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the daemon
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_syndic_after_start(salt_syndic):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-master and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.fixture
+def salt_syndic(request,
+                syndic_conf_dir,
+                syndic_id,
+                syndic_config,
+                salt_syndic_before_start,  # pylint: disable=unused-argument
+                io_loop,
+                log_server,  # pylint: disable=unused-argument
+                syndic_log_prefix,
+                cli_syndic_script_name,
+                _cli_bin_dir):
+    '''
+    Returns a running salt-syndic
+    '''
+    return start_daemon(request,
+                        daemon_name='salt-syndic',
+                        daemon_id=syndic_id,
+                        daemon_log_prefix=syndic_log_prefix,
+                        daemon_cli_script_name=cli_syndic_script_name,
+                        daemon_config=syndic_config,
+                        daemon_config_dir=syndic_conf_dir,
+                        daemon_class=SaltSyndic,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=io_loop)
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_syndic_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-syndic and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the daemon
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_syndic_after_start(session_salt_syndic):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-master and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.fixture(scope='session')
+def session_salt_syndic(request,
+                        session_syndic_conf_dir,
+                        session_syndic_id,
+                        session_syndic_config,
+                        session_salt_syndic_before_start,  # pylint: disable=unused-argument
+                        session_io_loop,
+                        log_server,  # pylint: disable=unused-argument
+                        session_syndic_log_prefix,
+                        cli_syndic_script_name,
+                        _cli_bin_dir):
+    '''
+    Returns a running salt-syndic
+    '''
+    return start_daemon(request,
+                        daemon_name='salt-syndic',
+                        daemon_id=session_syndic_id,
+                        daemon_log_prefix=session_syndic_log_prefix,
+                        daemon_cli_script_name=cli_syndic_script_name,
+                        daemon_config=session_syndic_config,
+                        daemon_config_dir=session_syndic_conf_dir,
+                        daemon_class=SaltSyndic,
+                        bin_dir_path=_cli_bin_dir,
+                        io_loop=session_io_loop)
 
 
 @pytest.yield_fixture
@@ -592,7 +814,8 @@ def salt_after_start(salt):
 
 
 @pytest.yield_fixture
-def salt(salt_minion,
+def salt(request,
+         salt_minion,
          minion_config,
          _cli_bin_dir,
          io_loop,
@@ -604,7 +827,8 @@ def salt(salt_minion,
     '''
     Returns a salt fixture
     '''
-    salt = Salt(minion_config,
+    salt = Salt(request,
+                minion_config,
                 conf_dir,
                 _cli_bin_dir,
                 salt_log_prefix,
@@ -644,7 +868,8 @@ def session_salt_after_start(session_salt):
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt(session_salt_minion,
+def session_salt(request,
+                 session_salt_minion,
                  session_minion_config,
                  _cli_bin_dir,
                  session_io_loop,
@@ -656,7 +881,8 @@ def session_salt(session_salt_minion,
     '''
     Returns a salt fixture
     '''
-    salt = Salt(session_minion_config,
+    salt = Salt(request,
+                session_minion_config,
                 session_conf_dir,
                 _cli_bin_dir,
                 session_salt_log_prefix,
@@ -696,7 +922,8 @@ def salt_call_after_start(salt_call):
 
 
 @pytest.yield_fixture
-def salt_call(salt_minion,
+def salt_call(request,
+              salt_minion,
               salt_call_before_start,
               salt_call_log_prefix,
               cli_call_script_name,
@@ -708,7 +935,8 @@ def salt_call(salt_minion,
     '''
     Returns a salt_call fixture
     '''
-    salt_call = SaltCall(minion_config,
+    salt_call = SaltCall(request,
+                         minion_config,
                          conf_dir,
                          _cli_bin_dir,
                          salt_call_log_prefix,
@@ -748,7 +976,8 @@ def session_salt_call_after_start(session_salt_call):
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt_call(session_salt_minion,
+def session_salt_call(request,
+                      session_salt_minion,
                       session_salt_call_before_start,
                       session_salt_call_log_prefix,
                       cli_call_script_name,
@@ -760,7 +989,8 @@ def session_salt_call(session_salt_minion,
     '''
     Returns a salt_call fixture
     '''
-    salt_call = SaltCall(session_minion_config,
+    salt_call = SaltCall(request,
+                         session_minion_config,
                          session_conf_dir,
                          _cli_bin_dir,
                          session_salt_call_log_prefix,
@@ -800,7 +1030,8 @@ def salt_key_after_start(salt_key):
 
 
 @pytest.yield_fixture
-def salt_key(salt_master,
+def salt_key(request,
+             salt_master,
              salt_key_before_start,
              salt_key_log_prefix,
              cli_key_script_name,
@@ -812,7 +1043,8 @@ def salt_key(salt_master,
     '''
     returns a salt_key fixture
     '''
-    salt_key = SaltKey(master_config,
+    salt_key = SaltKey(request,
+                       master_config,
                        conf_dir,
                        _cli_bin_dir,
                        salt_key_log_prefix,
@@ -852,7 +1084,8 @@ def session_salt_key_after_start(session_salt_key):
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt_key(session_salt_master,
+def session_salt_key(request,
+                     session_salt_master,
                      session_salt_key_before_start,
                      session_salt_key_log_prefix,
                      cli_key_script_name,
@@ -864,7 +1097,8 @@ def session_salt_key(session_salt_master,
     '''
     returns a salt_key fixture
     '''
-    salt_key = SaltKey(session_master_config,
+    salt_key = SaltKey(request,
+                       session_master_config,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_key_log_prefix,
@@ -904,7 +1138,8 @@ def salt_run_after_start(salt_run):
 
 
 @pytest.yield_fixture
-def salt_run(salt_master,
+def salt_run(request,
+             salt_master,
              salt_run_before_start,  # pylint: disable=unused-argument
              salt_run_log_prefix,
              cli_run_script_name,
@@ -916,7 +1151,8 @@ def salt_run(salt_master,
     '''
     Returns a salt_run fixture
     '''
-    salt_run = SaltRun(master_config,
+    salt_run = SaltRun(request,
+                       master_config,
                        conf_dir,
                        _cli_bin_dir,
                        salt_run_log_prefix,
@@ -956,7 +1192,8 @@ def session_salt_run_after_start(session_salt_run):
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt_run(session_salt_master,
+def session_salt_run(request,
+                     session_salt_master,
                      session_salt_run_before_start,  # pylint: disable=unused-argument
                      session_salt_run_log_prefix,
                      cli_run_script_name,
@@ -968,7 +1205,8 @@ def session_salt_run(session_salt_master,
     '''
     Returns a salt_run fixture
     '''
-    salt_run = SaltRun(session_master_config,
+    salt_run = SaltRun(request,
+                       session_master_config,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_run_log_prefix,
@@ -1008,7 +1246,8 @@ def salt_ssh_after_start():
 
 
 @pytest.yield_fixture
-def salt_ssh(sshd_server,
+def salt_ssh(request,
+             sshd_server,
              conf_dir,
              io_loop,
              salt_ssh_before_start,  # pylint: disable=unused-argument
@@ -1020,7 +1259,8 @@ def salt_ssh(sshd_server,
     '''
     Returns a salt_ssh fixture
     '''
-    salt_ssh = SaltSSH(roster_config,
+    salt_ssh = SaltSSH(request,
+                       roster_config,
                        conf_dir,
                        _cli_bin_dir,
                        salt_ssh_log_prefix,
@@ -1060,7 +1300,8 @@ def session_salt_ssh_after_start():
 
 
 @pytest.yield_fixture(scope='session')
-def session_salt_ssh(session_sshd_server,
+def session_salt_ssh(request,
+                     session_sshd_server,
                      session_conf_dir,
                      session_io_loop,
                      session_salt_ssh_before_start,  # pylint: disable=unused-argument
@@ -1072,7 +1313,8 @@ def session_salt_ssh(session_sshd_server,
     '''
     Returns a salt_ssh fixture
     '''
-    salt_ssh = SaltSSH(session_roster_config,
+    salt_ssh = SaltSSH(request,
+                       session_roster_config,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_ssh_log_prefix,
@@ -1112,7 +1354,8 @@ def sshd_server_after_start(sshd_server):
 
 
 @pytest.yield_fixture
-def sshd_server(io_loop,
+def sshd_server(request,
+                io_loop,
                 write_sshd_config,  # pylint: disable=unused-argument
                 sshd_server_before_start,  # pylint: disable=unused-argument
                 sshd_server_log_prefix,
@@ -1126,7 +1369,8 @@ def sshd_server(io_loop,
     attempts = 0
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
-        process = SSHD({'port': sshd_port},
+        process = SSHD(request,
+                       {'port': sshd_port},
                        sshd_config_dir,
                        None,  # bin_dir_path,
                        sshd_server_log_prefix,
@@ -1206,7 +1450,8 @@ def session_sshd_server_after_start(sshd_server):
 
 
 @pytest.yield_fixture(scope='session')
-def session_sshd_server(session_io_loop,
+def session_sshd_server(request,
+                        session_io_loop,
                         session_write_sshd_config,  # pylint: disable=unused-argument
                         session_sshd_server_before_start,  # pylint: disable=unused-argument
                         session_sshd_server_log_prefix,
@@ -1220,7 +1465,8 @@ def session_sshd_server(session_io_loop,
     attempts = 0
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
-        process = SSHD({'port': session_sshd_port},
+        process = SSHD(request,
+                       {'port': session_sshd_port},
                        session_sshd_config_dir,
                        None,  # bin_dir_path,
                        session_sshd_server_log_prefix,
@@ -1277,13 +1523,14 @@ class SaltScriptBase(object):
     cli_display_name = None
 
     def __init__(self,
+                 request,
                  config,
                  config_dir,
                  bin_dir_path,
                  log_prefix,
                  io_loop=None,
-                 salt_run=None,
                  cli_script_name=None):
+        self.request = request
         self.config = config
         if not isinstance(config_dir, str):
             config_dir = config_dir.realpath().strpath
@@ -1291,7 +1538,6 @@ class SaltScriptBase(object):
         self.bin_dir_path = bin_dir_path
         self.log_prefix = log_prefix
         self._io_loop = io_loop
-        self.salt_run = salt_run
         if cli_script_name is None:
             raise RuntimeError('Please provide a value for the cli_script_name keyword argument')
         self.cli_script_name = cli_script_name
@@ -1305,9 +1551,6 @@ class SaltScriptBase(object):
         Return an IOLoop
         '''
         return ioloop.IOLoop.current()
-        #if self._io_loop is None:
-        #    self._io_loop = ioloop.IOLoop.current()
-        #return self._io_loop
 
     def get_script_path(self, script_name):
         '''
@@ -1350,6 +1593,17 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Return a list of ports to check against to ensure the daemon is running
         '''
         return []
+
+    def get_salt_run_fixture(self):
+        if self.request.scope == 'session':
+            try:
+                return self.request.getfixturevalue('session_salt_run')
+            except AttributeError:
+                return self.request.getfuncargvalue('session_salt_run')
+        try:
+            return self.request.getfixturevalue('salt_run')
+        except AttributeError:
+            return self.request.getfuncargvalue('salt_run')
 
     def start(self):
         '''
@@ -1478,15 +1732,13 @@ class SaltDaemonScriptBase(SaltScriptBase):
                         sock.close()
                     del sock
                 elif isinstance(port, six.string_types):
-                    if not self.salt_run:
-                        raise RuntimeError(
-                            'We can\'t check to ID\'s without an instance of salt-run as self.salt_run'
-                        )
-                    minions_joined = yield self.salt_run.run('manage.joined')
+                    salt_run = self.get_salt_run_fixture()
+                    minions_joined = yield salt_run.run('manage.joined')
                     if minions_joined.exitcode == 0:
                         if minions_joined.json and port in minions_joined.json:
                             check_ports.remove(port)
-                        elif not minions_joined.json:
+                            log.warning('Removed ID %r  Still left: %r', port, check_ports)
+                        elif minions_joined.json is None:
                             log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
             #yield gen.moment
             yield gen.sleep(0.5)
@@ -1572,18 +1824,27 @@ class SaltCliScriptBase(SaltScriptBase):
                 )
             )
 
+    def get_minion_tgt(self, **kwargs):
+        return kwargs.pop('minion_tgt', None)
+
     @gen.coroutine
     def _run_script(self, *args, **kwargs):
         '''
         This method just calls the actual run script method and chains the post
         processing of it.
         '''
-        timeout_expire = time.time() + kwargs.get('timeout', self.DEFAULT_TIMEOUT)
+        minion_tgt = self.get_minion_tgt(**kwargs)
+        timeout_expire = self.io_loop.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
         environ = os.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
         proc_args = [
             self.get_script_path(self.cli_script_name)
-        ] + self.get_base_script_args() + self.get_script_args() + list(args)
+        ] + self.get_base_script_args() + self.get_script_args()
+        if minion_tgt is not None:
+            proc_args.append(minion_tgt)
+        proc_args.extend(list(args))
+        for key in kwargs:
+            proc_args.append('{0}={1}'.format(key, kwargs[key]))
 
         log.info('[%s][%s] Running \'%s\'...',
                  self.log_prefix,
@@ -1619,10 +1880,10 @@ class SaltCliScriptBase(SaltScriptBase):
                         stderr += err
                 if out is None and err is None:
                     break
-                if timeout_expire < time.time():
+                if timeout_expire < self.io_loop.time():
                     timedout = True
                     break
-                #yield gen.sleep(0.001)
+                yield gen.sleep(0.001)
         except (SystemExit, KeyboardInterrupt):
             pass
 
@@ -1644,12 +1905,12 @@ class SaltCliScriptBase(SaltScriptBase):
             # pylint: enable=undefined-variable
 
         exitcode = terminal.returncode
-        stdout, stderr, json_out = self.process_output(stdout, stderr)
+        stdout, stderr, json_out = self.process_output(minion_tgt, stdout, stderr)
         yield gen.moment
         #yield gen.sleep(0.125)
         raise gen.Return(ShellResult(exitcode, stdout, stderr, json_out))
 
-    def process_output(self, stdout, stderr):
+    def process_output(self, tgt, stdout, stderr):
         if stdout:
             try:
                 json_out = json.loads(stdout)
@@ -1668,6 +1929,17 @@ class Salt(SaltCliScriptBase):
     '''
     Class which runs salt-call commands
     '''
+
+    def get_minion_tgt(self, **kwargs):
+        return kwargs.pop('minion_tgt', self.config['id'])
+
+    def process_output(self, tgt, stdout, stderr):
+        if 'No minions matched the target. No command was sent, no jid was assigned.\n' in stdout:
+            stdout = stdout.split('\n', 1)[1:][0]
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
+        if json_out:
+            return stdout, stderr, json_out[tgt]
+        return stdout, stderr, json_out
 
 
 class SaltCall(SaltCliScriptBase):
@@ -1690,6 +1962,12 @@ class SaltRun(SaltCliScriptBase):
     Class which runs salt-run commands
     '''
 
+    def process_output(self, tgt, stdout, stderr):
+        if 'No minions matched the target. No command was sent, no jid was assigned.\n' in stdout:
+            stdout = stdout.split('\n', 1)[1:][0]
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
+        return stdout, stderr, json_out
+
 
 class SaltSSH(SaltCliScriptBase):
     '''
@@ -1703,13 +1981,15 @@ class SaltSSH(SaltCliScriptBase):
             '--rand-thin-dir',
             '--roster-file={0}'.format(os.path.join(self.config_dir, 'roster')),
             '--ignore-host-keys',
-            'localhost'
         ]
 
-    def process_output(self, stdout, stderr):
-        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, stdout, stderr)
+    def get_minion_tgt(self, **kwargs):
+        return 'localhost'
+
+    def process_output(self, tgt, stdout, stderr):
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
         if json_out:
-            return stdout, stderr, json_out['localhost']
+            return stdout, stderr, json_out[tgt]
         return stdout, stderr, json_out
 
 
@@ -1727,13 +2007,25 @@ class SaltMinion(SaltDaemonScriptBase):
 
 class SaltMaster(SaltDaemonScriptBase):
     '''
-    Class which runs the salt-minion daemon
+    Class which runs the salt-master daemon
     '''
 
     def get_check_ports(self):
         return set([self.config['ret_port'],
                     self.config['publish_port'],
                     self.config['pytest_port']])
+
+    def get_script_args(self):
+        return ['-l', 'quiet']
+
+
+class SaltSyndic(SaltDaemonScriptBase):
+    '''
+    Class which runs the salt-syndic daemon
+    '''
+
+    def get_check_ports(self):
+        return set([self.config['pytest_port']])
 
     def get_script_args(self):
         return ['-l', 'quiet']
