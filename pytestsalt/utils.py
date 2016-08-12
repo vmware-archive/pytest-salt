@@ -123,10 +123,15 @@ def start_daemon(request,
                  daemon_config_dir=None,
                  daemon_class=None,
                  bin_dir_path=None,
-                 io_loop=None):
+                 io_loop=None,
+                 fail_hard=False):
     '''
     Returns a running salt daemon
     '''
+    if fail_hard:
+        fail_method = pytest.fail
+    else:
+        fail_method = pytest.xfail
     log.info('[%s] Starting pytest %s(%s)', daemon_name, daemon_log_prefix, daemon_id)
     attempts = 0
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
@@ -147,7 +152,7 @@ def start_daemon(request,
                     if connectable is False:
                         process.terminate()
                         if attempts >= 3:
-                            pytest.xfail(
+                            fail_method(
                                 'The pytest {0}({1}) has failed to confirm running status '
                                 'after {2} attempts'.format(daemon_name, daemon_id, attempts))
                         continue
@@ -155,7 +160,7 @@ def start_daemon(request,
                 log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
                 process.terminate()
                 if attempts >= 3:
-                    pytest.xfail(str(exc))
+                    fail_method(str(exc))
                 continue
             log.info(
                 '[%s] The pytest %s(%s) is running and accepting commands '
@@ -177,7 +182,7 @@ def start_daemon(request,
             process.terminate()
             continue
     else:
-        pytest.xfail(
+        fail_method(
             'The pytest {0}({1}) has failed to start after {2} attempts'.format(
                 daemon_name,
                 daemon_id,
@@ -463,10 +468,14 @@ class SaltCliScriptBase(SaltScriptBase):
         Run the given command synchronously
         '''
         timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
+        if kwargs.pop('fail_hard', False):
+            fail_method = pytest.fail
+        else:
+            fail_method = pytest.xfail
         try:
             return self.io_loop.run_sync(lambda: self._run_script(*args, **kwargs), timeout=timeout)
         except ioloop.TimeoutError as exc:
-            pytest.xfail(
+            fail_method(
                 '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                     self.log_prefix,
                     self.cli_display_name,
@@ -481,11 +490,15 @@ class SaltCliScriptBase(SaltScriptBase):
         '''
         Run the given command asynchronously
         '''
+        if kwargs.pop('fail_hard', False):
+            fail_method = pytest.fail
+        else:
+            fail_method = pytest.xfail
         try:
             result = yield self._run_script(*args, **kwargs)
             raise gen.Return(result)
         except gen.TimeoutError as exc:
-            pytest.xfail(
+            fail_method(
                 '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                     self.log_prefix,
                     self.cli_display_name,
