@@ -305,7 +305,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  self.cli_display_name,
                  ' '.join(proc_args))
 
-        terminal = nb_popen.NonBlockingPopen(proc_args)
+        environ = os.environ.copy()
+        terminal = nb_popen.NonBlockingPopen(proc_args, env=environ)
         atexit.register(close_terminal, terminal)
 
         try:
