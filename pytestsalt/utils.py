@@ -306,7 +306,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  ' '.join(proc_args))
 
         environ = os.environ.copy()
-        terminal = nb_popen.NonBlockingPopen(proc_args, env=environ)
+        terminal = nb_popen.NonBlockingPopen(proc_args, env=environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         atexit.register(close_terminal, terminal)
 
         try:
@@ -318,7 +318,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     terminal.recv_err()
                 time.sleep(0.125)
         except (SystemExit, KeyboardInterrupt):
-            pass
+            self._running.clear()
 
         close_terminal(terminal)
 
