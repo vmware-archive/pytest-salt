@@ -226,7 +226,7 @@ class SaltScriptBase(object):
         '''
         Return an IOLoop
         '''
-        return ioloop.IOLoop.current()
+        return self._io_loop
 
     def get_script_path(self, script_name):
         '''
