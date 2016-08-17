@@ -30,8 +30,6 @@ from collections import namedtuple
 import pytest
 import psutil
 import salt.ext.six as six
-from tornado import gen
-from tornado import ioloop
 
 # Import salt libs
 import salt.utils.nb_popen as nb_popen
@@ -221,20 +219,13 @@ class SaltScriptBase(object):
             self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
 
-    @property
-    def io_loop(self):
-        '''
-        Return an IOLoop
-        '''
-        return self._io_loop
-
     def get_script_path(self, script_name):
         '''
         Returns the path to the script to run
         '''
         return os.path.join(self.bin_dir_path, script_name)
 
-    def get_base_script_args(self):  # pylint: disable=no-self-use
+    def get_base_script_args(self):
         '''
         Returns any additional arguments to pass to the CLI script
         '''
@@ -405,7 +396,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     del sock
                 elif isinstance(port, six.string_types):
                     salt_run = self.get_salt_run_fixture()
-                    minions_joined = salt_run.run_sync('manage.joined')
+                    minions_joined = salt_run.run('manage.joined')
                     if minions_joined.exitcode == 0:
                         if minions_joined.json and port in minions_joined.json:
                             check_ports.remove(port)
@@ -413,7 +404,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
                         elif minions_joined.json is None:
                             log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
             time.sleep(0.5)
-        # A final sleep to allow the ioloop to do other things
         log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         return self._connectable.is_set()
 
@@ -456,7 +446,10 @@ class SaltCliScriptBase(SaltScriptBase):
     def get_base_script_args(self):
         return SaltScriptBase.get_base_script_args(self) + ['--out=json']
 
-    def run_sync(self, *args, **kwargs):
+    def get_minion_tgt(self, **kwargs):
+        return kwargs.pop('minion_tgt', None)
+
+    def run(self, *args, **kwargs):
         '''
         Run the given command synchronously
         '''
@@ -465,53 +458,8 @@ class SaltCliScriptBase(SaltScriptBase):
             fail_method = pytest.fail
         else:
             fail_method = pytest.xfail
-        try:
-            return self.io_loop.run_sync(lambda: self._run_script(*args, **kwargs), timeout=timeout)
-        except ioloop.TimeoutError as exc:
-            fail_method(
-                '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
-                    self.log_prefix,
-                    self.cli_display_name,
-                    args,
-                    kwargs,
-                    exc
-                )
-            )
-
-    @gen.coroutine
-    def run(self, *args, **kwargs):
-        '''
-        Run the given command asynchronously
-        '''
-        if kwargs.pop('fail_hard', False):
-            fail_method = pytest.fail
-        else:
-            fail_method = pytest.xfail
-        try:
-            result = yield self._run_script(*args, **kwargs)
-            raise gen.Return(result)
-        except gen.TimeoutError as exc:
-            fail_method(
-                '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
-                    self.log_prefix,
-                    self.cli_display_name,
-                    args,
-                    kwargs,
-                    exc
-                )
-            )
-
-    def get_minion_tgt(self, **kwargs):
-        return kwargs.pop('minion_tgt', None)
-
-    @gen.coroutine
-    def _run_script(self, *args, **kwargs):
-        '''
-        This method just calls the actual run script method and chains the post
-        processing of it.
-        '''
         minion_tgt = self.get_minion_tgt(**kwargs)
-        timeout_expire = self.io_loop.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
+        timeout_expire = time.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
         environ = os.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
         proc_args = [
@@ -535,11 +483,9 @@ class SaltCliScriptBase(SaltScriptBase):
         # Consume the output
         stdout = six.b('')
         stderr = six.b('')
-        timedout = False
 
         try:
             while True:
-                yield gen.moment
                 # We're not actually interested in processing the output, just consume it
                 if terminal.stdout is not None:
                     try:
@@ -557,23 +503,24 @@ class SaltCliScriptBase(SaltScriptBase):
                         stderr += err
                 if out is None and err is None:
                     break
-                if timeout_expire < self.io_loop.time():
-                    timedout = True
-                    break
-                yield gen.sleep(0.001)
+                if timeout_expire < time.time():
+                    fail_method(
+                        '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
+                            self.log_prefix,
+                            self.cli_display_name,
+                            args,
+                            kwargs,
+                            '[{0}][{1}] Timed out after {2} seconds!'.format(
+                                self.log_prefix,
+                                self.cli_display_name,
+                                kwargs.get('timeout', self.DEFAULT_TIMEOUT)
+                            )
+                        )
+                    )
         except (SystemExit, KeyboardInterrupt):
             pass
 
         close_terminal(terminal)
-
-        if timedout:
-            raise gen.TimeoutError(
-                '[{0}][{1}] Timed out after {2} seconds!'.format(
-                    self.log_prefix,
-                    self.cli_display_name,
-                    kwargs.get('timeout', self.DEFAULT_TIMEOUT)
-                )
-            )
 
         if six.PY3:
             # pylint: disable=undefined-variable
@@ -583,9 +530,7 @@ class SaltCliScriptBase(SaltScriptBase):
 
         exitcode = terminal.returncode
         stdout, stderr, json_out = self.process_output(minion_tgt, stdout, stderr)
-        yield gen.moment
-        #yield gen.sleep(0.125)
-        raise gen.Return(ShellResult(exitcode, stdout, stderr, json_out))
+        return ShellResult(exitcode, stdout, stderr, json_out)
 
     def process_output(self, tgt, stdout, stderr):
         if stdout:
