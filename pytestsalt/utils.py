@@ -366,18 +366,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         if self._connectable.is_set():
             return True
-        try:
-            return self.io_loop.run_sync(self._wait_until_running, timeout=timeout+1)
-        except ioloop.TimeoutError:
-            return False
 
-    @gen.coroutine
-    def _wait_until_running(self):
-        '''
-        The actual, coroutine aware, call to wait for the daemon to start listening
-        '''
-        yield gen.moment
-        #yield gen.sleep(1)
+        expire = time.time() + timeout
         check_ports = self.get_check_ports()
         log.debug(
             '[%s][%s] Checking the following ports to assure running status: %s',
@@ -385,13 +375,18 @@ class SaltDaemonScriptBase(SaltScriptBase):
             self.cli_display_name,
             check_ports
         )
-        while self._running.is_set():
-            yield gen.moment
+        log.debug('Expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
+        while True:
+            if self._running.is_set() is False:
+                # No longer running, break
+                break
+            if time.time() > expire:
+                # Timeout, break
+                break
             if not check_ports:
                 self._connectable.set()
                 break
             for port in set(check_ports):
-                yield gen.moment
                 if isinstance(port, int):
                     log.debug('[%s][%s] Checking connectable status on port: %s',
                               self.log_prefix,
@@ -410,20 +405,17 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     del sock
                 elif isinstance(port, six.string_types):
                     salt_run = self.get_salt_run_fixture()
-                    minions_joined = yield salt_run.run('manage.joined')
+                    minions_joined = salt_run.run_sync('manage.joined')
                     if minions_joined.exitcode == 0:
                         if minions_joined.json and port in minions_joined.json:
                             check_ports.remove(port)
                             log.warning('Removed ID %r  Still left: %r', port, check_ports)
                         elif minions_joined.json is None:
                             log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
-            #yield gen.moment
-            yield gen.sleep(0.5)
+            time.sleep(0.5)
         # A final sleep to allow the ioloop to do other things
-        yield gen.moment
-        #yield gen.sleep(0.125)
         log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
-        raise gen.Return(self._connectable.is_set())
+        return self._connectable.is_set()
 
 
 class ShellResult(namedtuple('Result', ('exitcode', 'stdout', 'stderr', 'json'))):
