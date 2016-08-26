@@ -30,6 +30,7 @@ from collections import namedtuple
 import pytest
 import psutil
 import salt.ext.six as six
+from tornado import gen, ioloop
 
 # Import salt libs
 import salt.utils.nb_popen as nb_popen
@@ -121,7 +122,6 @@ def start_daemon(request,
                  daemon_config_dir=None,
                  daemon_class=None,
                  bin_dir_path=None,
-                 io_loop=None,
                  fail_hard=False):
     '''
     Returns a running salt daemon
@@ -139,7 +139,6 @@ def start_daemon(request,
                                daemon_config_dir,
                                bin_dir_path,
                                daemon_log_prefix,
-                               io_loop,
                                cli_script_name=daemon_cli_script_name)
         process.start()
         if process.is_alive():
@@ -202,7 +201,6 @@ class SaltScriptBase(object):
                  config_dir,
                  bin_dir_path,
                  log_prefix,
-                 io_loop=None,
                  cli_script_name=None):
         self.request = request
         self.config = config
@@ -211,7 +209,6 @@ class SaltScriptBase(object):
         self.config_dir = config_dir
         self.bin_dir_path = bin_dir_path
         self.log_prefix = log_prefix
-        self._io_loop = io_loop
         if cli_script_name is None:
             raise RuntimeError('Please provide a value for the cli_script_name keyword argument')
         self.cli_script_name = cli_script_name
@@ -236,7 +233,6 @@ class SaltScriptBase(object):
         Returns any additional arguments to pass to the CLI script
         '''
         return []
-
 
 class SaltDaemonScriptBase(SaltScriptBase):
     '''
@@ -352,6 +348,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
             psutil.wait_procs(children, timeout=5)
 
     def wait_until_running(self, timeout=None):
+        return ioloop.IOLoop.current().run_sync(lambda: self._wait_until_running(timeout=timeout))
+
+    @gen.coroutine
+    def _wait_until_running(self, timeout=None):
         '''
         Blocking call to wait for the daemon to start listening
         '''

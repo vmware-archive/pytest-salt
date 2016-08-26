@@ -35,22 +35,24 @@ def __virtual__():
 
 
 def start():
-    # Create our own IOLoop, we're in another process
-    io_loop = ioloop.IOLoop()
-    io_loop.make_current()
-    pytest_engine = PyTestEngine(__opts__, io_loop)  # pylint: disable=undefined-variable
-    io_loop.add_callback(pytest_engine.start)
-    io_loop.start()
+    pytest_engine = PyTestEngine(__opts__)  # pylint: disable=undefined-variable
+    pytest_engine.start()
 
 
 class PyTestEngine(object):
-    def __init__(self, opts, io_loop):
+    def __init__(self, opts):
         self.opts = opts
-        self.io_loop = io_loop
         self.sock = None
 
-    @gen.coroutine
+
     def start(self):
+        self.io_loop = ioloop.IOLoop()
+        self.io_loop.make_current()
+        self.io_loop.add_callback(self._start)
+        self.io_loop.start()
+
+    @gen.coroutine
+    def _start(self):
         if self.opts['__role'] == 'minion':
             yield self.listen_to_minion_connected_event()
 

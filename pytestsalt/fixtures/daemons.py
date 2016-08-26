@@ -52,21 +52,6 @@ pytest_plugins = ['tornado']
 log = logging.getLogger(__name__)
 
 
-@pytest.yield_fixture(scope='session')
-def session_io_loop():
-    '''
-    Create an instance of the `tornado.ioloop.IOLoop` for a test run session.
-    '''
-    io_loop = ioloop.IOLoop()
-    io_loop.make_current()
-
-    yield io_loop
-
-    io_loop.clear_current()
-    if not ioloop.IOLoop.initialized() or io_loop is not ioloop.IOLoop.instance():
-        io_loop.close(all_fds=True)
-
-
 @pytest.fixture(scope='session')
 def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     '''
@@ -96,8 +81,7 @@ def start_daemon(request,
                  daemon_config=None,
                  daemon_config_dir=None,
                  daemon_class=None,
-                 bin_dir_path=None,
-                 io_loop=None):
+                 bin_dir_path=None):
     '''
     Returns a running salt daemon
     '''
@@ -110,7 +94,6 @@ def start_daemon(request,
                                daemon_config_dir,
                                bin_dir_path,
                                daemon_log_prefix,
-                               io_loop,
                                cli_script_name=daemon_cli_script_name)
         process.start()
         if process.is_alive():
@@ -196,7 +179,6 @@ def salt_master(request,
                 master_id,
                 master_config,
                 salt_master_before_start,  # pylint: disable=unused-argument
-                io_loop,
                 log_server,  # pylint: disable=unused-argument
                 master_log_prefix,
                 cli_master_script_name,
@@ -212,8 +194,7 @@ def salt_master(request,
                         daemon_config=master_config,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture(scope='session')
@@ -252,7 +233,6 @@ def session_salt_master(request,
                         session_master_id,
                         session_master_config,
                         session_salt_master_before_start,  # pylint: disable=unused-argument
-                        session_io_loop,
                         log_server,  # pylint: disable=unused-argument
                         session_master_log_prefix,
                         cli_master_script_name,
@@ -268,8 +248,7 @@ def session_salt_master(request,
                         daemon_config=session_master_config,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=session_io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture
@@ -308,7 +287,6 @@ def salt_master_of_masters(request,
                            master_of_masters_id,
                            master_of_masters_config,
                            salt_master_of_masters_before_start,  # pylint: disable=unused-argument
-                           io_loop,
                            log_server,  # pylint: disable=unused-argument
                            master_of_masters_log_prefix,
                            cli_master_script_name,
@@ -324,8 +302,7 @@ def salt_master_of_masters(request,
                         daemon_config=master_of_masters_config,
                         daemon_config_dir=master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture(scope='session')
@@ -364,7 +341,6 @@ def session_salt_master_of_masters(request,
                                    session_master_of_masters_id,
                                    session_master_of_masters_config,
                                    session_salt_master_of_masters_before_start,  # pylint: disable=unused-argument
-                                   session_io_loop,
                                    log_server,  # pylint: disable=unused-argument
                                    session_master_of_masters_log_prefix,
                                    cli_master_script_name,
@@ -380,8 +356,7 @@ def session_salt_master_of_masters(request,
                         daemon_config=session_master_of_masters_config,
                         daemon_config_dir=session_master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=session_io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture
@@ -423,7 +398,6 @@ def salt_minion(request,
                 minion_log_prefix,
                 cli_minion_script_name,
                 log_server,
-                io_loop,
                 _cli_bin_dir,
                 conf_dir):  # pylint: disable=unused-argument
     '''
@@ -437,8 +411,7 @@ def salt_minion(request,
                         daemon_config=minion_config,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture(scope='session')
@@ -481,8 +454,7 @@ def session_salt_minion(request,
                         cli_minion_script_name,
                         log_server,
                         _cli_bin_dir,
-                        session_conf_dir,
-                        session_io_loop):  # pylint: disable=unused-argument
+                        session_conf_dir):
     '''
     Returns a running salt-minion
     '''
@@ -494,8 +466,7 @@ def session_salt_minion(request,
                         daemon_config=session_minion_config,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=session_io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture
@@ -537,7 +508,6 @@ def secondary_salt_minion(request,
                           secondary_minion_log_prefix,
                           cli_minion_script_name,
                           log_server,
-                          io_loop,
                           _cli_bin_dir,
                           secondary_conf_dir):  # pylint: disable=unused-argument
     '''
@@ -551,8 +521,7 @@ def secondary_salt_minion(request,
                         daemon_config=secondary_minion_config,
                         daemon_config_dir=secondary_conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture(scope='session')
@@ -595,8 +564,7 @@ def session_secondary_salt_minion(request,
                                   cli_minion_script_name,
                                   log_server,
                                   _cli_bin_dir,
-                                  session_secondary_conf_dir,
-                                  session_io_loop):  # pylint: disable=unused-argument
+                                  session_secondary_conf_dir):
     '''
     Returns a running salt-minion
     '''
@@ -608,8 +576,7 @@ def session_secondary_salt_minion(request,
                         daemon_config=session_secondary_minion_config,
                         daemon_config_dir=session_secondary_conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=session_io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture
@@ -648,7 +615,6 @@ def salt_syndic(request,
                 syndic_id,
                 syndic_config,
                 salt_syndic_before_start,  # pylint: disable=unused-argument
-                io_loop,
                 log_server,  # pylint: disable=unused-argument
                 syndic_log_prefix,
                 cli_syndic_script_name,
@@ -664,8 +630,7 @@ def salt_syndic(request,
                         daemon_config=syndic_config,
                         daemon_config_dir=syndic_conf_dir,
                         daemon_class=SaltSyndic,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture(scope='session')
@@ -704,7 +669,6 @@ def session_salt_syndic(request,
                         session_syndic_id,
                         session_syndic_config,
                         session_salt_syndic_before_start,  # pylint: disable=unused-argument
-                        session_io_loop,
                         log_server,  # pylint: disable=unused-argument
                         session_syndic_log_prefix,
                         cli_syndic_script_name,
@@ -720,8 +684,7 @@ def session_salt_syndic(request,
                         daemon_config=session_syndic_config,
                         daemon_config_dir=session_syndic_conf_dir,
                         daemon_class=SaltSyndic,
-                        bin_dir_path=_cli_bin_dir,
-                        io_loop=session_io_loop)
+                        bin_dir_path=_cli_bin_dir)
 
 
 @pytest.yield_fixture
@@ -759,7 +722,6 @@ def salt(request,
          salt_minion,
          minion_config,
          _cli_bin_dir,
-         io_loop,
          conf_dir,
          cli_salt_script_name,
          salt_before_start,  # pylint: disable=unused-argument
@@ -773,7 +735,6 @@ def salt(request,
                 conf_dir,
                 _cli_bin_dir,
                 salt_log_prefix,
-                io_loop,
                 cli_script_name=cli_salt_script_name)
     yield salt
 
@@ -813,7 +774,6 @@ def session_salt(request,
                  session_salt_minion,
                  session_minion_config,
                  _cli_bin_dir,
-                 session_io_loop,
                  session_conf_dir,
                  cli_salt_script_name,
                  session_salt_before_start,  # pylint: disable=unused-argument
@@ -827,7 +787,6 @@ def session_salt(request,
                 session_conf_dir,
                 _cli_bin_dir,
                 session_salt_log_prefix,
-                session_io_loop,
                 cli_script_name=cli_salt_script_name)
     yield salt
 
@@ -871,7 +830,6 @@ def salt_call(request,
               minion_config,
               conf_dir,
               _cli_bin_dir,
-              io_loop,
               log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
@@ -881,7 +839,6 @@ def salt_call(request,
                          conf_dir,
                          _cli_bin_dir,
                          salt_call_log_prefix,
-                         io_loop,
                          cli_script_name=cli_call_script_name)
     yield salt_call
 
@@ -925,7 +882,6 @@ def session_salt_call(request,
                       session_minion_config,
                       session_conf_dir,
                       _cli_bin_dir,
-                      session_io_loop,
                       log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
@@ -935,7 +891,6 @@ def session_salt_call(request,
                          session_conf_dir,
                          _cli_bin_dir,
                          session_salt_call_log_prefix,
-                         session_io_loop,
                          cli_script_name=cli_call_script_name)
     yield salt_call
 
@@ -978,7 +933,6 @@ def salt_key(request,
              cli_key_script_name,
              master_config,
              conf_dir,
-             io_loop,
              _cli_bin_dir,
              log_server):  # pylint: disable=unused-argument
     '''
@@ -989,7 +943,6 @@ def salt_key(request,
                        conf_dir,
                        _cli_bin_dir,
                        salt_key_log_prefix,
-                       io_loop,
                        cli_script_name=cli_key_script_name)
     yield salt_key
 
@@ -1032,7 +985,6 @@ def session_salt_key(request,
                      cli_key_script_name,
                      session_master_config,
                      session_conf_dir,
-                     session_io_loop,
                      _cli_bin_dir,
                      log_server):  # pylint: disable=unused-argument
     '''
@@ -1043,7 +995,6 @@ def session_salt_key(request,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_key_log_prefix,
-                       session_io_loop,
                        cli_script_name=cli_key_script_name)
     yield salt_key
 
@@ -1085,7 +1036,6 @@ def salt_run(request,
              salt_run_log_prefix,
              cli_run_script_name,
              conf_dir,
-             io_loop,
              master_config,
              _cli_bin_dir,
              log_server):  # pylint: disable=unused-argument
@@ -1097,7 +1047,6 @@ def salt_run(request,
                        conf_dir,
                        _cli_bin_dir,
                        salt_run_log_prefix,
-                       io_loop,
                        cli_script_name=cli_run_script_name)
     yield salt_run
 
@@ -1139,7 +1088,6 @@ def session_salt_run(request,
                      session_salt_run_log_prefix,
                      cli_run_script_name,
                      session_conf_dir,
-                     session_io_loop,
                      session_master_config,
                      _cli_bin_dir,
                      log_server):  # pylint: disable=unused-argument
@@ -1151,7 +1099,6 @@ def session_salt_run(request,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_run_log_prefix,
-                       session_io_loop,
                        cli_script_name=cli_run_script_name)
     yield salt_run
 
@@ -1190,7 +1137,6 @@ def salt_ssh_after_start():
 def salt_ssh(request,
              sshd_server,
              conf_dir,
-             io_loop,
              salt_ssh_before_start,  # pylint: disable=unused-argument
              salt_ssh_log_prefix,
              _cli_bin_dir,
@@ -1205,7 +1151,6 @@ def salt_ssh(request,
                        conf_dir,
                        _cli_bin_dir,
                        salt_ssh_log_prefix,
-                       io_loop,
                        cli_script_name=cli_ssh_script_name)
     yield salt_ssh
 
@@ -1244,7 +1189,6 @@ def session_salt_ssh_after_start():
 def session_salt_ssh(request,
                      session_sshd_server,
                      session_conf_dir,
-                     session_io_loop,
                      session_salt_ssh_before_start,  # pylint: disable=unused-argument
                      session_salt_ssh_log_prefix,
                      _cli_bin_dir,
@@ -1259,7 +1203,6 @@ def session_salt_ssh(request,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_ssh_log_prefix,
-                       session_io_loop,
                        cli_script_name=cli_ssh_script_name)
     yield salt_ssh
 
@@ -1296,7 +1239,6 @@ def sshd_server_after_start(sshd_server):
 
 @pytest.yield_fixture
 def sshd_server(request,
-                io_loop,
                 write_sshd_config,  # pylint: disable=unused-argument
                 sshd_server_before_start,  # pylint: disable=unused-argument
                 sshd_server_log_prefix,
@@ -1315,7 +1257,6 @@ def sshd_server(request,
                        sshd_config_dir,
                        None,  # bin_dir_path,
                        sshd_server_log_prefix,
-                       io_loop,
                        cli_script_name='sshd')
         process.start()
         if process.is_alive():
@@ -1392,7 +1333,6 @@ def session_sshd_server_after_start(sshd_server):
 
 @pytest.yield_fixture(scope='session')
 def session_sshd_server(request,
-                        session_io_loop,
                         session_write_sshd_config,  # pylint: disable=unused-argument
                         session_sshd_server_before_start,  # pylint: disable=unused-argument
                         session_sshd_server_log_prefix,
@@ -1411,7 +1351,6 @@ def session_sshd_server(request,
                        session_sshd_config_dir,
                        None,  # bin_dir_path,
                        session_sshd_server_log_prefix,
-                       session_io_loop,
                        cli_script_name='sshd')
         process.start()
         if process.is_alive():
@@ -1533,7 +1472,8 @@ class SaltMinion(SaltDaemonScriptBase):
         return ['--disable-keepalive', '-l', 'quiet']
 
     def get_check_ports(self):
-        return set([self.config['id'], self.config['pytest_port']])
+        return set([self.config['pytest_port']])
+#        return set([self.config['id'], self.config['pytest_port']])
 
 
 class SaltMaster(SaltDaemonScriptBase):
