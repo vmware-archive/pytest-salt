@@ -14,6 +14,7 @@
 # Import Python libs
 from __future__ import absolute_import
 import os
+import sys
 import json
 import time
 import errno
@@ -39,6 +40,13 @@ from salt.utils.process import SignalHandlingMultiprocessingProcess
 pytest_plugins = ['helpers_namespace']
 
 log = logging.getLogger(__name__)
+
+if sys.platform.startswith('win'):
+    SIGINT = signal.CTRL_BREAK_EVENT  # pylint: disable=no-member
+    SIGINT_NAME = 'CTRL_BREAK_EVENT'
+else:
+    SIGINT = signal.SIGINT
+    SIGINT_NAME = 'SIGINT'
 
 
 def get_unused_localhost_port():
@@ -85,9 +93,9 @@ def close_terminal(terminal):
     terminal.communicate()
 
 
-def terminate_child_processes(pid):
+def collect_child_processes(pid):
     '''
-    Try to terminate/kill any started child processes of the provided pid
+    Try to collect any started child processes of the provided pid
     '''
     # Let's get the child processes of the started subprocess
     try:
@@ -95,22 +103,49 @@ def terminate_child_processes(pid):
         children = parent.children(recursive=True)
     except psutil.NoSuchProcess:
         children = []
+    return children
 
-    # Lets log and kill any child processes which salt left behind
-    for child in children[:]:
-        try:
-            cmdline = child.cmdline()
-            log.info('Salt left behind a child process. Process cmdline: %s', cmdline)
-            child.send_signal(signal.SIGKILL)
-            try:
-                child.wait(timeout=5)
-            except psutil.TimeoutExpired:
-                child.kill()
-            log.info('Process terminated. Process cmdline: %s', cmdline)
-        except psutil.NoSuchProcess:
-            children.remove(child)
+
+def terminate_child_processes(pid=None, children=None):
+    '''
+    Try to terminate/kill any started child processes of the provided pid
+    '''
+    if pid and not children:
+        # Let's get the child processes of the started subprocess
+        children = collect_child_processes(pid)
+
     if children:
-        psutil.wait_procs(children, timeout=5)
+        # Lets log and kill any child processes which salt left behind
+        def kill_children(_children, terminate=False, kill=False):
+            for child in _children[:][::-1]:  # Iterate over a reversed copy of the list
+                try:
+                    if not kill and child.status() == psutil.STATUS_ZOMBIE:
+                        # Zombie processes will exit once child processes also exit
+                        continue
+                    cmdline = child.cmdline()
+                    if not cmdline:
+                        cmdline = child.as_dict()
+                    if kill:
+                        log.warning('Killing child process left behind: %s', cmdline)
+                        child.kill()
+                    elif terminate:
+                        log.warning('Terminating child process left behind: %s', cmdline)
+                        child.terminate()
+                    else:
+                        log.warning('Sending %s to child process left behind: %s', SIGINT_NAME, cmdline)
+                        child.send_signal(SIGINT)
+                    if not psutil.pid_exists(child.pid):
+                        _children.remove(child)
+                except psutil.NoSuchProcess:
+                    _children.remove(child)
+
+        kill_children(children)
+
+        if children:
+            psutil.wait_procs(children, timeout=10, callback=lambda proc: kill_children(children, terminate=True))
+
+        if children:
+            psutil.wait_procs(children, timeout=5, callback=lambda proc: kill_children(children, kill=True))
 
 
 def start_daemon(request,
@@ -234,6 +269,7 @@ class SaltScriptBase(object):
         '''
         return []
 
+
 class SaltDaemonScriptBase(SaltScriptBase):
     '''
     Base class for Salt Daemon CLI scripts
@@ -314,11 +350,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Terminate the started daemon
         '''
         # Let's get the child processes of the started subprocess
-        try:
-            parent = psutil.Process(self._process.pid)
-            children = parent.children(recursive=True)
-        except psutil.NoSuchProcess:
-            children = []
+        children = collect_child_processes(self._process.pid)
 
         self._running.clear()
         self._connectable.clear()
@@ -326,26 +358,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._process.terminate()
 
         # Lets log and kill any child processes which salt left behind
-        for child in children[:]:
-            try:
-                cmdline = child.cmdline()
-                log.info('[%s][%s] Salt left behind a child process. Process cmdline: %s',
-                         self.log_prefix,
-                         self.cli_display_name,
-                         cmdline)
-                child.send_signal(signal.SIGKILL)
-                try:
-                    child.wait(timeout=5)
-                except psutil.TimeoutExpired:
-                    child.kill()
-                log.info('[%s][%s] Process terminated. Process cmdline: %s',
-                         self.log_prefix,
-                         self.cli_display_name,
-                         cmdline)
-            except psutil.NoSuchProcess:
-                children.remove(child)
-        if children:
-            psutil.wait_procs(children, timeout=5)
+        terminate_child_processes(children=children)
 
     def wait_until_running(self, timeout=None):
         return ioloop.IOLoop.current().run_sync(lambda: self._wait_until_running(timeout=timeout))
