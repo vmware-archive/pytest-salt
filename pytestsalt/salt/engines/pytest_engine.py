@@ -44,7 +44,6 @@ class PyTestEngine(object):
         self.opts = opts
         self.sock = None
 
-
     def start(self):
         self.io_loop = ioloop.IOLoop()
         self.io_loop.make_current()

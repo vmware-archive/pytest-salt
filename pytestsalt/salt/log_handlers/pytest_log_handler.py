@@ -29,6 +29,7 @@ __virtualname__ = 'pytest_log_handler'
 
 log = logging.getLogger(__name__)
 
+
 def __virtual__():
     if 'pytest_log_port' not in __opts__:
         return False, "'pytest_log_port' not in options"

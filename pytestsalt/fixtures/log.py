@@ -57,7 +57,6 @@ class ThreadedSocketServer(ThreadingMixIn, socketserver.TCPServer):
         socketserver.TCPServer.server_activate(self)
         #super(ThreadedSocketServer, self).server_activate()
 
-
     def server_close(self):
         self.shutting_down.set()
         socketserver.TCPServer.server_close(self)
@@ -79,5 +78,5 @@ class SocketServerRequestHandler(socketserver.StreamRequestHandler):
                     logger.handle(record)
             except (EOFError, KeyboardInterrupt, SystemExit):
                 break
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 log.exception(exc)

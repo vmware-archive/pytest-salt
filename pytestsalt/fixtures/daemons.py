@@ -15,35 +15,16 @@
 # Import python libs
 from __future__ import absolute_import, print_function
 import os
-import time
 import sys
-import errno
-import atexit
-import signal
-import socket
 import logging
 import subprocess
-import multiprocessing
-from operator import itemgetter
-from collections import namedtuple
 
 # Import 3rd-party libs
-try:
-    import ujson as json
-except ImportError:
-    # Use the standard library, slower, json module
-    import json
 import pytest
-import psutil
-from tornado import gen
-from tornado import ioloop
 
 # Import salt libs
-#import salt
 import salt.ext.six as six
 import salt.utils as salt_utils
-import salt.utils.nb_popen as nb_popen
-from salt.utils.process import SignalHandlingMultiprocessingProcess
 
 from pytestsalt.utils import SaltCliScriptBase, SaltDaemonScriptBase
 
@@ -133,7 +114,8 @@ def start_daemon(request,
         else:
             process.terminate()
             continue
-    else:
+    else:   # pylint: disable=useless-else-on-loop
+            # Wrong, we have a return, its not useless
         pytest.xfail(
             'The pytest {0}({1}) has failed to start after {2} attempts'.format(
                 daemon_name,
