@@ -30,7 +30,6 @@ from collections import namedtuple
 # Import 3rd party libs
 import pytest
 import psutil
-from tornado import gen, ioloop
 
 # Import salt libs
 import salt.ext.six as six
@@ -422,10 +421,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         terminate_child_processes(children=children)
 
     def wait_until_running(self, timeout=None):
-        return ioloop.IOLoop.current().run_sync(lambda: self._wait_until_running(timeout=timeout))
-
-    @gen.coroutine
-    def _wait_until_running(self, timeout=None):
         '''
         Blocking call to wait for the daemon to start listening
         '''
