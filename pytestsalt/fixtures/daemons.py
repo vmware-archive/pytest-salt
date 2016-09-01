@@ -23,7 +23,6 @@ import subprocess
 import pytest
 
 # Import salt libs
-#import salt
 import salt.ext.six as six
 import salt.utils as salt_utils
 
@@ -115,7 +114,8 @@ def start_daemon(request,
         else:
             process.terminate()
             continue
-    else:
+    else:   # pylint: disable=useless-else-on-loop
+            # Wrong, we have a return, its not useless
         pytest.xfail(
             'The pytest {0}({1}) has failed to start after {2} attempts'.format(
                 daemon_name,

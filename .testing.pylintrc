@@ -38,7 +38,7 @@ unsafe-load-any-extension=no
 extension-pkg-whitelist=
 
 # Fileperms Lint Plugin Settings
-fileperms-default=0644
+fileperms-default=0o644
 fileperms-ignore-paths=setup.py
 
 [MESSAGES CONTROL]
@@ -156,6 +156,7 @@ disable=R,
 # E8731 do not assign a lambda expression, use a def
 #
 # E1322(repr-flag-used-in-string)
+
 [REPORTS]
 
 # Set the output format. Available formats are text, parseable, colorized, msvs
@@ -186,7 +187,6 @@ comment=no
 # used to format the message information. See doc for all details
 #msg-template=
 msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}'
-
 
 [LOGGING]
 
@@ -238,7 +238,7 @@ dummy-variables-rgx=_$|dummy
 
 # List of additional names supposed to be defined in builtins. Remember that
 # you should avoid to define new builtins when possible.
-additional-builtins=
+additional-builtins=__opts__,__virtual__
 
 # List of strings which can identify a callback function by name. A callback
 # name must start or end with one of those strings.
