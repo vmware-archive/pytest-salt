@@ -122,7 +122,11 @@ def terminate_child_processes(pid=None, children=None):
                     if not kill and child.status() == psutil.STATUS_ZOMBIE:
                         # Zombie processes will exit once child processes also exit
                         continue
-                    cmdline = child.cmdline()
+                    try:
+                        cmdline = child.cmdline()
+                    except psutil.AccessDenied:
+                        # OSX is more restrictive about the above information
+                        cmdline = None
                     if not cmdline:
                         cmdline = child.as_dict()
                     if kill:
@@ -146,6 +150,62 @@ def terminate_child_processes(pid=None, children=None):
 
         if children:
             psutil.wait_procs(children, timeout=5, callback=lambda proc: kill_children(children, kill=True))
+
+
+def terminate_process(pid=None, process=None, children=None, kill_children=False):
+    '''
+    Try to terminate/kill the started processe
+    '''
+    if pid and not process:
+        try:
+            process = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            # Process is already gone
+            process = None
+
+    if kill_children:
+        if process and not children:
+            children = collect_child_processes(process.pid)
+        if children:
+            terminate_child_processes(children=children)
+
+    if process:
+        # Lets log and kill any child processes which salt left behind
+        def kill_process(_processes, terminate=False, kill=False):
+            for proc in _processes[:]:  # Iterate over a copy of the list
+                try:
+                    if not kill and proc.status() == psutil.STATUS_ZOMBIE:
+                        # Zombie processes will exit once child processes also exit
+                        continue
+                    try:
+                        cmdline = proc.cmdline()
+                    except psutil.AccessDenied:
+                        # OSX is more restrictive about the above information
+                        cmdline = None
+                    if not cmdline:
+                        cmdline = proc.as_dict()
+                    if kill:
+                        log.warning('Killing process: %s', cmdline)
+                        proc.kill()
+                    elif terminate:
+                        log.warning('Terminating process: %s', cmdline)
+                        proc.terminate()
+                    else:
+                        log.warning('Sending %s to process: %s', SIGINT_NAME, cmdline)
+                        proc.send_signal(SIGINT)
+                    if not psutil.pid_exists(proc.pid):
+                        _processes.remove(proc)
+                except psutil.NoSuchProcess:
+                    _processes.remove(proc)
+
+        process_list = [process]
+        kill_process(process_list)
+
+        if process_list:
+            psutil.wait_procs(process_list, timeout=10, callback=lambda proc: kill_process(process_list, terminate=True))
+
+        if process_list:
+            psutil.wait_procs(process_list, timeout=5, callback=lambda proc: kill_process(process_list, kill=True))
 
 
 def start_daemon(request,
