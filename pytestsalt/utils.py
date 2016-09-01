@@ -109,14 +109,21 @@ def terminate_child_processes(pid=None, children=None):
     '''
     Try to terminate/kill any started child processes of the provided pid
     '''
-    if pid and not children:
-        # Let's get the child processes of the started subprocess
-        children = collect_child_processes(pid)
+    if pid:
+        if not children:
+            # Let's get the child processes of the started subprocess
+            children = collect_child_processes(pid)
+        else:
+            # Let's collect children again since there might be new ones
+            children.extend(collect_child_processes(pid))
 
     if children:
         # Lets log and kill any child processes which salt left behind
         def kill_children(_children, terminate=False, kill=False):
             for child in _children[:][::-1]:  # Iterate over a reversed copy of the list
+                if not psutil.pid_exists(child.pid):
+                    _children.remove(child)
+                    continue
                 try:
                     if not kill and child.status() == psutil.STATUS_ZOMBIE:
                         # Zombie processes will exit once child processes also exit
@@ -163,8 +170,12 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
             process = None
 
     if kill_children:
-        if process and not children:
-            children = collect_child_processes(process.pid)
+        if process:
+            if not children:
+                children = collect_child_processes(process.pid)
+            else:
+                # Let's collect children again since there might be new ones
+                children.extend(collect_child_processes(pid))
         if children:
             terminate_child_processes(children=children)
 
@@ -172,6 +183,9 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
         # Lets log and kill any child processes which salt left behind
         def kill_process(_processes, terminate=False, kill=False):
             for proc in _processes[:]:  # Iterate over a copy of the list
+                if not psutil.pid_exists(proc.pid):
+                    _processes.remove(proc)
+                    continue
                 try:
                     if not kill and proc.status() == psutil.STATUS_ZOMBIE:
                         # Zombie processes will exit once child processes also exit
@@ -372,7 +386,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
             target=self._start, args=(self._running,))
         self._running.set()
         self._process.start()
-        atexit.register(terminate_child_processes, self._process.pid)
+        self._children = collect_child_processes(self._process.pid)
+        atexit.register(terminate_process, pid=self._process.pid, children=self._children, kill_children=True)
         return True
 
     def _start(self, running_event):
@@ -410,15 +425,12 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Terminate the started daemon
         '''
         # Let's get the child processes of the started subprocess
-        children = collect_child_processes(self._process.pid)
-
         self._running.clear()
         self._connectable.clear()
         time.sleep(0.0125)
-        self._process.terminate()
-
         # Lets log and kill any child processes which salt left behind
-        terminate_child_processes(children=children)
+        terminate_process(pid=self._process.pid, children=self._children, kill_children=True)
+        self._process.terminate()
 
     def wait_until_running(self, timeout=None):
         '''
@@ -436,43 +448,46 @@ class SaltDaemonScriptBase(SaltScriptBase):
             check_ports
         )
         log.debug('Expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
-        while True:
-            if self._running.is_set() is False:
-                # No longer running, break
-                break
-            if time.time() > expire:
-                # Timeout, break
-                break
-            if not check_ports:
-                self._connectable.set()
-                break
-            for port in set(check_ports):
-                if isinstance(port, int):
-                    log.debug('[%s][%s] Checking connectable status on port: %s',
-                              self.log_prefix,
-                              self.cli_display_name,
-                              port)
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    conn = sock.connect_ex(('localhost', port))
-                    if conn == 0:
-                        log.debug('[%s][%s] Port %s is connectable!',
+        try:
+            while True:
+                if self._running.is_set() is False:
+                    # No longer running, break
+                    break
+                if time.time() > expire:
+                    # Timeout, break
+                    break
+                if not check_ports:
+                    self._connectable.set()
+                    break
+                for port in set(check_ports):
+                    if isinstance(port, int):
+                        log.debug('[%s][%s] Checking connectable status on port: %s',
                                   self.log_prefix,
                                   self.cli_display_name,
                                   port)
-                        check_ports.remove(port)
-                        sock.shutdown(socket.SHUT_RDWR)
-                        sock.close()
-                    del sock
-                elif isinstance(port, six.string_types):
-                    salt_run = self.get_salt_run_fixture()
-                    minions_joined = salt_run.run('manage.joined')
-                    if minions_joined.exitcode == 0:
-                        if minions_joined.json and port in minions_joined.json:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        conn = sock.connect_ex(('localhost', port))
+                        if conn == 0:
+                            log.debug('[%s][%s] Port %s is connectable!',
+                                      self.log_prefix,
+                                      self.cli_display_name,
+                                      port)
                             check_ports.remove(port)
-                            log.warning('Removed ID %r  Still left: %r', port, check_ports)
-                        elif minions_joined.json is None:
-                            log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
-            time.sleep(0.5)
+                            sock.shutdown(socket.SHUT_RDWR)
+                            sock.close()
+                        del sock
+                    elif isinstance(port, six.string_types):
+                        salt_run = self.get_salt_run_fixture()
+                        minions_joined = salt_run.run('manage.joined')
+                        if minions_joined.exitcode == 0:
+                            if minions_joined.json and port in minions_joined.json:
+                                check_ports.remove(port)
+                                log.warning('Removed ID %r  Still left: %r', port, check_ports)
+                            elif minions_joined.json is None:
+                                log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            return self._connectable.is_set()
         log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         return self._connectable.is_set()
 
