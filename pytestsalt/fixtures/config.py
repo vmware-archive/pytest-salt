@@ -958,15 +958,15 @@ def apply_minion_config(root_dir,
         # Merge in the default options with the minion_config_overrides
         dictupdate.update(default_options, config_overrides, merge_lists=True)
 
-    default_options.setdefault('engines', [])
-    if 'pytest' not in default_options['engines']:
-        default_options['engines'].append('pytest')
+    #default_options.setdefault('engines', [])
+    #if 'pytest' not in default_options['engines']:
+    #    default_options['engines'].append('pytest')
 
-    if 'engines_dirs' not in default_options:
-        default_options['engines_dirs'] = []
+    #if 'engines_dirs' not in default_options:
+    #    default_options['engines_dirs'] = []
 
-    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
-    default_options['pytest_port'] = engine_port
+    #default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
+    #default_options['pytest_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []

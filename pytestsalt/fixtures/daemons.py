@@ -1454,7 +1454,7 @@ class SaltMinion(SaltDaemonScriptBase):
         return ['--disable-keepalive', '-l', 'quiet']
 
     def get_check_ports(self):
-        return set([self.config['pytest_port']])
+        return set([self.config['id']])
 #        return set([self.config['id'], self.config['pytest_port']])
 
 
