@@ -102,7 +102,7 @@ def collect_child_processes(pid):
         children = parent.children(recursive=True)
     except psutil.NoSuchProcess:
         children = []
-    return children
+    return children[::-1]  # return a reversed list of the children
 
 
 def terminate_child_processes(pid=None, children=None):
@@ -149,7 +149,7 @@ def terminate_child_processes(pid=None, children=None):
                 except psutil.NoSuchProcess:
                     _children.remove(child)
 
-        kill_children(children)
+        kill_children(children, kill=True)
 
         if children:
             psutil.wait_procs(children, timeout=10, callback=lambda proc: kill_children(children, terminate=True))
@@ -212,7 +212,7 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                     _processes.remove(proc)
 
         process_list = [process]
-        kill_process(process_list)
+        kill_process(process_list, kill=True)
 
         if process_list:
             psutil.wait_procs(process_list, timeout=10, callback=lambda proc: kill_process(process_list, terminate=True))
