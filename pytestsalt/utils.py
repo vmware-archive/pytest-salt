@@ -415,6 +415,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 if terminal.stderr is not None:
                     terminal.recv_err()
                 time.sleep(0.125)
+                if terminal.poll() is not None:
+                    running_event.clear()
         except (SystemExit, KeyboardInterrupt):
             self._running.clear()
 
@@ -488,7 +490,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 time.sleep(0.5)
         except KeyboardInterrupt:
             return self._connectable.is_set()
-        log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
+        if self._connectable.is_set():
+            log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         return self._connectable.is_set()
 
 
