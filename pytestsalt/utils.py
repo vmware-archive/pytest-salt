@@ -230,7 +230,8 @@ def start_daemon(request,
                  daemon_config_dir=None,
                  daemon_class=None,
                  bin_dir_path=None,
-                 fail_hard=False):
+                 fail_hard=False,
+                 start_timeout=10):
     '''
     Returns a running salt daemon
     '''
@@ -251,9 +252,9 @@ def start_daemon(request,
         process.start()
         if process.is_alive():
             try:
-                connectable = process.wait_until_running(timeout=10)
+                connectable = process.wait_until_running(timeout=start_timeout)
                 if connectable is False:
-                    connectable = process.wait_until_running(timeout=5)
+                    connectable = process.wait_until_running(timeout=start_timeout/2)
                     if connectable is False:
                         process.terminate()
                         if attempts >= 3:
@@ -449,7 +450,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             self.cli_display_name,
             check_ports
         )
-        log.debug('Expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
+        log.debug('Wait until running expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
         try:
             while True:
                 if self._running.is_set() is False:
