@@ -455,9 +455,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
             while True:
                 if self._running.is_set() is False:
                     # No longer running, break
+                    log.warning('No longer running!')
                     break
                 if time.time() > expire:
                     # Timeout, break
+                    log.debug('Expired at %s(was set to %s)', time.time(), expire)
                     break
                 if not check_ports:
                     self._connectable.set()
