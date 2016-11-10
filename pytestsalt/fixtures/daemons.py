@@ -26,7 +26,7 @@ import pytest
 import salt.ext.six as six
 import salt.utils as salt_utils
 
-from pytestsalt.utils import SaltCliScriptBase, SaltDaemonScriptBase
+from pytestsalt.utils import SaltCliScriptBase, SaltDaemonScriptBase, start_daemon
 
 pytest_plugins = ['tornado']
 
@@ -52,77 +52,6 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     if six.PY3:
         version = version.decode('utf-8')
     return version
-
-
-def start_daemon(request,
-                 daemon_name=None,
-                 daemon_id=None,
-                 daemon_log_prefix=None,
-                 daemon_cli_script_name=None,
-                 daemon_config=None,
-                 daemon_config_dir=None,
-                 daemon_class=None,
-                 bin_dir_path=None):
-    '''
-    Returns a running salt daemon
-    '''
-    log.info('[%s] Starting pytest %s(%s)', daemon_name, daemon_log_prefix, daemon_id)
-    attempts = 0
-    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
-        attempts += 1
-        process = daemon_class(request,
-                               daemon_config,
-                               daemon_config_dir,
-                               bin_dir_path,
-                               daemon_log_prefix,
-                               cli_script_name=daemon_cli_script_name)
-        process.start()
-        if process.is_alive():
-            try:
-                connectable = process.wait_until_running(timeout=10)
-                if connectable is False:
-                    connectable = process.wait_until_running(timeout=5)
-                    if connectable is False:
-                        process.terminate()
-                        if attempts >= 3:
-                            pytest.xfail(
-                                'The pytest {0}({1}) has failed to confirm running status '
-                                'after {2} attempts'.format(daemon_name, daemon_id, attempts))
-                        continue
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
-                process.terminate()
-                if attempts >= 3:
-                    pytest.xfail(str(exc))
-                continue
-            log.info(
-                '[%s] The pytest %s(%s) is running and accepting commands '
-                'after %d attempts',
-                daemon_log_prefix,
-                daemon_name,
-                daemon_id,
-                attempts
-            )
-
-            def stop_daemon():
-                log.info('[%s] Stopping pytest %s(%s)', daemon_log_prefix, daemon_name, daemon_id)
-                process.terminate()
-                log.info('[%s] pytest %s(%s) stopped', daemon_log_prefix, daemon_name, daemon_id)
-
-            request.addfinalizer(stop_daemon)
-            return process
-        else:
-            process.terminate()
-            continue
-    else:   # pylint: disable=useless-else-on-loop
-            # Wrong, we have a return, its not useless
-        pytest.xfail(
-            'The pytest {0}({1}) has failed to start after {2} attempts'.format(
-                daemon_name,
-                daemon_id,
-                attempts-1
-            )
-        )
 
 
 @pytest.yield_fixture
