@@ -80,12 +80,26 @@ def pytest_addoption(parser):
               'found. Defaults to the directory name of the python executable '
               'running py.test')
     )
+    saltparser.addoption(
+        '--salt-fail-hard',
+        default=None,
+        action='store_true',
+        help=('If a salt daemon fails to start, the test is marked as XFailed. '
+              'If this flag is passed, then a test failure is raised instead of XFail.')
+    )
     parser.addini(
         'cli_bin_dir',
         default=None,
         help=('Path to the bin directory where the salt CLI scripts can be '
               'found. Defaults to the directory name of the python executable '
               'running py.test')
+    )
+    parser.addini(
+        'salt_fail_hard',
+        default=None,
+        type="bool",
+        help=('If a salt daemon fails to start, the test is marked as XFailed. '
+              'If this flag is set, then a test failure is raised instead of XFail.')
     )
 
 
@@ -132,6 +146,33 @@ def _cli_bin_dir(request, cli_bin_dir):
         return path
 
     return cli_bin_dir
+
+
+@pytest.fixture(scope='session')
+def salt_fail_hard(request):
+    '''
+    Return the salt fail hard value
+    '''
+    return False
+
+
+@pytest.fixture(scope='session')
+def _salt_fail_hard(request, salt_fail_hard):
+    '''
+    Return the salt fail hard value
+    '''
+    fail_hard = request.config.getoption('salt_fail_hard')
+    if fail_hard is not None:
+        # We were passed --salt-fail-hard as a CLI option
+        return fail_hard
+
+    # The salt fail hard was not passed as a CLI option
+    fail_hard = request.config.getini('salt_fail_hard')
+    if fail_hard is not None:
+        # We were passed salt_fail_hard as a INI option
+        return fail_hard
+
+    return salt_fail_hard
 
 
 @pytest.fixture(scope='session')

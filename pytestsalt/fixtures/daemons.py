@@ -93,7 +93,8 @@ def salt_master(request,
                 log_server,  # pylint: disable=unused-argument
                 master_log_prefix,
                 cli_master_script_name,
-                _cli_bin_dir):
+                _cli_bin_dir,
+                _salt_fail_hard):
     '''
     Returns a running salt-master
     '''
@@ -105,7 +106,8 @@ def salt_master(request,
                         daemon_config=master_config,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture(scope='session')
@@ -147,7 +149,8 @@ def session_salt_master(request,
                         log_server,  # pylint: disable=unused-argument
                         session_master_log_prefix,
                         cli_master_script_name,
-                        _cli_bin_dir):
+                        _cli_bin_dir,
+                        _salt_fail_hard):
     '''
     Returns a running salt-master
     '''
@@ -159,7 +162,8 @@ def session_salt_master(request,
                         daemon_config=session_master_config,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture
@@ -201,7 +205,8 @@ def salt_master_of_masters(request,
                            log_server,  # pylint: disable=unused-argument
                            master_of_masters_log_prefix,
                            cli_master_script_name,
-                           _cli_bin_dir):
+                           _cli_bin_dir,
+                           _salt_fail_hard):
     '''
     Returns a running salt-master
     '''
@@ -213,7 +218,8 @@ def salt_master_of_masters(request,
                         daemon_config=master_of_masters_config,
                         daemon_config_dir=master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture(scope='session')
@@ -255,7 +261,8 @@ def session_salt_master_of_masters(request,
                                    log_server,  # pylint: disable=unused-argument
                                    session_master_of_masters_log_prefix,
                                    cli_master_script_name,
-                                   _cli_bin_dir):
+                                   _cli_bin_dir,
+                                   _salt_fail_hard):
     '''
     Returns a running salt-master
     '''
@@ -267,7 +274,8 @@ def session_salt_master_of_masters(request,
                         daemon_config=session_master_of_masters_config,
                         daemon_config_dir=session_master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture
@@ -310,6 +318,7 @@ def salt_minion(request,
                 cli_minion_script_name,
                 log_server,
                 _cli_bin_dir,
+                _salt_fail_hard,
                 conf_dir):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -322,7 +331,8 @@ def salt_minion(request,
                         daemon_config=minion_config,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture(scope='session')
@@ -365,7 +375,8 @@ def session_salt_minion(request,
                         cli_minion_script_name,
                         log_server,
                         _cli_bin_dir,
-                        session_conf_dir):
+                        session_conf_dir,
+                        _salt_fail_hard):
     '''
     Returns a running salt-minion
     '''
@@ -377,7 +388,8 @@ def session_salt_minion(request,
                         daemon_config=session_minion_config,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture
@@ -420,6 +432,7 @@ def secondary_salt_minion(request,
                           cli_minion_script_name,
                           log_server,
                           _cli_bin_dir,
+                          _salt_fail_hard,
                           secondary_conf_dir):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -432,7 +445,8 @@ def secondary_salt_minion(request,
                         daemon_config=secondary_minion_config,
                         daemon_config_dir=secondary_conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture(scope='session')
@@ -475,6 +489,7 @@ def session_secondary_salt_minion(request,
                                   cli_minion_script_name,
                                   log_server,
                                   _cli_bin_dir,
+                                  _salt_fail_hard,
                                   session_secondary_conf_dir):
     '''
     Returns a running salt-minion
@@ -487,7 +502,8 @@ def session_secondary_salt_minion(request,
                         daemon_config=session_secondary_minion_config,
                         daemon_config_dir=session_secondary_conf_dir,
                         daemon_class=SaltMinion,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture
@@ -529,7 +545,8 @@ def salt_syndic(request,
                 log_server,  # pylint: disable=unused-argument
                 syndic_log_prefix,
                 cli_syndic_script_name,
-                _cli_bin_dir):
+                _cli_bin_dir,
+                _salt_fail_hard):
     '''
     Returns a running salt-syndic
     '''
@@ -541,7 +558,8 @@ def salt_syndic(request,
                         daemon_config=syndic_config,
                         daemon_config_dir=syndic_conf_dir,
                         daemon_class=SaltSyndic,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture(scope='session')
@@ -583,7 +601,8 @@ def session_salt_syndic(request,
                         log_server,  # pylint: disable=unused-argument
                         session_syndic_log_prefix,
                         cli_syndic_script_name,
-                        _cli_bin_dir):
+                        _cli_bin_dir,
+                        _salt_fail_hard):
     '''
     Returns a running salt-syndic
     '''
@@ -595,7 +614,8 @@ def session_salt_syndic(request,
                         daemon_config=session_syndic_config,
                         daemon_config_dir=session_syndic_conf_dir,
                         daemon_class=SaltSyndic,
-                        bin_dir_path=_cli_bin_dir)
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard)
 
 
 @pytest.yield_fixture
