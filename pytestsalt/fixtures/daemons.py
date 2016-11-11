@@ -107,7 +107,8 @@ def salt_master(request,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture(scope='session')
@@ -163,7 +164,8 @@ def session_salt_master(request,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture
@@ -219,7 +221,8 @@ def salt_master_of_masters(request,
                         daemon_config_dir=master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture(scope='session')
@@ -275,7 +278,8 @@ def session_salt_master_of_masters(request,
                         daemon_config_dir=session_master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture
@@ -332,7 +336,8 @@ def salt_minion(request,
                         daemon_config_dir=conf_dir,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture(scope='session')
@@ -389,7 +394,8 @@ def session_salt_minion(request,
                         daemon_config_dir=session_conf_dir,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture
@@ -446,7 +452,8 @@ def secondary_salt_minion(request,
                         daemon_config_dir=secondary_conf_dir,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture(scope='session')
@@ -503,7 +510,8 @@ def session_secondary_salt_minion(request,
                         daemon_config_dir=session_secondary_conf_dir,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture
@@ -559,7 +567,8 @@ def salt_syndic(request,
                         daemon_config_dir=syndic_conf_dir,
                         daemon_class=SaltSyndic,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture(scope='session')
@@ -615,7 +624,8 @@ def session_salt_syndic(request,
                         daemon_config_dir=session_syndic_conf_dir,
                         daemon_class=SaltSyndic,
                         bin_dir_path=_cli_bin_dir,
-                        fail_hard=_salt_fail_hard)
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
 
 
 @pytest.yield_fixture
