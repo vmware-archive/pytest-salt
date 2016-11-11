@@ -1402,9 +1402,8 @@ class SaltMinion(SaltDaemonScriptBase):
     def get_script_args(self):
         return ['--disable-keepalive', '-l', 'quiet']
 
-    def get_check_ports(self):
-        return set([self.config['id']])
-#        return set([self.config['id'], self.config['pytest_port']])
+    def get_check_events(self):
+        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
 
 
 class SaltMaster(SaltDaemonScriptBase):
@@ -1412,10 +1411,8 @@ class SaltMaster(SaltDaemonScriptBase):
     Class which runs the salt-master daemon
     '''
 
-    def get_check_ports(self):
-        return set([self.config['ret_port'],
-                    self.config['publish_port'],
-                    self.config['pytest_port']])
+    def get_check_events(self):
+        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_script_args(self):
         return ['-l', 'quiet']

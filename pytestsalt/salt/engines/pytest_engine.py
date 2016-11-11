@@ -13,7 +13,7 @@
 '''
 
 # Import python libs
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import socket
 import logging
 
@@ -54,6 +54,8 @@ class PyTestEngine(object):
     def _start(self):
         if self.opts['__role'] == 'minion':
             yield self.listen_to_minion_connected_event()
+        else:
+            self.io_loop.spawn_callback(self.fire_master_started_event)
 
         port = int(self.opts['pytest_port'])
         log.info('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
@@ -88,3 +90,19 @@ class PyTestEngine(object):
                 log.info('Got minion connected event: %s', event)
                 break
             yield gen.sleep(0.25)
+
+    @gen.coroutine
+    def fire_master_started_event(self):
+        log.info('Firing salt-master started event...')
+        event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=False)
+        master_start_event_tag = 'salt/master/{0}/start'.format(self.opts['id'])
+        load = {'id': self.opts['id'], 'tag': master_start_event_tag, 'data': {}}
+        # One minute should be more than enough to fire these events every second in order
+        # for pytest-salt to pickup that the master is running
+        timeout = 60
+        while True:
+            timeout -= 1
+            event_bus.fire_event(load, master_start_event_tag, timeout=500)
+            if timeout <= 0:
+                break
+            yield gen.sleep(1)

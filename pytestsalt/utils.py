@@ -14,6 +14,7 @@
 # Import Python libs
 from __future__ import absolute_import
 import os
+import re
 import sys
 import json
 import time
@@ -368,6 +369,12 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         return []
 
+    def get_check_events(self):  # pylint: disable=no-self-use
+        '''
+        Return a list of event tags to check against to ensure the daemon is running
+        '''
+        return []
+
     def get_salt_run_fixture(self):
         if self.request.scope == 'session':
             try:
@@ -378,6 +385,19 @@ class SaltDaemonScriptBase(SaltScriptBase):
             return self.request.getfixturevalue('salt_run')
         except AttributeError:
             return self.request.getfuncargvalue('salt_run')
+
+    def get_salt_run_event_listener(self):
+        try:
+            cli_script_name = self.request.getfixturevalue('cli_run_script_name')
+        except AttributeError:
+            cli_script_name = self.request.getfuncargvalue('cli_run_script_name')
+
+        return SaltRunEventListener(self.request,
+                                    self.config,
+                                    self.config_dir,
+                                    self.bin_dir_path,
+                                    self.log_prefix,
+                                    cli_script_name=cli_script_name)
 
     def start(self):
         '''
@@ -444,26 +464,45 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
         expire = time.time() + timeout
         check_ports = self.get_check_ports()
-        log.debug(
-            '[%s][%s] Checking the following ports to assure running status: %s',
-            self.log_prefix,
-            self.cli_display_name,
-            check_ports
-        )
+        if check_ports:
+            log.debug(
+                '[%s][%s] Checking the following ports to assure running status: %s',
+                self.log_prefix,
+                self.cli_display_name,
+                check_ports
+            )
+        check_events = self.get_check_events()
+        if check_events:
+            log.debug(
+                '[%s][%s] Checking the following event tags to assure running status: %s',
+                self.log_prefix,
+                self.cli_display_name,
+                check_events
+            )
         log.debug('Wait until running expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
+        event_listener = self.get_salt_run_event_listener()
         try:
             while True:
                 if self._running.is_set() is False:
                     # No longer running, break
                     log.warning('No longer running!')
                     break
+
                 if time.time() > expire:
                     # Timeout, break
                     log.debug('Expired at %s(was set to %s)', time.time(), expire)
                     break
-                if not check_ports:
+
+                if not check_ports and not check_events:
                     self._connectable.set()
                     break
+
+                if check_events:
+                    result = event_listener.run(check_events, timeout=timeout - 0.5)
+                    if result.exitcode == 0:
+                        for tag in result.json['matched']:
+                            check_events.remove(tag)
+
                 for port in set(check_ports):
                     if isinstance(port, int):
                         log.debug('[%s][%s] Checking connectable status on port: %s',
@@ -635,6 +674,106 @@ class SaltCliScriptBase(SaltScriptBase):
         else:
             json_out = None
         return stdout, stderr, json_out
+
+
+class SaltRunEventListener(SaltCliScriptBase):
+    '''
+    Class which runs 'salt-run state.event *' to match agaist a provided set of event tags
+    '''
+
+    EVENT_MATCH_RE = re.compile(r'^(?P<tag>[\w/-]+)(?:[\s]+)(?P<data>[\S\W]+)$')
+
+    def get_base_script_args(self):
+        return SaltScriptBase.get_base_script_args(self)
+
+    def get_script_args(self):  # pylint: disable=no-self-use
+        '''
+        Returns any additional arguments to pass to the CLI script
+        '''
+        return ['state.event']
+
+    def run(self, tags=(), timeout=10):  # pylint: disable=arguments-differ
+        '''
+        Run the given command synchronously
+        '''
+        exitcode = 0
+        timeout_expire = time.time() + timeout
+        environ = os.environ.copy()
+        environ['PYTEST_LOG_PREFIX'] = '[{0}][EventListen] '.format(self.log_prefix)
+        proc_args = [
+            self.get_script_path(self.cli_script_name)
+        ] + self.get_base_script_args() + self.get_script_args()
+
+        log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
+
+        to_match_events = set(tags)
+        matched_events = {}
+
+        terminal = nb_popen.NonBlockingPopen(proc_args, env=environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # Consume the output
+        stdout = six.b('')
+        stderr = six.b('')
+
+        process_output = six.b('')
+        try:
+            while True:
+                if terminal.stdout is not None:
+                    try:
+                        out = terminal.recv(4096)
+                    except IOError:
+                        out = six.b('')
+                    if out:
+                        stdout += out
+                        process_output += out
+                if terminal.stderr is not None:
+                    try:
+                        err = terminal.recv_err(4096)
+                    except IOError:
+                        err = ''
+                    if err:
+                        stderr += err
+                if out is None and err is None:
+                    break
+
+                if process_output:
+                    lines = process_output.split(b'}\n')
+                    if lines[-1] != b'':
+                        process_output = lines.pop()
+                    else:
+                        process_output = six.b('')
+                        lines.pop()
+                    for line in lines:
+                        match = self.EVENT_MATCH_RE.match(line.decode(__salt_system_encoding__))  # pylint: disable=undefined-variable
+                        if match:
+                            tag, data = match.groups()
+                            if tag in to_match_events:
+                                matched_events[tag] = json.loads(data + '}')
+                                to_match_events.remove(tag)
+
+                if not to_match_events:
+                    log.debug('ALL TAGS FOUND!!!')
+                    break
+
+                if timeout_expire < time.time():
+                    exitcode = 1
+                    break
+        except (SystemExit, KeyboardInterrupt):
+            pass
+
+        close_terminal(terminal)
+
+        if six.PY3:
+            # pylint: disable=undefined-variable
+            stdout = stdout.decode(__salt_system_encoding__)
+            stderr = stderr.decode(__salt_system_encoding__)
+            # pylint: enable=undefined-variable
+
+        json_out = {
+            'matched': matched_events,
+            'unmatched': to_match_events
+        }
+        return ShellResult(exitcode, stdout, stderr, json_out)
 
 
 @pytest.mark.trylast
