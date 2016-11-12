@@ -716,6 +716,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         stderr = six.b('')
 
         process_output = six.b('')
+        events_processed = 0
         try:
             while True:
                 if terminal.stdout is not None:
@@ -734,6 +735,13 @@ class SaltRunEventListener(SaltCliScriptBase):
                     if err:
                         stderr += err
                 if out is None and err is None:
+                    if to_match_events:
+                        exitcode = 1
+                    log.warning('[%s][%s] Premature exit?! Failed to find all of the required event tags. '
+                                'Total events processed: %s',
+                                self.log_prefix,
+                                self.cli_display_name,
+                                events_processed)
                     break
 
                 if process_output:
@@ -746,16 +754,26 @@ class SaltRunEventListener(SaltCliScriptBase):
                     for line in lines:
                         match = self.EVENT_MATCH_RE.match(line.decode(__salt_system_encoding__))  # pylint: disable=undefined-variable
                         if match:
+                            events_processed += 1
                             tag, data = match.groups()
                             if tag in to_match_events:
                                 matched_events[tag] = json.loads(data + '}')
                                 to_match_events.remove(tag)
 
+                    log.info('[%s][%s] Events processed so far: %d',
+                             self.log_prefix,
+                             self.cli_display_name,
+                             events_processed)
+
                 if not to_match_events:
-                    log.debug('ALL TAGS FOUND!!!')
+                    log.debug('[%s][%s] ALL EVENT TAGS FOUND!!!', self.log_prefix, self.cli_display_name)
                     break
 
                 if timeout_expire < time.time():
+                    log.warning('[%s][%s] Failed to find all of the required event tags. Total events processed: %s',
+                                self.log_prefix,
+                                self.cli_display_name,
+                                events_processed)
                     exitcode = 1
                     break
         except (SystemExit, KeyboardInterrupt):
