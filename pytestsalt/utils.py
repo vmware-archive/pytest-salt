@@ -583,7 +583,16 @@ class SaltCliScriptBase(SaltScriptBase):
         Run the given command synchronously
         '''
         timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
-        if kwargs.pop('fail_hard', False):
+        if 'fail_hard' in kwargs:
+            # Explicit fail_hard passed
+            fail_hard = kwargs.pop('fail_hard')
+        else:
+            # Get the value of the _salt_fail_hard fixture
+            try:
+                fail_hard = self.request.getfixturevalue('_salt_fail_hard')
+            except AttributeError:
+                fail_hard = self.request.getfuncargvalue('_salt_fail_hard')
+        if fail_hard is True:
             fail_method = pytest.fail
         else:
             fail_method = pytest.xfail
@@ -600,10 +609,7 @@ class SaltCliScriptBase(SaltScriptBase):
         for key in kwargs:
             proc_args.append('{0}={1}'.format(key, kwargs[key]))
 
-        log.info('[%s][%s] Running \'%s\'...',
-                 self.log_prefix,
-                 self.cli_display_name,
-                 ' '.join(proc_args))
+        log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
 
         terminal = nb_popen.NonBlockingPopen(proc_args,
                                              env=environ,
@@ -639,11 +645,9 @@ class SaltCliScriptBase(SaltScriptBase):
                             self.cli_display_name,
                             args,
                             kwargs,
-                            '[{0}][{1}] Timed out after {2} seconds!'.format(
-                                self.log_prefix,
-                                self.cli_display_name,
-                                kwargs.get('timeout', self.DEFAULT_TIMEOUT)
-                            )
+                            '[{0}][{1}] Timed out after {2} seconds!'.format(self.log_prefix,
+                                                                             self.cli_display_name,
+                                                                             timeout)
                         )
                     )
         except (SystemExit, KeyboardInterrupt):
