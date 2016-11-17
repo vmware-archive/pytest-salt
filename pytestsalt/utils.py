@@ -596,6 +596,7 @@ class SaltCliScriptBase(SaltScriptBase):
             fail_method = pytest.fail
         else:
             fail_method = pytest.xfail
+        log.info('The fail hard setting for %s is: %s', self.cli_script_name, fail_hard)
         minion_tgt = self.get_minion_tgt(**kwargs)
         timeout_expire = time.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
         environ = os.environ.copy()

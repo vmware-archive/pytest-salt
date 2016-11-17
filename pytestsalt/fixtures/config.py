@@ -97,7 +97,7 @@ def pytest_addoption(parser):
     parser.addini(
         'salt_fail_hard',
         default=None,
-        type="bool",
+        type='bool',
         help=('If a salt daemon fails to start, the test is marked as XFailed. '
               'If this flag is set, then a test failure is raised instead of XFail.')
     )
@@ -156,7 +156,7 @@ def salt_fail_hard(request):
     return False
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def _salt_fail_hard(request, salt_fail_hard):
     '''
     Return the salt fail hard value
@@ -168,7 +168,7 @@ def _salt_fail_hard(request, salt_fail_hard):
 
     # The salt fail hard was not passed as a CLI option
     fail_hard = request.config.getini('salt_fail_hard')
-    if fail_hard is not None:
+    if fail_hard != []:
         # We were passed salt_fail_hard as a INI option
         return fail_hard
 
