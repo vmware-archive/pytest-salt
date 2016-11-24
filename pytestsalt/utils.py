@@ -106,6 +106,34 @@ def collect_child_processes(pid):
     return children[::-1]  # return a reversed list of the children
 
 
+def terminate_process_list(process_list, kill=False):
+    for process in process_list[:][::-1]:  # Iterate over a reversed copy of the list
+        if not psutil.pid_exists(process.pid):
+            process_list.remove(process)
+            continue
+        try:
+            if not kill and process.status() == psutil.STATUS_ZOMBIE:
+                # Zombie processes will exit once child processes also exit
+                continue
+            try:
+                cmdline = process.cmdline()
+            except psutil.AccessDenied:
+                # OSX is more restrictive about the above information
+                cmdline = None
+            if not cmdline:
+                cmdline = process.as_dict()
+            if kill:
+                log.info('Killing process: %s', cmdline)
+                process.kill()
+            else:
+                log.info('Terminating process: %s', cmdline)
+                process.terminate()
+            if not psutil.pid_exists(process.pid):
+                process_list.remove(process)
+        except psutil.NoSuchProcess:
+            process_list.remove(process)
+
+
 def terminate_child_processes(pid=None, children=None):
     '''
     Try to terminate/kill any started child processes of the provided pid
@@ -119,44 +147,13 @@ def terminate_child_processes(pid=None, children=None):
             children.extend(collect_child_processes(pid))
 
     if children:
-        # Lets log and kill any child processes which salt left behind
-        def kill_children(_children, terminate=False, kill=False):
-            for child in _children[:][::-1]:  # Iterate over a reversed copy of the list
-                if not psutil.pid_exists(child.pid):
-                    _children.remove(child)
-                    continue
-                try:
-                    if not kill and child.status() == psutil.STATUS_ZOMBIE:
-                        # Zombie processes will exit once child processes also exit
-                        continue
-                    try:
-                        cmdline = child.cmdline()
-                    except psutil.AccessDenied:
-                        # OSX is more restrictive about the above information
-                        cmdline = None
-                    if not cmdline:
-                        cmdline = child.as_dict()
-                    if kill:
-                        log.warning('Killing child process left behind: %s', cmdline)
-                        child.kill()
-                    elif terminate:
-                        log.warning('Terminating child process left behind: %s', cmdline)
-                        child.terminate()
-                    else:
-                        log.warning('Sending %s to child process left behind: %s', SIGINT_NAME, cmdline)
-                        child.send_signal(SIGINT)
-                    if not psutil.pid_exists(child.pid):
-                        _children.remove(child)
-                except psutil.NoSuchProcess:
-                    _children.remove(child)
-
-        kill_children(children, kill=True)
+        terminate_process_list(children, kill=True)
 
         if children:
-            psutil.wait_procs(children, timeout=10, callback=lambda proc: kill_children(children, terminate=True))
+            psutil.wait_procs(children, timeout=10, callback=lambda proc: terminate_process_list(children, kill=True))
 
         if children:
-            psutil.wait_procs(children, timeout=5, callback=lambda proc: kill_children(children, kill=True))
+            psutil.wait_procs(children, timeout=5, callback=lambda proc: terminate_process_list(children, kill=True))
 
 
 def terminate_process(pid=None, process=None, children=None, kill_children=False):
@@ -181,45 +178,15 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
             terminate_child_processes(children=children)
 
     if process:
-        # Lets log and kill any child processes which salt left behind
-        def kill_process(_processes, terminate=False, kill=False):
-            for proc in _processes[:]:  # Iterate over a copy of the list
-                if not psutil.pid_exists(proc.pid):
-                    _processes.remove(proc)
-                    continue
-                try:
-                    if not kill and proc.status() == psutil.STATUS_ZOMBIE:
-                        # Zombie processes will exit once child processes also exit
-                        continue
-                    try:
-                        cmdline = proc.cmdline()
-                    except psutil.AccessDenied:
-                        # OSX is more restrictive about the above information
-                        cmdline = None
-                    if not cmdline:
-                        cmdline = proc.as_dict()
-                    if kill:
-                        log.warning('Killing process: %s', cmdline)
-                        proc.kill()
-                    elif terminate:
-                        log.warning('Terminating process: %s', cmdline)
-                        proc.terminate()
-                    else:
-                        log.warning('Sending %s to process: %s', SIGINT_NAME, cmdline)
-                        proc.send_signal(SIGINT)
-                    if not psutil.pid_exists(proc.pid):
-                        _processes.remove(proc)
-                except psutil.NoSuchProcess:
-                    _processes.remove(proc)
 
         process_list = [process]
-        kill_process(process_list, kill=True)
+        terminate_process_list(process_list, kill=True)
 
         if process_list:
-            psutil.wait_procs(process_list, timeout=10, callback=lambda proc: kill_process(process_list, terminate=True))
+            psutil.wait_procs(process_list, timeout=10, callback=lambda proc: terminate_process_list(process_list, kill=True))
 
         if process_list:
-            psutil.wait_procs(process_list, timeout=5, callback=lambda proc: kill_process(process_list, kill=True))
+            psutil.wait_procs(process_list, timeout=5, callback=lambda proc: terminate_process_list(process_list, kill=True))
 
 
 def start_daemon(request,
