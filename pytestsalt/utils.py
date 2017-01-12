@@ -127,7 +127,16 @@ def terminate_process_list(process_list, kill=False):
                 process.kill()
             else:
                 log.info('Terminating process: %s', cmdline)
-                process.terminate()
+                if 'COVERAGE_PROCESS_START' in process.environ():
+                    # Allow coverage data to be written down to disk
+                    process.send_signal(SIGINT)
+                    try:
+                        process.wait(5)
+                    except psutil.TimeoutExpired:
+                        if psutil.pid_exists(process.pid):
+                            continue
+                else:
+                    process.terminate()
             if not psutil.pid_exists(process.pid):
                 process_list.remove(process)
         except psutil.NoSuchProcess:
@@ -147,10 +156,10 @@ def terminate_child_processes(pid=None, children=None):
             children.extend(collect_child_processes(pid))
 
     if children:
-        terminate_process_list(children, kill=True)
+        terminate_process_list(children, kill=False)
 
         if children:
-            psutil.wait_procs(children, timeout=10, callback=lambda proc: terminate_process_list(children, kill=True))
+            psutil.wait_procs(children, timeout=10, callback=lambda proc: terminate_process_list(children, kill=False))
 
         if children:
             psutil.wait_procs(children, timeout=5, callback=lambda proc: terminate_process_list(children, kill=True))
@@ -180,10 +189,10 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
     if process:
 
         process_list = [process]
-        terminate_process_list(process_list, kill=True)
+        terminate_process_list(process_list, kill=False)
 
         if process_list:
-            psutil.wait_procs(process_list, timeout=10, callback=lambda proc: terminate_process_list(process_list, kill=True))
+            psutil.wait_procs(process_list, timeout=10, callback=lambda proc: terminate_process_list(process_list, kill=False))
 
         if process_list:
             psutil.wait_procs(process_list, timeout=5, callback=lambda proc: terminate_process_list(process_list, kill=True))
@@ -392,6 +401,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  ' '.join(proc_args))
 
         environ = os.environ.copy()
+        if 'COVERAGE_PROCESS_START' in environ:
+            environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         terminal = nb_popen.NonBlockingPopen(proc_args, env=environ)
         atexit.register(close_terminal, terminal)
 
