@@ -127,7 +127,13 @@ def terminate_process_list(process_list, kill=False):
                 process.kill()
             else:
                 log.info('Terminating process: %s', cmdline)
-                if 'COVERAGE_PROCESS_START' in process.environ():
+                try:
+                    running_coverage = 'COVERAGE_PROCESS_START' in process.environ()
+                except psutil.AccessDenied:
+                    # We were denied access to the process environ.
+                    # Let's look at this process environ since it most likely matches
+                    running_coverage = 'COVERAGE_PROCESS_START' in os.environ
+                if running_coverage:
                     # Allow coverage data to be written down to disk
                     process.send_signal(SIGINT)
                     try:
