@@ -353,12 +353,12 @@ class SaltDaemonScriptBase(SaltScriptBase):
     '''
 
     def __init__(self, *args, **kwargs):
-        handle_coverage = kwargs.pop('handle_coverage', False)
+        running_coverage = kwargs.pop('running_coverage', False)
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = multiprocessing.Event()
         self._connectable = multiprocessing.Event()
         self._process = None
-        self._handle_coverage = handle_coverage
+        self._running_coverage = running_coverage
 
     def is_alive(self):
         '''
@@ -407,7 +407,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Start the daemon subprocess
         '''
         self._process = SignalHandlingMultiprocessingProcess(
-            target=self._start, args=(self._running, self._handle_coverage))
+            target=self._start, args=(self._running, self._running_coverage))
         self._running.set()
         self._process.start()
         self._children = collect_child_processes(self._process.pid)
@@ -415,10 +415,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
                         pid=self._process.pid,
                         children=self._children,
                         kill_children=True,
-                        running_coverage=self._handle_coverage)
+                        running_coverage=self._running_coverage)
         return True
 
-    def _start(self, running_event, handle_coverage):
+    def _start(self, running_event, running_coverage):
         '''
         The actual, coroutine aware, start method
         '''
@@ -432,7 +432,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  ' '.join(proc_args))
 
         environ = os.environ.copy()
-        if handle_coverage is False:
+        if running_coverage is False:
             for key in environ:
                 if key.startsith('COVERAGE'):
                     environ.pop(key)
@@ -468,7 +468,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         terminate_process(pid=self._process.pid,
                           children=self._children,
                           kill_children=True,
-                          running_coverage=self._handle_coverage)
+                          running_coverage=self._running_coverage)
         self._process.terminate()
 
     def wait_until_running(self, timeout=None):
