@@ -42,11 +42,10 @@ pytest_plugins = ['helpers_namespace']
 log = logging.getLogger(__name__)
 
 if sys.platform.startswith('win'):
-    SIGINT = signal.CTRL_BREAK_EVENT  # pylint: disable=no-member
-    SIGINT_NAME = 'CTRL_BREAK_EVENT'
+    SIGINT = SIGTERM = signal.CTRL_BREAK_EVENT  # pylint: disable=no-member
 else:
     SIGINT = signal.SIGINT
-    SIGINT_NAME = 'SIGINT'
+    SIGTERM = signal.SIGTERM
 
 
 def get_unused_localhost_port():
@@ -106,7 +105,7 @@ def collect_child_processes(pid):
     return children[::-1]  # return a reversed list of the children
 
 
-def terminate_process_list(process_list, kill=False):
+def terminate_process_list(process_list, kill=False, running_coverage=False):
     for process in process_list[:][::-1]:  # Iterate over a reversed copy of the list
         if not psutil.pid_exists(process.pid):
             process_list.remove(process)
@@ -127,15 +126,9 @@ def terminate_process_list(process_list, kill=False):
                 process.kill()
             else:
                 log.info('Terminating process: %s', cmdline)
-                try:
-                    running_coverage = 'COVERAGE_PROCESS_START' in process.environ()
-                except psutil.AccessDenied:
-                    # We were denied access to the process environ.
-                    # Let's look at this process environ since it most likely matches
-                    running_coverage = 'COVERAGE_PROCESS_START' in os.environ
                 if running_coverage:
                     # Allow coverage data to be written down to disk
-                    process.send_signal(SIGINT)
+                    process.send_signal(SIGTERM)
                     try:
                         process.wait(5)
                     except psutil.TimeoutExpired:
@@ -149,7 +142,7 @@ def terminate_process_list(process_list, kill=False):
             process_list.remove(process)
 
 
-def terminate_child_processes(pid=None, children=None):
+def terminate_child_processes(pid=None, children=None, running_coverage=False):
     '''
     Try to terminate/kill any started child processes of the provided pid
     '''
@@ -162,16 +155,28 @@ def terminate_child_processes(pid=None, children=None):
             children.extend(collect_child_processes(pid))
 
     if children:
-        terminate_process_list(children, kill=False)
+        terminate_process_list(children, kill=False, running_coverage=running_coverage)
 
         if children:
-            psutil.wait_procs(children, timeout=10, callback=lambda proc: terminate_process_list(children, kill=False))
+            psutil.wait_procs(
+                children,
+                timeout=10,
+                callback=lambda proc: terminate_process_list(
+                    children,
+                    kill=running_coverage is False,
+                    running_coverage=running_coverage))
 
         if children:
-            psutil.wait_procs(children, timeout=5, callback=lambda proc: terminate_process_list(children, kill=True))
+            psutil.wait_procs(
+                children,
+                timeout=5,
+                callback=lambda proc: terminate_process_list(
+                    children,
+                    kill=True,
+                    running_coverage=running_coverage))
 
 
-def terminate_process(pid=None, process=None, children=None, kill_children=False):
+def terminate_process(pid=None, process=None, children=None, kill_children=False, running_coverage=False):
     '''
     Try to terminate/kill the started processe
     '''
@@ -190,18 +195,30 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                 # Let's collect children again since there might be new ones
                 children.extend(collect_child_processes(pid))
         if children:
-            terminate_child_processes(children=children)
+            terminate_child_processes(children=children, running_coverage=running_coverage)
 
     if process:
 
         process_list = [process]
-        terminate_process_list(process_list, kill=False)
+        terminate_process_list(process_list, kill=False, running_coverage=running_coverage)
 
         if process_list:
-            psutil.wait_procs(process_list, timeout=10, callback=lambda proc: terminate_process_list(process_list, kill=False))
+            psutil.wait_procs(
+                process_list,
+                timeout=10,
+                callback=lambda proc: terminate_process_list(
+                    process_list,
+                    kill=running_coverage is False,
+                    running_coverage=running_coverage))
 
         if process_list:
-            psutil.wait_procs(process_list, timeout=5, callback=lambda proc: terminate_process_list(process_list, kill=True))
+            psutil.wait_procs(
+                process_list,
+                timeout=5,
+                callback=lambda proc: terminate_process_list(
+                    process_list,
+                    kill=True,
+                    running_coverage=running_coverage))
 
 
 def start_daemon(request,
@@ -214,7 +231,8 @@ def start_daemon(request,
                  daemon_class=None,
                  bin_dir_path=None,
                  fail_hard=False,
-                 start_timeout=10):
+                 start_timeout=10,
+                 running_coverage=False):
     '''
     Returns a running salt daemon
     '''
@@ -231,7 +249,8 @@ def start_daemon(request,
                                daemon_config_dir,
                                bin_dir_path,
                                daemon_log_prefix,
-                               cli_script_name=daemon_cli_script_name)
+                               cli_script_name=daemon_cli_script_name,
+                               running_coverage=running_coverage)
         process.start()
         if process.is_alive():
             try:
@@ -334,10 +353,12 @@ class SaltDaemonScriptBase(SaltScriptBase):
     '''
 
     def __init__(self, *args, **kwargs):
+        handle_coverage = kwargs.pop('handle_coverage', False)
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = multiprocessing.Event()
         self._connectable = multiprocessing.Event()
         self._process = None
+        self._handle_coverage = handle_coverage
 
     def is_alive(self):
         '''
@@ -386,14 +407,18 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Start the daemon subprocess
         '''
         self._process = SignalHandlingMultiprocessingProcess(
-            target=self._start, args=(self._running,))
+            target=self._start, args=(self._running, self._handle_coverage))
         self._running.set()
         self._process.start()
         self._children = collect_child_processes(self._process.pid)
-        atexit.register(terminate_process, pid=self._process.pid, children=self._children, kill_children=True)
+        atexit.register(terminate_process,
+                        pid=self._process.pid,
+                        children=self._children,
+                        kill_children=True,
+                        running_coverage=self._handle_coverage)
         return True
 
-    def _start(self, running_event):
+    def _start(self, running_event, handle_coverage):
         '''
         The actual, coroutine aware, start method
         '''
@@ -407,7 +432,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  ' '.join(proc_args))
 
         environ = os.environ.copy()
-        if 'COVERAGE_PROCESS_START' in environ:
+        if handle_coverage is False:
+            for key in environ:
+                if key.startsith('COVERAGE'):
+                    environ.pop(key)
+        elif 'COVERAGE_PROCESS_START' in environ:
             environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         terminal = nb_popen.NonBlockingPopen(proc_args, env=environ)
         atexit.register(close_terminal, terminal)
@@ -436,7 +465,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._connectable.clear()
         time.sleep(0.0125)
         # Lets log and kill any child processes which salt left behind
-        terminate_process(pid=self._process.pid, children=self._children, kill_children=True)
+        terminate_process(pid=self._process.pid,
+                          children=self._children,
+                          kill_children=True,
+                          running_coverage=self._handle_coverage)
         self._process.terminate()
 
     def wait_until_running(self, timeout=None):
