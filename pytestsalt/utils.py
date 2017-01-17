@@ -459,6 +459,13 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
         close_terminal(terminal)
 
+    @property
+    def pid(self):
+        process = getattr(self, '_process', None)
+        if not process:
+            return
+        return process.pid
+
     def terminate(self):
         '''
         Terminate the started daemon
