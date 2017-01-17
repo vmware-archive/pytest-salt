@@ -242,6 +242,7 @@ def start_daemon(request,
         fail_method = pytest.xfail
     log.info('[%s] Starting pytest %s(%s)', daemon_name, daemon_log_prefix, daemon_id)
     attempts = 0
+    process = None
     while attempts <= 3:  # pylint: disable=too-many-nested-blocks
         attempts += 1
         process = daemon_class(request,
@@ -266,7 +267,7 @@ def start_daemon(request,
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
-                process.terminate()
+                terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
                 if attempts >= 3:
                     fail_method(str(exc))
                 continue
@@ -281,16 +282,18 @@ def start_daemon(request,
 
             def stop_daemon():
                 log.info('[%s] Stopping pytest %s(%s)', daemon_log_prefix, daemon_name, daemon_id)
-                process.terminate()
+                terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
                 log.info('[%s] pytest %s(%s) stopped', daemon_log_prefix, daemon_name, daemon_id)
 
             request.addfinalizer(stop_daemon)
             return process
         else:
-            process.terminate()
+            terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
             continue
     else:   # pylint: disable=useless-else-on-loop
             # Wrong, we have a return, its not useless
+        if process is not None:
+            terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
         fail_method(
             'The pytest {0}({1}) has failed to start after {2} attempts'.format(
                 daemon_name,
