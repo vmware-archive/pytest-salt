@@ -59,39 +59,6 @@ def get_unused_localhost_port():
     return port
 
 
-def close_terminal(terminal):
-    '''
-    Close a terminal
-    '''
-    # Let's begin the shutdown routines
-    if terminal.poll() is None:
-        terminate_child_processes(terminal.pid)
-        try:
-            terminal.send_signal(signal.SIGKILL)
-        except OSError as exc:
-            if exc.errno not in (errno.ESRCH, errno.EACCES):
-                raise
-        timeout = 5
-        while timeout > 0:
-            if terminal.poll() is not None:
-                break
-            timeout -= 0.0125
-            time.sleep(0.0125)
-    if terminal.poll() is None:
-        try:
-            terminal.kill()
-        except OSError as exc:
-            if exc.errno not in (errno.ESRCH, errno.EACCES):
-                raise
-    # Let's close the terminal now that we're done with it
-    try:
-        terminal.terminate()
-    except OSError as exc:
-        if exc.errno not in (errno.ESRCH, errno.EACCES):
-            raise
-    terminal.communicate()
-
-
 def collect_child_processes(pid):
     '''
     Try to collect any started child processes of the provided pid
@@ -126,16 +93,20 @@ def terminate_process_list(process_list, kill=False, running_coverage=False):
                 process.kill()
             else:
                 log.info('Terminating process: %s', cmdline)
-                if running_coverage:
-                    # Allow coverage data to be written down to disk
-                    process.send_signal(SIGTERM)
-                    try:
-                        process.wait(5)
-                    except psutil.TimeoutExpired:
-                        if psutil.pid_exists(process.pid):
-                            continue
-                else:
-                    process.terminate()
+                try:
+                    if running_coverage:
+                        # Allow coverage data to be written down to disk
+                        process.send_signal(SIGTERM)
+                        try:
+                            process.wait(5)
+                        except psutil.TimeoutExpired:
+                            if psutil.pid_exists(process.pid):
+                                continue
+                    else:
+                        process.terminate()
+                except OSError as exc:
+                    if exc.errno not in (errno.ESRCH, errno.EACCES):
+                        raise
             if not psutil.pid_exists(process.pid):
                 process_list.remove(process)
         except psutil.NoSuchProcess:
@@ -316,7 +287,8 @@ class SaltScriptBase(object):
                  config_dir,
                  bin_dir_path,
                  log_prefix,
-                 cli_script_name=None):
+                 cli_script_name=None,
+                 running_coverage=False):
         self.request = request
         self.config = config
         if not isinstance(config_dir, str):
@@ -330,6 +302,7 @@ class SaltScriptBase(object):
         if self.cli_display_name is None:
             self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
+        self._running_coverage = running_coverage
 
     def get_script_path(self, script_name):
         '''
@@ -356,12 +329,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
     '''
 
     def __init__(self, *args, **kwargs):
-        running_coverage = kwargs.pop('running_coverage', False)
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = multiprocessing.Event()
         self._connectable = multiprocessing.Event()
         self._process = None
-        self._running_coverage = running_coverage
 
     def is_alive(self):
         '''
@@ -442,7 +413,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
         elif 'COVERAGE_PROCESS_START' in environ:
             environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         terminal = nb_popen.NonBlockingPopen(proc_args, env=environ)
-        atexit.register(close_terminal, terminal)
+        atexit.register(terminate_process,
+                        pid=terminal.pid,
+                        kill_children=True,
+                        running_coverage=self._running_coverage)
 
         try:
             while running_event.is_set() and terminal.poll() is None:
@@ -457,7 +431,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         except (SystemExit, KeyboardInterrupt):
             self._running.clear()
 
-        close_terminal(terminal)
+        terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
 
     @property
     def pid(self):
@@ -627,6 +601,12 @@ class SaltCliScriptBase(SaltScriptBase):
         timeout_expire = time.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
         environ = os.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
+        if self._running_coverage is False:
+            for key in list(environ):
+                if key.startswith('COVERAGE'):
+                    environ.pop(key)
+        elif 'COVERAGE_PROCESS_START' in environ:
+            environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
@@ -666,6 +646,7 @@ class SaltCliScriptBase(SaltScriptBase):
                 if out is None and err is None:
                     break
                 if timeout_expire < time.time():
+                    terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
                     fail_method(
                         '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                             self.log_prefix,
@@ -680,7 +661,7 @@ class SaltCliScriptBase(SaltScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
 
-        close_terminal(terminal)
+        terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
 
         if six.PY3:
             # pylint: disable=undefined-variable
@@ -731,6 +712,12 @@ class SaltRunEventListener(SaltCliScriptBase):
         timeout_expire = time.time() + timeout
         environ = os.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}][EventListen] '.format(self.log_prefix)
+        if self._running_coverage is False:
+            for key in list(environ):
+                if key.startswith('COVERAGE'):
+                    environ.pop(key)
+        elif 'COVERAGE_PROCESS_START' in environ:
+            environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
@@ -810,7 +797,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
 
-        close_terminal(terminal)
+        terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
 
         if six.PY3:
             # pylint: disable=undefined-variable
