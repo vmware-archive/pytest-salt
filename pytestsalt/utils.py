@@ -433,7 +433,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
         environ = os.environ.copy()
         if running_coverage is False:
-            for key in environ:
+            for key in list(environ):
                 if key.startswith('COVERAGE'):
                     environ.pop(key)
         elif 'COVERAGE_PROCESS_START' in environ:
