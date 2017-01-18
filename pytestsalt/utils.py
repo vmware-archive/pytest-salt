@@ -72,7 +72,7 @@ def collect_child_processes(pid):
     return children[::-1]  # return a reversed list of the children
 
 
-def terminate_process_list(process_list, kill=False, running_coverage=False):
+def terminate_process_list(process_list, kill=False, slow_stop=False):
     for process in process_list[:][::-1]:  # Iterate over a reversed copy of the list
         if not psutil.pid_exists(process.pid):
             process_list.remove(process)
@@ -94,7 +94,7 @@ def terminate_process_list(process_list, kill=False, running_coverage=False):
             else:
                 log.info('Terminating process: %s', cmdline)
                 try:
-                    if running_coverage:
+                    if slow_stop:
                         # Allow coverage data to be written down to disk
                         process.send_signal(SIGTERM)
                         try:
@@ -113,7 +113,7 @@ def terminate_process_list(process_list, kill=False, running_coverage=False):
             process_list.remove(process)
 
 
-def terminate_child_processes(pid=None, children=None, running_coverage=False):
+def terminate_child_processes(pid=None, children=None, slow_stop=False):
     '''
     Try to terminate/kill any started child processes of the provided pid
     '''
@@ -126,7 +126,7 @@ def terminate_child_processes(pid=None, children=None, running_coverage=False):
             children.extend(collect_child_processes(pid))
 
     if children:
-        terminate_process_list(children, kill=False, running_coverage=running_coverage)
+        terminate_process_list(children, kill=False, slow_stop=slow_stop)
 
         if children:
             psutil.wait_procs(
@@ -134,8 +134,8 @@ def terminate_child_processes(pid=None, children=None, running_coverage=False):
                 timeout=10,
                 callback=lambda proc: terminate_process_list(
                     children,
-                    kill=running_coverage is False,
-                    running_coverage=running_coverage))
+                    kill=slow_stop is False,
+                    slow_stop=slow_stop))
 
         if children:
             psutil.wait_procs(
@@ -144,10 +144,10 @@ def terminate_child_processes(pid=None, children=None, running_coverage=False):
                 callback=lambda proc: terminate_process_list(
                     children,
                     kill=True,
-                    running_coverage=running_coverage))
+                    slow_stop=slow_stop))
 
 
-def terminate_process(pid=None, process=None, children=None, kill_children=False, running_coverage=False):
+def terminate_process(pid=None, process=None, children=None, kill_children=False, slow_stop=False):
     '''
     Try to terminate/kill the started processe
     '''
@@ -166,12 +166,12 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                 # Let's collect children again since there might be new ones
                 children.extend(collect_child_processes(pid))
         if children:
-            terminate_child_processes(children=children, running_coverage=running_coverage)
+            terminate_child_processes(children=children, slow_stop=slow_stop)
 
     if process:
 
         process_list = [process]
-        terminate_process_list(process_list, kill=False, running_coverage=running_coverage)
+        terminate_process_list(process_list, kill=False, slow_stop=slow_stop)
 
         if process_list:
             psutil.wait_procs(
@@ -179,8 +179,8 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                 timeout=10,
                 callback=lambda proc: terminate_process_list(
                     process_list,
-                    kill=running_coverage is False,
-                    running_coverage=running_coverage))
+                    kill=slow_stop is False,
+                    slow_stop=slow_stop))
 
         if process_list:
             psutil.wait_procs(
@@ -189,7 +189,7 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                 callback=lambda proc: terminate_process_list(
                     process_list,
                     kill=True,
-                    running_coverage=running_coverage))
+                    slow_stop=slow_stop))
 
 
 def start_daemon(request,
@@ -203,7 +203,8 @@ def start_daemon(request,
                  bin_dir_path=None,
                  fail_hard=False,
                  start_timeout=10,
-                 running_coverage=False):
+                 slow_stop=False,
+                 environ=None):
     '''
     Returns a running salt daemon
     '''
@@ -222,7 +223,8 @@ def start_daemon(request,
                                bin_dir_path,
                                daemon_log_prefix,
                                cli_script_name=daemon_cli_script_name,
-                               running_coverage=running_coverage)
+                               slow_stop=slow_stop,
+                               environ=environ)
         process.start()
         if process.is_alive():
             try:
@@ -238,7 +240,7 @@ def start_daemon(request,
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
-                terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
+                terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
                 if attempts >= 3:
                     fail_method(str(exc))
                 continue
@@ -253,18 +255,18 @@ def start_daemon(request,
 
             def stop_daemon():
                 log.info('[%s] Stopping pytest %s(%s)', daemon_log_prefix, daemon_name, daemon_id)
-                terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
+                terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
                 log.info('[%s] pytest %s(%s) stopped', daemon_log_prefix, daemon_name, daemon_id)
 
             request.addfinalizer(stop_daemon)
             return process
         else:
-            terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
+            terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
             continue
     else:   # pylint: disable=useless-else-on-loop
             # Wrong, we have a return, its not useless
         if process is not None:
-            terminate_process(process.pid, kill_children=True, running_coverage=running_coverage)
+            terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
         fail_method(
             'The pytest {0}({1}) has failed to start after {2} attempts'.format(
                 daemon_name,
@@ -288,7 +290,8 @@ class SaltScriptBase(object):
                  bin_dir_path,
                  log_prefix,
                  cli_script_name=None,
-                 running_coverage=False):
+                 slow_stop=False,
+                 environ=None):
         self.request = request
         self.config = config
         if not isinstance(config_dir, str):
@@ -302,7 +305,8 @@ class SaltScriptBase(object):
         if self.cli_display_name is None:
             self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
-        self._running_coverage = running_coverage
+        self.slow_stop = slow_stop
+        self.environ = environ or os.environ.copy()
 
     def get_script_path(self, script_name):
         '''
@@ -381,7 +385,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Start the daemon subprocess
         '''
         self._process = SignalHandlingMultiprocessingProcess(
-            target=self._start, args=(self._running, self._running_coverage))
+            target=self._start, args=(self._running, self.slow_stop))
         self._running.set()
         self._process.start()
         self._children = collect_child_processes(self._process.pid)
@@ -389,10 +393,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
                         pid=self._process.pid,
                         children=self._children,
                         kill_children=True,
-                        running_coverage=self._running_coverage)
+                        slow_stop=self.slow_stop)
         return True
 
-    def _start(self, running_event, running_coverage):
+    def _start(self, running_event, slow_stop):
         '''
         The actual, coroutine aware, start method
         '''
@@ -405,18 +409,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  self.cli_display_name,
                  ' '.join(proc_args))
 
-        environ = os.environ.copy()
-        if running_coverage is False:
-            for key in list(environ):
-                if key.startswith('COVERAGE'):
-                    environ.pop(key)
-        elif 'COVERAGE_PROCESS_START' in environ:
-            environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
-        terminal = nb_popen.NonBlockingPopen(proc_args, env=environ)
+        terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ)
         atexit.register(terminate_process,
                         pid=terminal.pid,
                         kill_children=True,
-                        running_coverage=self._running_coverage)
+                        slow_stop=self.slow_stop)
 
         try:
             while running_event.is_set() and terminal.poll() is None:
@@ -431,7 +428,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         except (SystemExit, KeyboardInterrupt):
             self._running.clear()
 
-        terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
+        terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
     @property
     def pid(self):
@@ -452,7 +449,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         terminate_process(pid=self._process.pid,
                           children=self._children,
                           kill_children=True,
-                          running_coverage=self._running_coverage)
+                          slow_stop=self.slow_stop)
         self._process.terminate()
 
     def wait_until_running(self, timeout=None):
@@ -599,14 +596,8 @@ class SaltCliScriptBase(SaltScriptBase):
         log.info('The fail hard setting for %s is: %s', self.cli_script_name, fail_hard)
         minion_tgt = self.get_minion_tgt(**kwargs)
         timeout_expire = time.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
-        environ = os.environ.copy()
+        environ = self.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
-        if self._running_coverage is False:
-            for key in list(environ):
-                if key.startswith('COVERAGE'):
-                    environ.pop(key)
-        elif 'COVERAGE_PROCESS_START' in environ:
-            environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
@@ -646,7 +637,7 @@ class SaltCliScriptBase(SaltScriptBase):
                 if out is None and err is None:
                     break
                 if timeout_expire < time.time():
-                    terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
+                    terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
                     fail_method(
                         '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                             self.log_prefix,
@@ -661,7 +652,7 @@ class SaltCliScriptBase(SaltScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
 
-        terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
+        terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
         if six.PY3:
             # pylint: disable=undefined-variable
@@ -710,14 +701,8 @@ class SaltRunEventListener(SaltCliScriptBase):
         '''
         exitcode = 0
         timeout_expire = time.time() + timeout
-        environ = os.environ.copy()
+        environ = self.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}][EventListen] '.format(self.log_prefix)
-        if self._running_coverage is False:
-            for key in list(environ):
-                if key.startswith('COVERAGE'):
-                    environ.pop(key)
-        elif 'COVERAGE_PROCESS_START' in environ:
-            environ['COVERAGE_FILE'] = '.coverage.{0}'.format(self.cli_script_name)
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
@@ -797,7 +782,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
 
-        terminate_process(pid=terminal.pid, kill_children=True, running_coverage=self._running_coverage)
+        terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
         if six.PY3:
             # pylint: disable=undefined-variable
