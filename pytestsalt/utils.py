@@ -112,8 +112,29 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
         except psutil.NoSuchProcess:
             process_list.remove(process)
 
+    if process_list:
+        terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
 
-def terminate_child_processes(pid=None, children=None, slow_stop=False):
+        if process_list:
+            psutil.wait_procs(
+                process_list,
+                timeout=10,
+                callback=lambda proc: terminate_process_list(
+                    process_list,
+                    kill=slow_stop is False,
+                    slow_stop=slow_stop))
+
+        if process_list:
+            psutil.wait_procs(
+                process_list,
+                timeout=5,
+                callback=lambda proc: terminate_process_list(
+                    process_list,
+                    kill=True,
+                    slow_stop=False))
+
+
+def terminate_child_processes(pid=None, children=None, kill=False, slow_stop=False):
     '''
     Try to terminate/kill any started child processes of the provided pid
     '''
@@ -126,25 +147,7 @@ def terminate_child_processes(pid=None, children=None, slow_stop=False):
             children.extend(collect_child_processes(pid))
 
     if children:
-        terminate_process_list(children, kill=False, slow_stop=slow_stop)
-
-        if children:
-            psutil.wait_procs(
-                children,
-                timeout=10,
-                callback=lambda proc: terminate_process_list(
-                    children,
-                    kill=slow_stop is False,
-                    slow_stop=slow_stop))
-
-        if children:
-            psutil.wait_procs(
-                children,
-                timeout=5,
-                callback=lambda proc: terminate_process_list(
-                    children,
-                    kill=True,
-                    slow_stop=slow_stop))
+        terminate_process_list(children, kill=slow_stop is False, slow_stop=slow_stop)
 
 
 def terminate_process(pid=None, process=None, children=None, kill_children=False, slow_stop=False):
@@ -158,6 +161,7 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
             # Process is already gone
             process = None
 
+    process_list = []
     if kill_children:
         if process:
             if not children:
@@ -166,30 +170,13 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                 # Let's collect children again since there might be new ones
                 children.extend(collect_child_processes(pid))
         if children:
-            terminate_child_processes(children=children, slow_stop=slow_stop)
+            process_list.extend(children)
 
     if process:
+        process_list.append(process)
 
-        process_list = [process]
-        terminate_process_list(process_list, kill=False, slow_stop=slow_stop)
-
-        if process_list:
-            psutil.wait_procs(
-                process_list,
-                timeout=10,
-                callback=lambda proc: terminate_process_list(
-                    process_list,
-                    kill=slow_stop is False,
-                    slow_stop=slow_stop))
-
-        if process_list:
-            psutil.wait_procs(
-                process_list,
-                timeout=5,
-                callback=lambda proc: terminate_process_list(
-                    process_list,
-                    kill=True,
-                    slow_stop=slow_stop))
+    if process_list:
+        terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
 
 
 def start_daemon(request,
@@ -410,10 +397,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  ' '.join(proc_args))
 
         terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ)
-        atexit.register(terminate_process,
-                        pid=terminal.pid,
-                        kill_children=True,
-                        slow_stop=self.slow_stop)
+        atexit.register(terminate_process, pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
         try:
             while running_event.is_set() and terminal.poll() is None:
