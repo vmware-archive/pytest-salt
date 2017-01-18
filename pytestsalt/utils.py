@@ -72,7 +72,7 @@ def collect_child_processes(pid):
     return children[::-1]  # return a reversed list of the children
 
 
-def terminate_process_list(process_list, kill=False, slow_stop=False):
+def _terminate_process_list(process_list, kill=False, slow_stop=False):
     for process in process_list[:][::-1]:  # Iterate over a reversed copy of the list
         if not psutil.pid_exists(process.pid):
             process_list.remove(process)
@@ -112,26 +112,28 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
         except psutil.NoSuchProcess:
             process_list.remove(process)
 
+
+def terminate_process_list(process_list, kill=False, slow_stop=False):
+    # Try to terminate processes with the provided kill and slow_stop parameters
+    _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
+
     if process_list:
-        terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
+        # If there's still processes to be terminated, retry and kill them if slow_stop is False
+        psutil.wait_procs(
+            process_list,
+            timeout=10,
+            callback=lambda proc: _terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop))
 
-        if process_list:
-            psutil.wait_procs(
-                process_list,
-                timeout=10,
-                callback=lambda proc: terminate_process_list(
-                    process_list,
-                    kill=slow_stop is False,
-                    slow_stop=slow_stop))
+    if process_list:
+        # If there's still processes to be terminated, just kill them, no slow stopping now
+        psutil.wait_procs(
+            process_list,
+            timeout=5,
+            callback=lambda proc: _terminate_process_list(process_list, kill=True, slow_stop=False))
 
-        if process_list:
-            psutil.wait_procs(
-                process_list,
-                timeout=5,
-                callback=lambda proc: terminate_process_list(
-                    process_list,
-                    kill=True,
-                    slow_stop=False))
+    if process_list:
+        # In there's still processes to be terminated, log a warning about it
+        log.warning('Some processes failed to properly terminate: %s', process_list)
 
 
 def terminate_child_processes(pid=None, children=None, kill=False, slow_stop=False):
