@@ -128,7 +128,7 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
             try:
                 cmdline = proc.as_dict()
             except (psutil.NoSuchProcess, psutil.AccessDenied):
-                cmdline = '<could not be retrived; dead process>'
+                cmdline = '<could not be retrived; dead process: {0}>'.format(proc)
         log.info('Process %s terminated with exit code: %s', cmdline, proc.returncode)
 
     if process_list:
