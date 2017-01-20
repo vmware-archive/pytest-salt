@@ -115,21 +115,30 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
 
 def terminate_process_list(process_list, kill=False, slow_stop=False):
     # Try to terminate processes with the provided kill and slow_stop parameters
+    log.info('Terminating process list. 1st step. kill: %s, slow stop: %s', kill, slow_stop)
     _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
+
+    def on_process_terminated(proc):
+        try:
+            cmdline = proc.cmdline()
+        except psutil.AccessDenied:
+            # OSX is more restrictive about the above information
+            cmdline = None
+        if not cmdline:
+            cmdline = proc.as_dict()
+        log.info('Process %s terminated with exit code: %s', cmdline, proc.returncode)
 
     if process_list:
         # If there's still processes to be terminated, retry and kill them if slow_stop is False
-        psutil.wait_procs(
-            process_list,
-            timeout=10,
-            callback=lambda proc: _terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop))
+        log.info('Terminating process list. 2nd step. kill: %s, slow stop: %s', slow_stop is False, slow_stop)
+        _terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
+        psutil.wait_procs(process_list, timeout=10, callback=on_process_terminated)
 
     if process_list:
         # If there's still processes to be terminated, just kill them, no slow stopping now
-        psutil.wait_procs(
-            process_list,
-            timeout=5,
-            callback=lambda proc: _terminate_process_list(process_list, kill=True, slow_stop=False))
+        log.info('Terminating process list. 3rd step. kill: True, slow stop: False')
+        _terminate_process_list(process_list, kill=True, slow_stop=False)
+        psutil.wait_procs(process_list, timeout=5, callback=on_process_terminated)
 
     if process_list:
         # In there's still processes to be terminated, log a warning about it
