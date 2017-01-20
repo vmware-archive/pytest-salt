@@ -100,10 +100,10 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
             if not cmdline:
                 cmdline = process.as_dict()
             if kill:
-                log.info('Killing process: %s', cmdline)
+                log.info('Killing process(%s): %s', process.pid, cmdline)
                 process.kill()
             else:
-                log.info('Terminating process: %s', cmdline)
+                log.info('Terminating process(%s): %s', process.pid, cmdline)
                 try:
                     if slow_stop:
                         # Allow coverage data to be written down to disk
@@ -141,6 +141,7 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
                 cmdline = '<could not be retrived; dead process: {0}>'.format(proc)
         proc._cmdline = cmdline
     _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
+    psutil.wait_procs(process_list, timeout=15, callback=on_process_terminated)
 
     def on_process_terminated(proc):
         log.info('Process %s terminated with exit code: %s', getattr(proc, '_cmdline', proc), proc.returncode)
