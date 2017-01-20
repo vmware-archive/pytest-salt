@@ -212,7 +212,8 @@ def start_daemon(request,
                  fail_hard=False,
                  start_timeout=10,
                  slow_stop=False,
-                 environ=None):
+                 environ=None,
+                 cwd=None):
     '''
     Returns a running salt daemon
     '''
@@ -232,7 +233,8 @@ def start_daemon(request,
                                daemon_log_prefix,
                                cli_script_name=daemon_cli_script_name,
                                slow_stop=slow_stop,
-                               environ=environ)
+                               environ=environ,
+                               cwd=cwd)
         process.start()
         if process.is_alive():
             try:
@@ -299,7 +301,8 @@ class SaltScriptBase(object):
                  log_prefix,
                  cli_script_name=None,
                  slow_stop=False,
-                 environ=None):
+                 environ=None,
+                 cwd=None):
         self.request = request
         self.config = config
         if not isinstance(config_dir, str):
@@ -315,6 +318,7 @@ class SaltScriptBase(object):
                                                       self.cli_script_name)
         self.slow_stop = slow_stop
         self.environ = environ or os.environ.copy()
+        self.cwd = cwd or os.getcwd()
 
     def get_script_path(self, script_name):
         '''
@@ -408,7 +412,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, start method
         '''
-        log.info('[%s][%s] Starting DAEMON', self.log_prefix, self.cli_display_name)
+        log.info('[%s][%s] Starting DAEMON in CWD: %s', self.log_prefix, self.cli_display_name, self.cwd)
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
@@ -417,7 +421,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                  self.cli_display_name,
                  ' '.join(proc_args))
 
-        terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ)
+        terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ, cwd=self.cwd)
         atexit.register(terminate_process, pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
         try:
@@ -612,9 +616,11 @@ class SaltCliScriptBase(SaltScriptBase):
         for key in kwargs:
             proc_args.append('{0}={1}'.format(key, kwargs[key]))
 
-        log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
+        log.info('[%s][%s] Running \'%s\' in CWD: %s ...',
+                 self.log_prefix, self.cli_display_name, ' '.join(proc_args), self.cwd)
 
         terminal = nb_popen.NonBlockingPopen(proc_args,
+                                             cwd=self.cwd,
                                              env=environ,
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
@@ -712,12 +718,17 @@ class SaltRunEventListener(SaltCliScriptBase):
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
 
-        log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
+        log.info('[%s][%s] Running \'%s\' in CWD: %s...',
+                 self.log_prefix, self.cli_display_name, ' '.join(proc_args), self.cwd)
 
         to_match_events = set(tags)
         matched_events = {}
 
-        terminal = nb_popen.NonBlockingPopen(proc_args, env=environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        terminal = nb_popen.NonBlockingPopen(proc_args,
+                                             cwd=self.cwd,
+                                             env=environ,
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE)
 
         # Consume the output
         stdout = six.b('')
