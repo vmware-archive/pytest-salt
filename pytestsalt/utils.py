@@ -98,7 +98,7 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
                         # Allow coverage data to be written down to disk
                         process.send_signal(SIGTERM)
                         try:
-                            process.wait(5)
+                            process.wait(2)
                         except psutil.TimeoutExpired:
                             if psutil.pid_exists(process.pid):
                                 continue
@@ -156,14 +156,16 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
     '''
     Try to terminate/kill the started processe
     '''
+    process_list = []
+
     if pid and not process:
         try:
             process = psutil.Process(pid)
+            process_list.append(process)
         except psutil.NoSuchProcess:
             # Process is already gone
             process = None
 
-    process_list = []
     if kill_children:
         if process:
             if not children:
@@ -173,9 +175,6 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
                 children.extend(collect_child_processes(pid))
         if children:
             process_list.extend(children)
-
-    if process:
-        process_list.append(process)
 
     if process_list:
         terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
