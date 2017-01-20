@@ -24,7 +24,7 @@ import signal
 import socket
 import logging
 import subprocess
-import multiprocessing
+import threading
 from operator import itemgetter
 from collections import namedtuple
 
@@ -40,7 +40,6 @@ except ImportError:
 # Import salt libs
 import salt.ext.six as six
 import salt.utils.nb_popen as nb_popen
-from salt.utils.process import SignalHandlingMultiprocessingProcess
 
 pytest_plugins = ['helpers_namespace']
 
@@ -125,8 +124,13 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
 
 
 def terminate_process_list(process_list, kill=False, slow_stop=False):
+
+    def on_process_terminated(proc):
+        log.info('Process %s terminated with exit code: %s', getattr(proc, '_cmdline', proc), proc.returncode)
+
     # Try to terminate processes with the provided kill and slow_stop parameters
     log.info('Terminating process list. 1st step. kill: %s, slow stop: %s', kill, slow_stop)
+
     # Cache the cmdline since that will be inaccessible once the process is terminated
     for proc in process_list:
         try:
@@ -142,9 +146,6 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
         proc._cmdline = cmdline
     _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
     psutil.wait_procs(process_list, timeout=15, callback=on_process_terminated)
-
-    def on_process_terminated(proc):
-        log.info('Process %s terminated with exit code: %s', getattr(proc, '_cmdline', proc), proc.returncode)
 
     if process_list:
         # If there's still processes to be terminated, retry and kill them if slow_stop is False
@@ -358,8 +359,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
     def __init__(self, *args, **kwargs):
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
-        self._running = multiprocessing.Event()
-        self._connectable = multiprocessing.Event()
+        self._running = threading.Event()
+        self._connectable = threading.Event()
         self._process = None
 
     def is_alive(self):
@@ -408,56 +409,44 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         Start the daemon subprocess
         '''
-        self._process = SignalHandlingMultiprocessingProcess(
-            target=self._start, args=(self._running, self.slow_stop))
-        self._running.set()
-        self._process.start()
-        self._children = collect_child_processes(self._process.pid)
-        atexit.register(terminate_process,
-                        pid=self._process.pid,
-                        children=self._children,
-                        kill_children=True,
-                        slow_stop=self.slow_stop)
-        return True
-
-    def _start(self, running_event, slow_stop):
-        '''
-        The actual, coroutine aware, start method
-        '''
-        set_proc_title(self.cli_display_name)
         log.info('[%s][%s] Starting DAEMON in CWD: %s', self.log_prefix, self.cli_display_name, self.cwd)
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
-        log.info('[%s][%s] Running \'%s\'...',
-                 self.log_prefix,
-                 self.cli_display_name,
-                 ' '.join(proc_args))
+        log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
 
-        terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ, cwd=self.cwd)
-        atexit.register(terminate_process, pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
+        self._terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ, cwd=self.cwd)
+        process_output_thread = threading.Thread(target=self._process_output)
+        process_output_thread.daemon = True
+        self._running.set()
+        process_output_thread.start()
+        self._children = collect_child_processes(self._terminal.pid)
+        atexit.register(self.terminate)
+        return True
 
+    def _process_output(self):
+        '''
+        The actual, coroutine aware, start method
+        '''
         try:
-            while running_event.is_set() and terminal.poll() is None:
+            while self._running.is_set() and self._terminal.poll() is None:
                 # We're not actually interested in processing the output, just consume it
-                if terminal.stdout is not None:
-                    terminal.recv()
-                if terminal.stderr is not None:
-                    terminal.recv_err()
+                if self._terminal.stdout is not None:
+                    self._terminal.recv()
+                if self._terminal.stderr is not None:
+                    self._terminal.recv_err()
                 time.sleep(0.125)
-                if terminal.poll() is not None:
-                    running_event.clear()
+                if self._terminal.poll() is not None:
+                    self._running.clear()
         except (SystemExit, KeyboardInterrupt):
             self._running.clear()
 
-        terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
-
     @property
     def pid(self):
-        process = getattr(self, '_process', None)
-        if not process:
+        terminal = getattr(self, '_terminal', None)
+        if not terminal:
             return
-        return process.pid
+        return terminal.pid
 
     def terminate(self):
         '''
@@ -468,11 +457,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._connectable.clear()
         time.sleep(0.0125)
         # Lets log and kill any child processes which salt left behind
-        terminate_process(pid=self._process.pid,
+        terminate_process(pid=self._terminal.pid,
                           children=self._children,
                           kill_children=True,
                           slow_stop=self.slow_stop)
-        self._process.terminate()
 
     def wait_until_running(self, timeout=None):
         '''
