@@ -121,11 +121,14 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
     def on_process_terminated(proc):
         try:
             cmdline = proc.cmdline()
-        except psutil.AccessDenied:
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
             # OSX is more restrictive about the above information
             cmdline = None
         if not cmdline:
-            cmdline = proc.as_dict()
+            try:
+                cmdline = proc.as_dict()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                cmdline = '<could not be retrived; dead process>'
         log.info('Process %s terminated with exit code: %s', cmdline, proc.returncode)
 
     if process_list:
