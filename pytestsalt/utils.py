@@ -31,6 +31,11 @@ from collections import namedtuple
 # Import 3rd party libs
 import pytest
 import psutil
+try:
+    import setproctitle
+    HAS_SETPROCTITLE = True
+except ImportError:
+    HAS_SETPROCTITLE = False
 
 # Import salt libs
 import salt.ext.six as six
@@ -46,6 +51,12 @@ if sys.platform.startswith('win'):
 else:
     SIGINT = signal.SIGINT
     SIGTERM = signal.SIGTERM
+
+
+def set_proc_title(title):
+    if HAS_SETPROCTITLE is False:
+        return
+    setproctitle.setproctitle('[{0}] - {1}'.format(title, setproctitle.getproctitle()))
 
 
 def get_unused_localhost_port():
@@ -412,6 +423,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         The actual, coroutine aware, start method
         '''
+        set_proc_title(self.cli_display_name)
         log.info('[%s][%s] Starting DAEMON in CWD: %s', self.log_prefix, self.cli_display_name, self.cwd)
         proc_args = [
             self.get_script_path(self.cli_script_name)
