@@ -116,9 +116,8 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
 def terminate_process_list(process_list, kill=False, slow_stop=False):
     # Try to terminate processes with the provided kill and slow_stop parameters
     log.info('Terminating process list. 1st step. kill: %s, slow stop: %s', kill, slow_stop)
-    _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
-
-    def on_process_terminated(proc):
+    # Cache the cmdline since that will be inaccessible once the process is terminated
+    for proc in process_list:
         try:
             cmdline = proc.cmdline()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -126,10 +125,14 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
             cmdline = None
         if not cmdline:
             try:
-                cmdline = proc.as_dict()
+                cmdline = proc
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 cmdline = '<could not be retrived; dead process: {0}>'.format(proc)
-        log.info('Process %s terminated with exit code: %s', cmdline, proc.returncode)
+        proc._cmdline = cmdline
+    _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
+
+    def on_process_terminated(proc):
+        log.info('Process %s terminated with exit code: %s', getattr(proc, '_cmdline', proc), proc.returncode)
 
     if process_list:
         # If there's still processes to be terminated, retry and kill them if slow_stop is False
@@ -168,6 +171,7 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
     '''
     Try to terminate/kill the started processe
     '''
+    children = children or []
     process_list = []
 
     if pid and not process:
@@ -189,6 +193,10 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
             process_list.extend(children)
 
     if process_list:
+        if process:
+            log.info('Stopping process %s and respective children: %s', process, children)
+        else:
+            log.info('Terminating process list: %s', process_list)
         terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
 
 
