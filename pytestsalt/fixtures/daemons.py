@@ -1349,6 +1349,9 @@ class Salt(SaltCliScriptBase):
             stdout = stdout.split('\n', 1)[1:][0]
         stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
         if json_out:
+            if not isinstance(json_out, dict):
+                # A string was most likely loaded, not what we want.
+                return stdout, stderr, None
             return stdout, stderr, json_out[tgt]
         return stdout, stderr, json_out
 
