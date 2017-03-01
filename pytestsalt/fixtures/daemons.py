@@ -1413,7 +1413,10 @@ class SaltMinion(SaltDaemonScriptBase):
     '''
 
     def get_script_args(self):
-        return ['--disable-keepalive', '-l', 'quiet']
+        script_args = ['-l', 'quiet']
+        if sys.platform.startswith('win') is False:
+            script_args.append('--disable-keepalive')
+        return script_args
 
     def get_check_events(self):
         return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])

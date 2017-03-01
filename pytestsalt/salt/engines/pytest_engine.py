@@ -14,6 +14,8 @@
 
 # Import python libs
 from __future__ import absolute_import, print_function
+import sys
+import errno
 import socket
 import logging
 
@@ -75,8 +77,18 @@ class PyTestEngine(object):
     def handle_connection(self, connection, address):
         log.warning('Accepted connection from %s. Role: %s', address, self.opts['__role'])
         # We just need to know that the daemon running the engine is alive...
-        connection.shutdown(socket.SHUT_RDWR)  # pylint: disable=no-member
-        connection.close()
+        try:
+            connection.shutdown(socket.SHUT_RDWR)  # pylint: disable=no-member
+            connection.close()
+        except socket.error as exc:
+            if not sys.platform.startswith('darwin'):
+                raise
+            try:
+                if exc.errno != errno.ENOTCONN:
+                    raise
+            except AttributeError:
+                # This is not macOS !?
+                pass
 
     @gen.coroutine
     def listen_to_minion_connected_event(self):

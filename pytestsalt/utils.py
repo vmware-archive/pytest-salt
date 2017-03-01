@@ -413,6 +413,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
+
+        if sys.platform.startswith('win'):
+            # Windows needs the python executable to come first
+            proc_args.insert(0, sys.executable)
+
         log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
 
         self._terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ, cwd=self.cwd)
@@ -611,6 +616,11 @@ class SaltCliScriptBase(SaltScriptBase):
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
+
+        if sys.platform.startswith('win'):
+            # Windows needs the python executable to come first
+            proc_args.insert(0, sys.executable)
+
         if minion_tgt is not None:
             proc_args.append(minion_tgt)
         proc_args.extend(list(args))
@@ -718,6 +728,10 @@ class SaltRunEventListener(SaltCliScriptBase):
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
+
+        if sys.platform.startswith('win'):
+            # Windows needs the python executable to come first
+            proc_args.insert(0, sys.executable)
 
         log.info('[%s][%s] Running \'%s\' in CWD: %s...',
                  self.log_prefix, self.cli_display_name, ' '.join(proc_args), self.cwd)
