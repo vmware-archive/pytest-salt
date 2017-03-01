@@ -1419,7 +1419,15 @@ class SaltMinion(SaltDaemonScriptBase):
         return script_args
 
     def get_check_events(self):
+        if sys.platform.startswith('win'):
+            return super(SaltMinion, self).get_check_events()
         return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+
+    def get_check_ports(self):
+        if sys.platform.startswith('win'):
+            return set([self.config['tcp_pub_port'],
+                        self.config['tcp_pull_port']])
+        return super(SaltMinion, self).get_check_ports()
 
 
 class SaltMaster(SaltDaemonScriptBase):
@@ -1427,11 +1435,19 @@ class SaltMaster(SaltDaemonScriptBase):
     Class which runs the salt-master daemon
     '''
 
-    def get_check_events(self):
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
-
     def get_script_args(self):
         return ['-l', 'quiet']
+
+    def get_check_events(self):
+        if sys.platform.startswith('win'):
+            return super(SaltMaster, self).get_check_events()
+        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+
+    def get_check_ports(self):
+        if sys.platform.startswith('win'):
+            return set([self.config['ret_port'],
+                        self.config['publish_port']])
+        return super(SaltMaster, self).get_check_ports()
 
 
 class SaltSyndic(SaltDaemonScriptBase):
