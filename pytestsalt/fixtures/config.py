@@ -15,7 +15,6 @@
 # Import python libs
 from __future__ import absolute_import, print_function
 import os
-import pwd
 import sys
 import copy
 import logging
@@ -39,6 +38,8 @@ IS_WINDOWS = sys.platform.startswith('win')
 
 if IS_WINDOWS:
     import win32api  # pylint: disable=import-error
+else:
+    import pwd
 
 pytest_plugins = ['helpers_namespace']
 
