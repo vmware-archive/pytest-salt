@@ -23,13 +23,6 @@ import subprocess
 # Import 3rd-party libs
 import pytest
 
-# Import salt libs
-import salt.config
-import salt.utils
-import salt.utils.dictupdate as dictupdate
-import salt.utils.verify as salt_verify
-import salt.serializers.yaml as yamlserialize
-
 # Import pytest salt libs
 import pytestsalt.salt.engines
 import pytestsalt.salt.log_handlers
@@ -663,6 +656,11 @@ def apply_master_config(root_dir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
+    import salt.config
+    import salt.utils
+    import salt.utils.dictupdate as dictupdate
+    import salt.utils.verify as salt_verify
+    import salt.serializers.yaml as yamlserialize
     default_options = {
         'id': master_id,
         'interface': '127.0.0.1',
@@ -974,6 +972,11 @@ def apply_minion_config(root_dir,
     This fixture will return the salt minion configuration options after being
     overridden with any options passed from ``config_overrides``
     '''
+    import salt.config
+    import salt.utils
+    import salt.utils.dictupdate as dictupdate
+    import salt.utils.verify as salt_verify
+    import salt.serializers.yaml as yamlserialize
     default_options = {
         'root_dir': root_dir.strpath,
         'interface': '127.0.0.1',
@@ -1178,6 +1181,11 @@ def apply_syndic_config(master_config,
     This fixture will return the salt syndic configuration options after being
     overridden with any options passed from ``config_overrides``
     '''
+    import salt.config
+    import salt.utils
+    import salt.utils.dictupdate as dictupdate
+    import salt.utils.verify as salt_verify
+    import salt.serializers.yaml as yamlserialize
     syndic_master_config_file = syndic_conf_dir.join('master').realpath().strpath
     syndic_minion_config_file = syndic_conf_dir.join('minion').realpath().strpath
 
@@ -1392,6 +1400,7 @@ def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
     '''
     This fixture will write the necessary configuration to run an SSHD server to be used in tests
     '''
+    import salt.utils
     sshd = salt.utils.which('sshd')
 
     if not sshd:
@@ -1437,6 +1446,7 @@ def _generate_ssh_key(key_path, key_type='ecdsa', key_size=521):
     '''
     Generate an SSH key
     '''
+    import salt.utils
     log.debug('Generating ssh key(type: %s; size: %d; path: %s;)', key_type, key_size, key_path)
     keygen = salt.utils.which('ssh-keygen')
     if not keygen:
@@ -1506,6 +1516,8 @@ def session_roster_config_overrides():
 
 
 def _roster_config(config_file, config, config_overrides):
+    import salt.utils
+    import salt.serializers.yaml as yamlserialize
     if config_overrides:
         config.update(config_overrides)
 

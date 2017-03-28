@@ -37,10 +37,6 @@ try:
 except ImportError:
     HAS_SETPROCTITLE = False
 
-# Import salt libs
-import salt.ext.six as six
-import salt.utils.nb_popen as nb_popen
-
 pytest_plugins = ['helpers_namespace']
 
 log = logging.getLogger(__name__)
@@ -409,6 +405,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         Start the daemon subprocess
         '''
+        # Late import
+        import salt.utils.nb_popen as nb_popen
         log.info('[%s][%s] Starting DAEMON in CWD: %s', self.log_prefix, self.cli_display_name, self.cwd)
         proc_args = [
             self.get_script_path(self.cli_script_name)
@@ -471,6 +469,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         Blocking call to wait for the daemon to start listening
         '''
+        # Late import
+        import salt.ext.six as six
         if self._connectable.is_set():
             return True
 
@@ -594,6 +594,9 @@ class SaltCliScriptBase(SaltScriptBase):
         '''
         Run the given command synchronously
         '''
+        # Late import
+        import salt.ext.six as six
+        import salt.utils.nb_popen as nb_popen
         timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
         if 'fail_hard' in kwargs:
             # Explicit fail_hard passed
@@ -721,6 +724,9 @@ class SaltRunEventListener(SaltCliScriptBase):
         '''
         Run the given command synchronously
         '''
+        # Late import
+        import salt.ext.six as six
+        import salt.utils.nb_popen as nb_popen
         exitcode = 0
         timeout_expire = time.time() + timeout
         environ = self.environ.copy()

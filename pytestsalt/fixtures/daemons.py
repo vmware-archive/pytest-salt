@@ -22,10 +22,6 @@ import subprocess
 # Import 3rd-party libs
 import pytest
 
-# Import salt libs
-import salt.ext.six as six
-import salt.utils as salt_utils
-
 from pytestsalt.utils import SaltCliScriptBase, SaltDaemonScriptBase, start_daemon
 
 pytest_plugins = ['tornado']
@@ -38,6 +34,10 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     '''
     Return the salt version for the CLI install
     '''
+    try:
+        import salt.ext.six as six
+    except ImportError:
+        import six
     args = [
         os.path.join(_cli_bin_dir, cli_master_script_name),
         '--version'
@@ -1471,7 +1471,8 @@ class SSHD(SaltDaemonScriptBase):
         '''
         Returns the path to the script to run
         '''
-        sshd = salt_utils.which(self.cli_script_name)
+        import salt.utils
+        sshd = salt.utils.which(self.cli_script_name)
         if not sshd:
             pytest.skip('"sshd" not found')
         return sshd
