@@ -531,7 +531,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                                           port)
                                 check_ports.remove(port)
                                 sock.shutdown(socket.SHUT_RDWR)
-                        except socker.error:
+                        except socket.error:
                             continue
                         finally:
                             sock.close()
