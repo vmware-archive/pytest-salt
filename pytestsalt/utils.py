@@ -523,15 +523,19 @@ class SaltDaemonScriptBase(SaltScriptBase):
                                   port)
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         conn = sock.connect_ex(('localhost', port))
-                        if conn == 0:
-                            log.debug('[%s][%s] Port %s is connectable!',
-                                      self.log_prefix,
-                                      self.cli_display_name,
-                                      port)
-                            check_ports.remove(port)
-                            sock.shutdown(socket.SHUT_RDWR)
+                        try:
+                            if conn == 0:
+                                log.debug('[%s][%s] Port %s is connectable!',
+                                          self.log_prefix,
+                                          self.cli_display_name,
+                                          port)
+                                check_ports.remove(port)
+                                sock.shutdown(socket.SHUT_RDWR)
+                        except socker.error:
+                            continue
+                        finally:
                             sock.close()
-                        del sock
+                            del sock
                     elif isinstance(port, six.string_types):
                         salt_run = self.get_salt_run_fixture()
                         minions_joined = salt_run.run('manage.joined')
