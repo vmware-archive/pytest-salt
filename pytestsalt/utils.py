@@ -443,6 +443,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     self._running.clear()
         except (SystemExit, KeyboardInterrupt):
             self._running.clear()
+        finally:
+            if self._terminal.stdout:
+                self._terminal.stdout.close()
+            if self._terminal.stderr:
+                self._terminal.stderr.close()
 
     @property
     def pid(self):
@@ -460,6 +465,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._connectable.clear()
         time.sleep(0.0125)
         # Lets log and kill any child processes which salt left behind
+        if self._terminal.stdout:
+            self._terminal.stdout.close()
+        if self._terminal.stderr:
+            self._terminal.stderr.close()
         terminate_process(pid=self._terminal.pid,
                           children=self._children,
                           kill_children=True,
@@ -680,6 +689,11 @@ class SaltCliScriptBase(SaltScriptBase):
                     )
         except (SystemExit, KeyboardInterrupt):
             pass
+        finally:
+            if terminal.stdout:
+                terminal.stdout.close()
+            if terminal.stderr:
+                terminal.stderr.close()
 
         terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
