@@ -822,6 +822,11 @@ class SaltRunEventListener(SaltCliScriptBase):
                     break
         except (SystemExit, KeyboardInterrupt):
             pass
+        finally:
+            if terminal.stdout:
+                terminal.stdout.close()
+            if terminal.stderr:
+                terminal.stderr.close()
 
         terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
 
