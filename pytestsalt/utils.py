@@ -182,6 +182,8 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
     '''
     children = children or []
     process_list = []
+    # Always kill children if kill the parent process.
+    kill_children = True if slow_stop is False else kill_children
 
     if pid and not process:
         try:
