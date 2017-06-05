@@ -629,6 +629,122 @@ def session_salt_syndic(request,
 
 
 @pytest.yield_fixture
+def salt_proxy_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-proxy and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-proxy
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture
+def salt_proxy_after_start(salt_proxy):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-proxy and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.fixture
+def salt_proxy(request,
+               salt_master,
+               proxy_id,
+               proxy_config,
+               salt_proxy_before_start,  # pylint: disable=unused-argument
+               proxy_log_prefix,
+               cli_proxy_script_name,
+               log_server,
+               _cli_bin_dir,
+               _salt_fail_hard,
+               conf_dir):  # pylint: disable=unused-argument
+    '''
+    Returns a running salt-proxy
+    '''
+    return start_daemon(request,
+                        daemon_name='salt-proxy',
+                        daemon_id=proxy_id,
+                        daemon_log_prefix=proxy_log_prefix,
+                        daemon_cli_script_name=cli_proxy_script_name,
+                        daemon_config=proxy_config,
+                        daemon_config_dir=conf_dir,
+                        daemon_class=SaltProxy,
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_proxy_before_start():
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work before starting
+    the salt-minion and after ending it.
+    '''
+    # Prep routines go here
+
+    # Start the salt-proxy
+    yield
+
+    # Clean routines go here
+
+
+@pytest.yield_fixture(scope='session')
+def session_salt_proxy_after_start(session_salt_proxy):
+    '''
+    This fixture should be overridden if you need to do
+    some preparation and clean up work after starting
+    the salt-proxy and before ending it.
+    '''
+    # Prep routines go here
+
+    # Resume test execution
+    yield
+
+    # Clean routines go here
+
+
+@pytest.fixture(scope='session')
+def session_salt_proxy(request,
+                       session_salt_master,
+                       session_proxy_id,
+                       session_proxy_config,
+                       session_salt_proxy_before_start,  # pylint: disable=unused-argument
+                       session_proxy_log_prefix,
+                       cli_minion_script_name,
+                       log_server,
+                       _cli_bin_dir,
+                       session_conf_dir,
+                       _salt_fail_hard):
+    '''
+    Returns a running salt-proxy
+    '''
+    return start_daemon(request,
+                        daemon_name='salt-proxy',
+                        daemon_id=session_proxy_id,
+                        daemon_log_prefix=session_proxy_log_prefix,
+                        daemon_cli_script_name=cli_proxy_script_name,
+                        daemon_config=session_proxy_config,
+                        daemon_config_dir=session_conf_dir,
+                        daemon_class=SaltProxy,
+                        bin_dir_path=_cli_bin_dir,
+                        fail_hard=_salt_fail_hard,
+                        start_timeout=30)
+
+
+@pytest.yield_fixture
 def salt_before_start():
     '''
     This fixture should be overridden if you need to do
