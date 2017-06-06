@@ -1546,6 +1546,31 @@ class SaltMinion(SaltDaemonScriptBase):
         return super(SaltMinion, self).get_check_ports()
 
 
+class SaltProxy(SaltDaemonScriptBase):
+    '''
+    Class which runs the salt-minion daemon
+    '''
+
+    def get_script_args(self):
+        script_args = ['-l', 'quiet']
+
+        script_args.extend(['--proxyid', self.config['id']])
+        if sys.platform.startswith('win') is False:
+            script_args.append('--disable-keepalive')
+        return script_args
+
+    def get_check_events(self):
+        if sys.platform.startswith('win'):
+            return super(SaltMinion, self).get_check_events()
+        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+
+    def get_check_ports(self):
+        if sys.platform.startswith('win'):
+            return set([self.config['tcp_pub_port'],
+                        self.config['tcp_pull_port']])
+        return super(SaltProxy, self).get_check_ports()
+
+
 class SaltMaster(SaltDaemonScriptBase):
     '''
     Class which runs the salt-master daemon
