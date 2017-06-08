@@ -239,7 +239,6 @@ def cli_proxy_script_name():
     return 'salt-proxy'
 
 
-
 @pytest.fixture(scope='session')
 def cli_salt_script_name():
     '''
