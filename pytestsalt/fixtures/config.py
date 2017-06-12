@@ -232,6 +232,14 @@ def cli_minion_script_name():
 
 
 @pytest.fixture(scope='session')
+def cli_proxy_script_name():
+    '''
+    Return the CLI script basename
+    '''
+    return 'salt-proxy'
+
+
+@pytest.fixture(scope='session')
 def cli_salt_script_name():
     '''
     Return the CLI script basename
@@ -389,6 +397,14 @@ def secondary_minion_config_file(secondary_conf_dir):
     Returns the path to the salt secondary minion configuration file
     '''
     return secondary_conf_dir.join('minion').realpath().strpath
+
+
+@pytest.fixture
+def proxy_config_file(conf_dir):
+    '''
+    Returns the path to the salt minion configuration file
+    '''
+    return conf_dir.join('proxy').realpath().strpath
 
 
 @pytest.fixture
@@ -571,6 +587,16 @@ def minion_log_prefix(minion_id):
 @pytest.fixture(scope='session')
 def session_minion_log_prefix(session_minion_id):
     return 'salt-minion/{0}'.format(session_minion_id)
+
+
+@pytest.fixture
+def proxy_log_prefix(minion_id):
+    return 'salt-proxy/{0}'.format(minion_id)
+
+
+@pytest.fixture(scope='session')
+def session_proxy_log_prefix(session_minion_id):
+    return 'salt-proxy/{0}'.format(session_minion_id)
 
 
 @pytest.fixture
