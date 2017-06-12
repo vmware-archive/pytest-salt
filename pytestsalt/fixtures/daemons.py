@@ -1548,7 +1548,7 @@ class SaltMinion(SaltDaemonScriptBase):
 
 class SaltProxy(SaltDaemonScriptBase):
     '''
-    Class which runs the salt-minion daemon
+    Class which runs the salt-proxy daemon
     '''
 
     def get_script_args(self):
@@ -1561,7 +1561,7 @@ class SaltProxy(SaltDaemonScriptBase):
 
     def get_check_events(self):
         if sys.platform.startswith('win'):
-            return super(SaltMinion, self).get_check_events()
+            return super(SaltProxy, self).get_check_events()
         return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
