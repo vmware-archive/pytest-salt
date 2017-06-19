@@ -19,8 +19,6 @@ import logging
 # Import 3rd-party libs
 import pytest
 
-pytest_plugins = ('tempdir', 'pytest_catchlog')  # pylint: disable=invalid-name
-
 log = logging.getLogger(__name__)
 
 ROOT_DIR = 'root'

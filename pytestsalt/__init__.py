@@ -10,5 +10,3 @@
 
     PyTest Salt Plugin
 '''
-
-pytest_plugins = ('logging',)

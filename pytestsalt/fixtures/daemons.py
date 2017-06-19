@@ -24,8 +24,6 @@ import pytest
 
 from pytestsalt.utils import SaltCliScriptBase, SaltDaemonScriptBase, start_daemon
 
-pytest_plugins = ['tornado']
-
 log = logging.getLogger(__name__)
 
 

@@ -37,8 +37,6 @@ try:
 except ImportError:
     HAS_SETPROCTITLE = False
 
-pytest_plugins = ['helpers_namespace']
-
 log = logging.getLogger(__name__)
 
 if sys.platform.startswith('win'):
@@ -224,7 +222,8 @@ def start_daemon(request,
                  start_timeout=10,
                  slow_stop=False,
                  environ=None,
-                 cwd=None):
+                 cwd=None,
+                 **kwargs):
     '''
     Returns a running salt daemon
     '''
@@ -245,7 +244,8 @@ def start_daemon(request,
                                cli_script_name=daemon_cli_script_name,
                                slow_stop=slow_stop,
                                environ=environ,
-                               cwd=cwd)
+                               cwd=cwd,
+                               **kwargs)
         process.start()
         if process.is_alive():
             try:

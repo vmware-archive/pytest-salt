@@ -34,8 +34,6 @@ if IS_WINDOWS:
 else:
     import pwd
 
-pytest_plugins = ['helpers_namespace']
-
 DEFAULT_MOM_ID = 'pytest-salt-mom'
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
