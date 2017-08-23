@@ -602,6 +602,10 @@ class SaltCliScriptBase(SaltScriptBase):
 
     DEFAULT_TIMEOUT = 25
 
+    def __init__(self, *args, **kwargs):
+        self.default_timeout = kwargs.pop('default_timeout', self.DEFAULT_TIMEOUT)
+        super(SaltCliScriptBase, self).__init__(*args, **kwargs)
+
     def get_base_script_args(self):
         return SaltScriptBase.get_base_script_args(self) + ['--out=json']
 
@@ -615,7 +619,7 @@ class SaltCliScriptBase(SaltScriptBase):
         # Late import
         import salt.ext.six as six
         import salt.utils.nb_popen as nb_popen
-        timeout = kwargs.get('timeout', self.DEFAULT_TIMEOUT)
+        timeout = kwargs.get('timeout', self.default_timeout)
         if 'fail_hard' in kwargs:
             # Explicit fail_hard passed
             fail_hard = kwargs.pop('fail_hard')
@@ -631,7 +635,7 @@ class SaltCliScriptBase(SaltScriptBase):
             fail_method = pytest.xfail
         log.info('The fail hard setting for %s is: %s', self.cli_script_name, fail_hard)
         minion_tgt = self.get_minion_tgt(**kwargs)
-        timeout_expire = time.time() + kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
+        timeout_expire = time.time() + kwargs.pop('timeout', self.default_timeout)
         environ = self.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
         proc_args = [

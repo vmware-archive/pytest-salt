@@ -27,6 +27,13 @@ from pytestsalt.utils import SaltCliScriptBase, SaltDaemonScriptBase, start_daem
 log = logging.getLogger(__name__)
 
 
+@pytest.fixture
+def salt_cli_default_timeout():
+    '''
+    Default timeout for CLI tools
+    '''
+
+
 @pytest.fixture(scope='session')
 def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     '''
@@ -779,6 +786,7 @@ def salt(request,
          _cli_bin_dir,
          conf_dir,
          cli_salt_script_name,
+         salt_cli_default_timeout,
          salt_before_start,  # pylint: disable=unused-argument
          log_server,         # pylint: disable=unused-argument
          salt_log_prefix):   # pylint: disable=unused-argument
@@ -790,7 +798,8 @@ def salt(request,
                 conf_dir,
                 _cli_bin_dir,
                 salt_log_prefix,
-                cli_script_name=cli_salt_script_name)
+                cli_script_name=cli_salt_script_name,
+                default_timeout=salt_cli_default_timeout)
     yield salt
 
 
@@ -831,6 +840,7 @@ def session_salt(request,
                  _cli_bin_dir,
                  session_conf_dir,
                  cli_salt_script_name,
+                 salt_cli_default_timeout,
                  session_salt_before_start,  # pylint: disable=unused-argument
                  log_server,         # pylint: disable=unused-argument
                  session_salt_log_prefix):   # pylint: disable=unused-argument
@@ -842,7 +852,8 @@ def session_salt(request,
                 session_conf_dir,
                 _cli_bin_dir,
                 session_salt_log_prefix,
-                cli_script_name=cli_salt_script_name)
+                cli_script_name=cli_salt_script_name,
+                default_timeout=salt_cli_default_timeout)
     yield salt
 
 
@@ -885,6 +896,7 @@ def salt_call(request,
               minion_config,
               conf_dir,
               _cli_bin_dir,
+              salt_cli_default_timeout,
               log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
@@ -894,7 +906,8 @@ def salt_call(request,
                          conf_dir,
                          _cli_bin_dir,
                          salt_call_log_prefix,
-                         cli_script_name=cli_call_script_name)
+                         cli_script_name=cli_call_script_name,
+                         default_timeout=salt_cli_default_timeout)
     yield salt_call
 
 
@@ -937,6 +950,7 @@ def session_salt_call(request,
                       session_minion_config,
                       session_conf_dir,
                       _cli_bin_dir,
+                      salt_cli_default_timeout,
                       log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_call fixture
@@ -946,7 +960,8 @@ def session_salt_call(request,
                          session_conf_dir,
                          _cli_bin_dir,
                          session_salt_call_log_prefix,
-                         cli_script_name=cli_call_script_name)
+                         cli_script_name=cli_call_script_name,
+                         default_timeout=salt_cli_default_timeout)
     yield salt_call
 
 
@@ -989,6 +1004,7 @@ def salt_key(request,
              master_config,
              conf_dir,
              _cli_bin_dir,
+             salt_cli_default_timeout,
              log_server):  # pylint: disable=unused-argument
     '''
     returns a salt_key fixture
@@ -998,7 +1014,8 @@ def salt_key(request,
                        conf_dir,
                        _cli_bin_dir,
                        salt_key_log_prefix,
-                       cli_script_name=cli_key_script_name)
+                       cli_script_name=cli_key_script_name,
+                       default_timeout=salt_cli_default_timeout)
     yield salt_key
 
 
@@ -1041,6 +1058,7 @@ def session_salt_key(request,
                      session_master_config,
                      session_conf_dir,
                      _cli_bin_dir,
+                     salt_cli_default_timeout,
                      log_server):  # pylint: disable=unused-argument
     '''
     returns a salt_key fixture
@@ -1050,7 +1068,8 @@ def session_salt_key(request,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_key_log_prefix,
-                       cli_script_name=cli_key_script_name)
+                       cli_script_name=cli_key_script_name,
+                       default_timeout=salt_cli_default_timeout)
     yield salt_key
 
 
@@ -1093,6 +1112,7 @@ def salt_run(request,
              conf_dir,
              master_config,
              _cli_bin_dir,
+             salt_cli_default_timeout,
              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
@@ -1102,7 +1122,8 @@ def salt_run(request,
                        conf_dir,
                        _cli_bin_dir,
                        salt_run_log_prefix,
-                       cli_script_name=cli_run_script_name)
+                       cli_script_name=cli_run_script_name,
+                       default_timeout=salt_cli_default_timeout)
     yield salt_run
 
 
@@ -1145,6 +1166,7 @@ def session_salt_run(request,
                      session_conf_dir,
                      session_master_config,
                      _cli_bin_dir,
+                     salt_cli_default_timeout,
                      log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_run fixture
@@ -1154,7 +1176,8 @@ def session_salt_run(request,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_run_log_prefix,
-                       cli_script_name=cli_run_script_name)
+                       cli_script_name=cli_run_script_name,
+                       default_timeout=salt_cli_default_timeout)
     yield salt_run
 
 
@@ -1197,6 +1220,7 @@ def salt_ssh(request,
              _cli_bin_dir,
              cli_ssh_script_name,
              roster_config,
+             salt_cli_default_timeout,
              log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_ssh fixture
@@ -1206,7 +1230,8 @@ def salt_ssh(request,
                        conf_dir,
                        _cli_bin_dir,
                        salt_ssh_log_prefix,
-                       cli_script_name=cli_ssh_script_name)
+                       cli_script_name=cli_ssh_script_name,
+                       default_timeout=salt_cli_default_timeout)
     yield salt_ssh
 
 
@@ -1249,6 +1274,7 @@ def session_salt_ssh(request,
                      _cli_bin_dir,
                      cli_ssh_script_name,
                      session_roster_config,
+                     salt_cli_default_timeout,
                      log_server):  # pylint: disable=unused-argument
     '''
     Returns a salt_ssh fixture
@@ -1258,7 +1284,8 @@ def session_salt_ssh(request,
                        session_conf_dir,
                        _cli_bin_dir,
                        session_salt_ssh_log_prefix,
-                       cli_script_name=cli_ssh_script_name)
+                       cli_script_name=cli_ssh_script_name,
+                       default_timeout=salt_cli_default_timeout)
     yield salt_ssh
 
 
