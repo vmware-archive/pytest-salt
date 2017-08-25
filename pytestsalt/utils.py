@@ -713,10 +713,10 @@ class SaltCliScriptBase(SaltScriptBase):
             # pylint: enable=undefined-variable
 
         exitcode = terminal.returncode
-        stdout, stderr, json_out = self.process_output(minion_tgt, stdout, stderr)
+        stdout, stderr, json_out = self.process_output(minion_tgt, stdout, stderr, cli_cmd=proc_args)
         return ShellResult(exitcode, stdout, stderr, json_out)
 
-    def process_output(self, tgt, stdout, stderr):
+    def process_output(self, tgt, stdout, stderr, cli_cmd=None):
         if stdout:
             try:
                 json_out = json.loads(stdout)

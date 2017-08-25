@@ -1485,10 +1485,16 @@ class Salt(SaltCliScriptBase):
     def get_minion_tgt(self, **kwargs):
         return kwargs.pop('minion_tgt', self.config['id'])
 
-    def process_output(self, tgt, stdout, stderr):
+    def process_output(self, tgt, stdout, stderr, cli_cmd):
         if 'No minions matched the target. No command was sent, no jid was assigned.\n' in stdout:
             stdout = stdout.split('\n', 1)[1:][0]
-        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
+        old_stdout = None
+        if '--show-jid' in cli_cmd and stdout.startswith('jid: '):
+            old_stdout = stdout
+            stdout = stdout.split('\n', 1)[-1].strip()
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr, cli_cmd)
+        if old_stdout is not None:
+            stdout = old_stdout
         if json_out:
             if not isinstance(json_out, dict):
                 # A string was most likely loaded, not what we want.
@@ -1517,10 +1523,10 @@ class SaltRun(SaltCliScriptBase):
     Class which runs salt-run commands
     '''
 
-    def process_output(self, tgt, stdout, stderr):
+    def process_output(self, tgt, stdout, stderr, cli_cmd):
         if 'No minions matched the target. No command was sent, no jid was assigned.\n' in stdout:
             stdout = stdout.split('\n', 1)[1:][0]
-        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr, cli_cmd)
         return stdout, stderr, json_out
 
 
@@ -1541,8 +1547,8 @@ class SaltSSH(SaltCliScriptBase):
     def get_minion_tgt(self, **kwargs):
         return 'localhost'
 
-    def process_output(self, tgt, stdout, stderr):
-        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr)
+    def process_output(self, tgt, stdout, stderr, cli_cmd):
+        stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr, cli_cmd)
         if json_out:
             return stdout, stderr, json_out[tgt]
         return stdout, stderr, json_out
