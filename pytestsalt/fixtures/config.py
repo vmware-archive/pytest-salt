@@ -793,11 +793,18 @@ def apply_master_config(root_dir,
             os.path.join(options['cachedir'], 'jobs'),
         ])
 
-    salt_verify.verify_env(
-        verify_env_entries,
-        running_username,
-        pki_dir=options['pki_dir']
-    )
+    try:
+        salt_verify.verify_env(
+            verify_env_entries,
+            running_username,
+            pki_dir=options['pki_dir']
+        )
+    except TypeError:
+        salt_verify.verify_env(
+            verify_env_entries,
+            running_username,
+            sensitive_dirs=[options['pki_dir']]
+        )
     return options
 
 
@@ -1067,11 +1074,18 @@ def apply_minion_config(root_dir,
         #options['extension_modules'],
         options['sock_dir'],
     ]
-    salt_verify.verify_env(
-        verify_env_entries,
-        running_username,
-        pki_dir=options['pki_dir']
-    )
+    try:
+        salt_verify.verify_env(
+            verify_env_entries,
+            running_username,
+            pki_dir=options['pki_dir']
+        )
+    except TypeError:
+        salt_verify.verify_env(
+            verify_env_entries,
+            running_username,
+            sensitive_dirs=[options['pki_dir']]
+        )
     return options
 
 
