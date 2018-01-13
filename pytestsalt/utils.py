@@ -330,6 +330,7 @@ class SaltScriptBase(object):
         self.slow_stop = slow_stop
         self.environ = environ or os.environ.copy()
         self.cwd = cwd or os.getcwd()
+        self._terminal = self._children = None
 
     def get_script_path(self, script_name):
         '''
@@ -352,6 +353,37 @@ class SaltScriptBase(object):
         '''
         return []
 
+    def init_terminal(self, cmdline, **kwargs):
+        '''
+        Instantiate a terminal with the passed cmdline and kwargs and return it.
+
+        Additionaly, it sets a reference to it in self._terminal and also collects
+        an initial listing of child processes which will be used when terminating the
+        terminal
+        '''
+        # Late import
+        import salt.utils.nb_popen as nb_popen
+        self._terminal = nb_popen.NonBlockingPopen(cmdline, **kwargs)
+        self._children = collect_child_processes(self._terminal.pid)
+        atexit.register(self.terminate)
+        return self._terminal
+
+    def terminate(self):
+        '''
+        Terminate the started daemon
+        '''
+        if self._terminal is None:
+            return
+        # Lets log and kill any child processes which salt left behind
+        if self._terminal.stdout:
+            self._terminal.stdout.close()
+        if self._terminal.stderr:
+            self._terminal.stderr.close()
+        terminate_process(pid=self._terminal.pid,
+                          children=self._children,
+                          kill_children=True,
+                          slow_stop=self.slow_stop)
+
 
 class SaltDaemonScriptBase(SaltScriptBase):
     '''
@@ -362,7 +394,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = threading.Event()
         self._connectable = threading.Event()
-        self._process = None
 
     def is_alive(self):
         '''
@@ -411,7 +442,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         Start the daemon subprocess
         '''
         # Late import
-        import salt.utils.nb_popen as nb_popen
         log.info('[%s][%s] Starting DAEMON in CWD: %s', self.log_prefix, self.cli_display_name, self.cwd)
         proc_args = [
             self.get_script_path(self.cli_script_name)
@@ -423,13 +453,11 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
         log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
 
-        self._terminal = nb_popen.NonBlockingPopen(proc_args, env=self.environ, cwd=self.cwd)
+        self.init_terminal(proc_args, env=self.environ, cwd=self.cwd)
         process_output_thread = threading.Thread(target=self._process_output)
         process_output_thread.daemon = True
         self._running.set()
         process_output_thread.start()
-        self._children = collect_child_processes(self._terminal.pid)
-        atexit.register(self.terminate)
         return True
 
     def _process_output(self):
@@ -469,15 +497,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         self._running.clear()
         self._connectable.clear()
         time.sleep(0.0125)
-        # Lets log and kill any child processes which salt left behind
-        if self._terminal.stdout:
-            self._terminal.stdout.close()
-        if self._terminal.stderr:
-            self._terminal.stderr.close()
-        terminate_process(pid=self._terminal.pid,
-                          children=self._children,
-                          kill_children=True,
-                          slow_stop=self.slow_stop)
+        super(SaltDaemonScriptBase, self).terminate()
 
     def wait_until_running(self, timeout=None):
         '''
@@ -562,6 +582,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 time.sleep(0.5)
         except KeyboardInterrupt:
             return self._connectable.is_set()
+        finally:
+            event_listener.terminate()
         if self._connectable.is_set():
             log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         return self._connectable.is_set()
@@ -618,7 +640,6 @@ class SaltCliScriptBase(SaltScriptBase):
         '''
         # Late import
         import salt.ext.six as six
-        import salt.utils.nb_popen as nb_popen
         timeout = kwargs.get('timeout', self.default_timeout)
         if 'fail_hard' in kwargs:
             # Explicit fail_hard passed
@@ -655,11 +676,12 @@ class SaltCliScriptBase(SaltScriptBase):
         log.info('[%s][%s] Running \'%s\' in CWD: %s ...',
                  self.log_prefix, self.cli_display_name, ' '.join(proc_args), self.cwd)
 
-        terminal = nb_popen.NonBlockingPopen(proc_args,
-                                             cwd=self.cwd,
-                                             env=environ,
-                                             stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE)
+        terminal = self.init_terminal(proc_args,
+                                      cwd=self.cwd,
+                                      env=environ,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+
         # Consume the output
         stdout = six.b('')
         stderr = six.b('')
@@ -684,7 +706,7 @@ class SaltCliScriptBase(SaltScriptBase):
                 if out is None and err is None:
                     break
                 if timeout_expire < time.time():
-                    terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
+                    self.terminate()
                     fail_method(
                         '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
                             self.log_prefix,
@@ -699,12 +721,7 @@ class SaltCliScriptBase(SaltScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
         finally:
-            if terminal.stdout:
-                terminal.stdout.close()
-            if terminal.stderr:
-                terminal.stderr.close()
-
-        terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
+            self.terminate()
 
         if six.PY3:
             # pylint: disable=undefined-variable
@@ -753,7 +770,6 @@ class SaltRunEventListener(SaltCliScriptBase):
         '''
         # Late import
         import salt.ext.six as six
-        import salt.utils.nb_popen as nb_popen
         exitcode = 0
         timeout_expire = time.time() + timeout
         environ = self.environ.copy()
@@ -772,11 +788,11 @@ class SaltRunEventListener(SaltCliScriptBase):
         to_match_events = set(tags)
         matched_events = {}
 
-        terminal = nb_popen.NonBlockingPopen(proc_args,
-                                             cwd=self.cwd,
-                                             env=environ,
-                                             stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE)
+        terminal = self.init_terminal(proc_args,
+                                      cwd=self.cwd,
+                                      env=environ,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
 
         # Consume the output
         stdout = six.b('')
@@ -846,12 +862,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         except (SystemExit, KeyboardInterrupt):
             pass
         finally:
-            if terminal.stdout:
-                terminal.stdout.close()
-            if terminal.stderr:
-                terminal.stderr.close()
-
-        terminate_process(pid=terminal.pid, kill_children=True, slow_stop=self.slow_stop)
+            self.terminate()
 
         if six.PY3:
             # pylint: disable=undefined-variable
