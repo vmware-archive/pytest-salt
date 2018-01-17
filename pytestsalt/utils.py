@@ -73,11 +73,11 @@ def collect_child_processes(pid):
         children = parent.children(recursive=True)
     except psutil.NoSuchProcess:
         children = []
-    return children[::-1]  # return a reversed list of the children
+    return children
 
 
 def _terminate_process_list(process_list, kill=False, slow_stop=False):
-    for process in process_list[:][::-1]:  # Iterate over a reversed copy of the list
+    for process in process_list[:]:  # Iterate over copy of the list
         if not psutil.pid_exists(process.pid):
             process_list.remove(process)
             continue
