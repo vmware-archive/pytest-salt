@@ -129,13 +129,13 @@ def _cli_bin_dir(request, cli_bin_dir):
     path = request.config.getoption('cli_bin_dir')
     if path is not None:
         # We were passed --cli-bin-dir as a CLI option
-        return path
+        return os.path.expanduser(path)
 
     # The path was not passed as a CLI option
     path = request.config.getini('cli_bin_dir')
     if path:
         # We were passed cli_bin_dir as a INI option
-        return path
+        return os.path.expanduser(path)
 
     return cli_bin_dir
 
