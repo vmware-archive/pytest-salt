@@ -1326,6 +1326,7 @@ def sshd_server(request,
                 sshd_server_log_prefix,
                 sshd_port,
                 sshd_config_dir,
+                sshd_priv_dir,
                 log_server):  # pylint: disable=unused-argument
     '''
     Returns a running sshd server
@@ -1420,6 +1421,7 @@ def session_sshd_server(request,
                         session_sshd_server_log_prefix,
                         session_sshd_port,
                         session_sshd_config_dir,
+                        session_sshd_priv_dir,
                         log_server):  # pylint: disable=unused-argument
     '''
     Returns a running sshd server
