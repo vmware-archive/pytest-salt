@@ -15,6 +15,8 @@
 # Import Python libs
 from __future__ import absolute_import
 import logging
+import os
+import stat
 
 # Import 3rd-party libs
 import pytest
@@ -589,6 +591,32 @@ def session_sshd_config_dir(tempdir):
     config_dir = tempdir.join('session-sshd')
     config_dir.ensure(dir=True)
     return config_dir
+
+
+@pytest.fixture
+def sshd_priv_dir():
+    '''
+    Create the privdir for starting sshd on systems that do not have an sshd
+    daemon already running
+    '''
+    if not os.path.isdir('/var/run/sshd')
+        os.mkdir('/var/run/sshd/')
+        os.chmod('/var/run/sshd/', stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        yield
+        os.rmdir('/var/run/sshd')
+
+
+@pytest.fixture(scope='session')
+def session_sshd_priv_dir():
+    '''
+    Create the privdir for starting sshd on systems that do not have an sshd
+    daemon already running
+    '''
+    if not os.path.isdir('/var/run/sshd')
+        os.mkdir('/var/run/sshd/')
+        os.chmod('/var/run/sshd/', stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        yield
+        os.rmdir('/var/run/sshd')
 
 
 @pytest.fixture
