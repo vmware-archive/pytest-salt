@@ -599,7 +599,7 @@ def sshd_priv_dir():
     Create the privdir for starting sshd on systems that do not have an sshd
     daemon already running
     '''
-    if not os.path.isdir('/var/run/sshd')
+    if not os.path.isdir('/var/run/sshd'):
         os.mkdir('/var/run/sshd/')
         os.chmod('/var/run/sshd/', stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         yield
@@ -612,7 +612,7 @@ def session_sshd_priv_dir():
     Create the privdir for starting sshd on systems that do not have an sshd
     daemon already running
     '''
-    if not os.path.isdir('/var/run/sshd')
+    if not os.path.isdir('/var/run/sshd'):
         os.mkdir('/var/run/sshd/')
         os.chmod('/var/run/sshd/', stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         yield
