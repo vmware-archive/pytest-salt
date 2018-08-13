@@ -659,6 +659,7 @@ class SaltCliScriptBase(SaltScriptBase):
         timeout_expire = time.time() + kwargs.pop('timeout', self.default_timeout)
         environ = self.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
+        environ['PYTHONUNBUFFERED'] = '1'
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
@@ -774,6 +775,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         timeout_expire = time.time() + timeout
         environ = self.environ.copy()
         environ['PYTEST_LOG_PREFIX'] = '[{0}][EventListen] '.format(self.log_prefix)
+        environ['PYTHONUNBUFFERED'] = '1'
         proc_args = [
             self.get_script_path(self.cli_script_name)
         ] + self.get_base_script_args() + self.get_script_args()
