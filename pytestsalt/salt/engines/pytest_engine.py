@@ -71,7 +71,6 @@ class PyTestEngine(object):
         netutil.add_accept_handler(
             self.sock,
             self.handle_connection,
-            io_loop=self.io_loop,
         )
 
     def handle_connection(self, connection, address):
