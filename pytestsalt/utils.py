@@ -391,6 +391,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
     '''
 
     def __init__(self, *args, **kwargs):
+        self._process_cli_output_in_thread = kwargs.pop('process_cli_output_in_thread', True)
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = threading.Event()
         self._connectable = threading.Event()
@@ -454,13 +455,14 @@ class SaltDaemonScriptBase(SaltScriptBase):
         log.info('[%s][%s] Running \'%s\'...', self.log_prefix, self.cli_display_name, ' '.join(proc_args))
 
         self.init_terminal(proc_args, env=self.environ, cwd=self.cwd)
-        process_output_thread = threading.Thread(target=self._process_output)
-        process_output_thread.daemon = True
         self._running.set()
-        process_output_thread.start()
+        if self._process_cli_output_in_thread:
+            process_output_thread = threading.Thread(target=self._process_output_in_thread)
+            process_output_thread.daemon = True
+            process_output_thread.start()
         return True
 
-    def _process_output(self):
+    def _process_output_in_thread(self):
         '''
         The actual, coroutine aware, start method
         '''
