@@ -680,6 +680,7 @@ def apply_master_config(root_dir,
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
     '''
+    import pytestsalt.utils.compat as compat
     import salt.config
     import salt.utils
     import salt.utils.dictupdate as dictupdate
@@ -759,7 +760,7 @@ def apply_master_config(root_dir,
     log.info('Writing configuration file to %s', config_file)
 
     # Write down the computed configuration into the config file
-    with salt.utils.fopen(config_file, 'w') as wfh:
+    with compat.fopen(config_file, 'w') as wfh:
         wfh.write(yamlserialize.serialize(default_options))
 
     # Make sure to load the config file as a salt-master starting from CLI
@@ -1003,6 +1004,7 @@ def apply_minion_config(root_dir,
     This fixture will return the salt minion configuration options after being
     overridden with any options passed from ``config_overrides``
     '''
+    import pytestsalt.utils.compat as compat
     import salt.config
     import salt.utils
     import salt.utils.dictupdate as dictupdate
@@ -1054,7 +1056,7 @@ def apply_minion_config(root_dir,
     log.info('Writing configuration file to %s', config_file)
 
     # Write down the computed configuration into the config file
-    with salt.utils.fopen(config_file, 'w') as wfh:
+    with compat.fopen(config_file, 'w') as wfh:
         wfh.write(yamlserialize.serialize(default_options))
 
     # Make sure to load the config file as a salt-master starting from CLI
@@ -1221,6 +1223,7 @@ def apply_syndic_config(master_config,
     This fixture will return the salt syndic configuration options after being
     overridden with any options passed from ``config_overrides``
     '''
+    import pytestsalt.utils.compat as compat
     import salt.config
     import salt.utils
     import salt.utils.dictupdate as dictupdate
@@ -1248,7 +1251,7 @@ def apply_syndic_config(master_config,
         dictupdate.update(master_config, master_config_overrides, merge_lists=True)
 
     # Write down the master computed configuration into the config file
-    with salt.utils.fopen(syndic_master_config_file, 'w') as wfh:
+    with compat.fopen(syndic_master_config_file, 'w') as wfh:
         wfh.write(yamlserialize.serialize(master_config))
 
     default_minion_options = copy.deepcopy(minion_config)
@@ -1263,7 +1266,7 @@ def apply_syndic_config(master_config,
         dictupdate.update(minion_config, minion_config_overrides, merge_lists=True)
 
     # Write down the minion computed configuration into the config file
-    with salt.utils.fopen(syndic_minion_config_file, 'w') as wfh:
+    with compat.fopen(syndic_minion_config_file, 'w') as wfh:
         wfh.write(yamlserialize.serialize(minion_config))
 
     options = salt.config.syndic_config(syndic_master_config_file, syndic_minion_config_file)
@@ -1441,6 +1444,7 @@ def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
     This fixture will write the necessary configuration to run an SSHD server to be used in tests
     '''
     import salt.utils
+    import pytestsalt.utils.compat as compat
     sshd = salt.utils.which('sshd')
 
     if not sshd:
@@ -1462,7 +1466,7 @@ def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
     sshd_config.append('HostKey {0}'.format(server_ecdsa_key_file))
     sshd_config.append('HostKey {0}'.format(server_ed25519_key_file))
 
-    with salt.utils.fopen(sshd_config_dir.join('sshd_config').realpath().strpath, 'w') as wfh:
+    with compat.fopen(sshd_config_dir.join('sshd_config').realpath().strpath, 'w') as wfh:
         wfh.write('\n'.join(sshd_config))
 
 
@@ -1556,12 +1560,12 @@ def session_roster_config_overrides():
 
 
 def _roster_config(config_file, config, config_overrides):
-    import salt.utils
+    import pytestsalt.utils.compat as compat
     import salt.serializers.yaml as yamlserialize
     if config_overrides:
         config.update(config_overrides)
 
-    with salt.utils.fopen(config_file, 'w') as wfh:
+    with compat.fopen(config_file, 'w') as wfh:
         wfh.write(yamlserialize.serialize(config))
     return config
 
