@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
-    pytestsalt.utils.compat
-    ~~~~~~~~~~~~~~~~~~~~~~~
+pytestsalt.utils.compat
+~~~~~~~~~~~~~~~~~~~~~~~
 
-    Imports compatability layer
+Imports compatability layer
 '''
 
 try:

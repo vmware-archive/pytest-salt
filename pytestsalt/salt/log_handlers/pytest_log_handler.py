@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
-    :codeauthor: :email:`Pedro Algarvio (pedro@algarvio.me)`
-    :copyright: Copyright 2016 by the SaltStack Team, see AUTHORS for more details.
-    :license: Apache 2.0, see LICENSE for more details.
+pytestsalt.salt.log_handlers.pytest_log_handler
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-    pytestsalt.salt.log_handlers.pytest_log_handler
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    Salt External Logging Handler
+Salt External Logging Handler
 '''
 
 # Import python libs
