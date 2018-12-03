@@ -139,7 +139,7 @@ def salt_fail_hard(request):
     return False
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='session')
 def _salt_fail_hard(request, salt_fail_hard):
     '''
     Return the salt fail hard value
