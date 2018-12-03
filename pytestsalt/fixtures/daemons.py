@@ -1625,7 +1625,7 @@ class SaltSyndic(SaltDaemonScriptBase):
     '''
 
     def get_check_ports(self):
-        return set([self.config['pytest_port']])
+        return set([self.config['pytest_engine_port']])
 
     def get_script_args(self):
         return ['-l', 'quiet']

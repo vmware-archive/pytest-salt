@@ -28,7 +28,7 @@ __virtualname__ = 'pytest'
 
 
 def __virtual__():
-    return 'pytest_port' in __opts__  # pylint: disable=undefined-variable
+    return 'pytest_engine_port' in __opts__  # pylint: disable=undefined-variable
 
 
 def start():
@@ -54,7 +54,7 @@ class PyTestEngine(object):
         else:
             self.io_loop.spawn_callback(self.fire_master_started_event)
 
-        port = int(self.opts['pytest_port'])
+        port = int(self.opts['pytest_engine_port'])
         log.info('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

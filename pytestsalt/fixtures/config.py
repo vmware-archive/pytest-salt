@@ -738,7 +738,7 @@ def apply_master_config(root_dir,
         default_options['engines_dirs'] = []
 
     default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
-    default_options['pytest_port'] = engine_port
+    default_options['pytest_engine_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
@@ -1039,7 +1039,7 @@ def apply_minion_config(root_dir,
     #    default_options['engines_dirs'] = []
 
     #default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
-    #default_options['pytest_port'] = engine_port
+    #default_options['pytest_engine_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
@@ -1235,7 +1235,7 @@ def apply_syndic_config(master_config,
         'syndic_pidfile': 'run/salt-syndic.pid',
         'syndic_user': running_username,
         'syndic_log_file': 'logs/syndic.log',
-        'pytest_port': engine_port,
+        'pytest_engine_port': engine_port,
         'pytest_log_prefix': '[{0}] '.format(syndic_log_prefix)
     }
     master_config = copy.deepcopy(default_master_options)
