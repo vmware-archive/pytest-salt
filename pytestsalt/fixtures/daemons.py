@@ -34,6 +34,7 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     '''
     Return the salt version for the CLI install
     '''
+    import salt
     try:
         import salt.ext.six as six
     except ImportError:
@@ -50,7 +51,7 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     stdout, stderr = proc.communicate()
     version = stdout.split()[1]
     if six.PY3:
-        version = version.decode('utf-8')
+        version = version.decode(__salt_system_encoding__)
     return version
 
 
