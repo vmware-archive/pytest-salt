@@ -16,6 +16,11 @@ import stat
 # Import 3rd-party libs
 import pytest
 
+# Import pytest-salt libs
+import pytestsalt.salt.engines
+import pytestsalt.salt.log_handlers
+
+
 log = logging.getLogger(__name__)
 
 ROOT_DIR = 'root'
@@ -632,3 +637,19 @@ def session_ssh_config_dir(tempdir):
     config_dir = tempdir.join('session-ssh-client')
     config_dir.ensure(dir=True)
     return config_dir
+
+
+@pytest.fixture(scope='session')
+def log_handlers_dir():
+    '''
+    Return the directory name for the pytest-salt log handlers directory
+    '''
+    return os.path.dirname(pytestsalt.salt.log_handlers.__file__)
+
+
+@pytest.fixture(scope='session')
+def engines_dir():
+    '''
+    Return the directory name for the pytest-salt engines directory
+    '''
+    return os.path.dirname(pytestsalt.salt.engines.__file__)

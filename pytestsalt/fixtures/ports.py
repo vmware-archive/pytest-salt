@@ -369,8 +369,16 @@ def session_sshd_port():
 
 
 @pytest.fixture(scope='session')
-def salt_log_port():
+def log_server_port():
     '''
     Returns an unused localhost port for the pytest logging manager
     '''
     return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def salt_log_port(log_server_port):
+    '''
+    Returns the log_server_port fixture value for backwards compatibility
+    '''
+    return log_server_port

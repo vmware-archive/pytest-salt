@@ -8,70 +8,50 @@ from external process to log them in the current process
 '''
 
 # Import python libs
-from __future__ import absolute_import
-import threading
+from __future__ import absolute_import, print_function, unicode_literals
+import sys
 import logging
-try:
-    import SocketServer as socketserver
-except ImportError:
-    import socketserver
 
 # Import pytest libs
 import pytest
 
 # Import 3rd-party libs
 import msgpack
+if sys.version_info > (3, 5):
+#if False:
+    from pytestsalt.fixtures.log_server_asyncio import log_server_asyncio as salt_log_server
+else:
+    from pytestsalt.fixtures.log_server_tornado import log_server_tornado as salt_log_server
+
 
 log = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope='session')
+def log_server_level(request):
+    # If PyTest has no logging configured, default to ERROR level
+    levels = [logging.ERROR]
+    logging_plugin = request.config.pluginmanager.get_plugin('logging-plugin')
+    try:
+        levels.append(logging_plugin.log_cli_handler.level)
+    except AttributeError:
+        # PyTest CLI logging not configured
+        pass
+    try:
+        levels.append(logging_plugin.log_file_level)
+    except AttributeError:
+        # PyTest Log File logging not configured
+        pass
+
+    level_str = logging.getLevelName(min(levels))
+    return level_str
+
+
+@pytest.fixture(scope='session')
 def log_server(salt_log_port):
-    '''
-    Returns a log server fixture.
+    log.warning('Starting log server')
+    salt_log_server(salt_log_port)
 
-    This is an autouse fixture so no need to depend on it
-    '''
-    server = ThreadedSocketServer(('localhost', salt_log_port), SocketServerRequestHandler)
-    server_process = threading.Thread(target=server.serve_forever)
-    server_process.daemon = True
-    server_process.start()
-    yield server
-    server.server_close()
-    server.shutdown()
-
-
-class ThreadingMixIn(socketserver.ThreadingMixIn):
-    daemon_threads = True
-
-
-class ThreadedSocketServer(ThreadingMixIn, socketserver.TCPServer):
-
-    def server_activate(self):
-        self.shutting_down = threading.Event()
-        socketserver.TCPServer.server_activate(self)
-        #super(ThreadedSocketServer, self).server_activate()
-
-    def server_close(self):
-        self.shutting_down.set()
-        socketserver.TCPServer.server_close(self)
-        #super(ThreadedSocketServer, self).server_close()
-
-
-class SocketServerRequestHandler(socketserver.StreamRequestHandler):
-    def handle(self):
-        unpacker = msgpack.Unpacker(encoding='utf-8')
-        while not self.server.shutting_down.is_set():
-            try:
-                wire_bytes = self.request.recv(1024)
-                if not wire_bytes:
-                    break
-                unpacker.feed(wire_bytes)
-                for record_dict in unpacker:
-                    record = logging.makeLogRecord(record_dict)
-                    logger = logging.getLogger(record.name)
-                    logger.handle(record)
-            except (EOFError, KeyboardInterrupt, SystemExit):
-                break
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception(exc)
+    log.warning('Log Server Started')
+    # Run tests
+    yield

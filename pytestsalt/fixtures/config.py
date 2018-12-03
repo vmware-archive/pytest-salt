@@ -18,10 +18,6 @@ import subprocess
 # Import 3rd-party libs
 import pytest
 
-# Import pytest salt libs
-import pytestsalt.salt.engines
-import pytestsalt.salt.log_handlers
-
 IS_WINDOWS = sys.platform.startswith('win')
 
 if IS_WINDOWS:
@@ -664,7 +660,10 @@ def apply_master_config(root_dir,
                         base_env_pillar_tree_root_dirs,
                         prod_env_pillar_tree_root_dirs,
                         running_username,
-                        salt_log_port,
+                        log_server_port,
+                        log_server_level,
+                        engines_dir,
+                        log_handlers_dir,
                         master_log_prefix,
                         tcp_master_pub_port,
                         tcp_master_pull_port,
@@ -737,15 +736,17 @@ def apply_master_config(root_dir,
     if 'engines_dirs' not in default_options:
         default_options['engines_dirs'] = []
 
-    default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
+    default_options['engines_dirs'].insert(0, engines_dir)
     default_options['pytest_engine_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
-    default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
+    default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
 
-    default_options['pytest_log_port'] = salt_log_port
-    default_options['pytest_log_prefix'] = '[{0}] '.format(master_log_prefix)
+    default_options['pytest_log_host'] = 'localhost'
+    default_options['pytest_log_port'] = log_server_port
+    default_options['pytest_log_level'] = log_server_level
+    default_options['pytest_log_prefix'] = master_log_prefix
 
     if direct_overrides is not None:
         # We've been passed some direct override configuration.
@@ -817,7 +818,10 @@ def master_config(root_dir,
                   base_env_pillar_tree_root_dir,
                   prod_env_pillar_tree_root_dir,
                   running_username,
-                  salt_log_port,
+                  log_server_port,
+                  log_server_level,
+                  engines_dir,
+                  log_handlers_dir,
                   master_log_prefix,
                   master_tcp_master_pub_port,
                   master_tcp_master_pull_port,
@@ -839,7 +843,10 @@ def master_config(root_dir,
                                [base_env_pillar_tree_root_dir.strpath],
                                [prod_env_pillar_tree_root_dir.strpath],
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                master_log_prefix,
                                master_tcp_master_pub_port,
                                master_tcp_master_pull_port,
@@ -860,7 +867,10 @@ def session_master_config(session_root_dir,
                           session_base_env_pillar_tree_root_dir,
                           session_prod_env_pillar_tree_root_dir,
                           running_username,
-                          salt_log_port,
+                          log_server_port,
+                          log_server_level,
+                          engines_dir,
+                          log_handlers_dir,
                           session_master_log_prefix,
                           session_master_tcp_master_pub_port,
                           session_master_tcp_master_pull_port,
@@ -882,7 +892,10 @@ def session_master_config(session_root_dir,
                                [session_base_env_pillar_tree_root_dir.strpath],
                                [session_prod_env_pillar_tree_root_dir.strpath],
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                session_master_log_prefix,
                                session_master_tcp_master_pub_port,
                                session_master_tcp_master_pull_port,
@@ -903,7 +916,10 @@ def master_of_masters_config(master_of_masters_root_dir,
                              master_of_masters_base_env_pillar_tree_root_dir,
                              master_of_masters_prod_env_pillar_tree_root_dir,
                              running_username,
-                             salt_log_port,
+                             log_server_port,
+                             log_server_level,
+                             engines_dir,
+                             log_handlers_dir,
                              master_of_masters_log_prefix,
                              master_of_masters_master_tcp_master_pub_port,
                              master_of_masters_master_tcp_master_pull_port,
@@ -928,7 +944,10 @@ def master_of_masters_config(master_of_masters_root_dir,
                                [master_of_masters_base_env_pillar_tree_root_dir.strpath],
                                [master_of_masters_prod_env_pillar_tree_root_dir.strpath],
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                master_of_masters_log_prefix,
                                master_of_masters_master_tcp_master_pub_port,
                                master_of_masters_master_tcp_master_pull_port,
@@ -950,7 +969,10 @@ def session_master_of_masters_config(session_master_of_masters_root_dir,
                                      session_base_env_pillar_tree_root_dir,
                                      session_prod_env_pillar_tree_root_dir,
                                      running_username,
-                                     salt_log_port,
+                                     log_server_port,
+                                     log_server_level,
+                                     engines_dir,
+                                     log_handlers_dir,
                                      session_master_of_masters_log_prefix,
                                      session_master_of_masters_master_tcp_master_pub_port,
                                      session_master_of_masters_master_tcp_master_pull_port,
@@ -975,7 +997,10 @@ def session_master_of_masters_config(session_master_of_masters_root_dir,
                                [session_base_env_pillar_tree_root_dir.strpath],
                                [session_prod_env_pillar_tree_root_dir.strpath],
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                session_master_of_masters_log_prefix,
                                session_master_of_masters_master_tcp_master_pub_port,
                                session_master_of_masters_master_tcp_master_pull_port,
@@ -991,7 +1016,10 @@ def apply_minion_config(root_dir,
                         config_overrides,
                         minion_id,
                         running_username,
-                        salt_log_port,
+                        log_server_port,
+                        log_server_level,
+                        engines_dir,
+                        log_handlers_dir,
                         minion_log_prefix,
                         tcp_pub_port,
                         tcp_pull_port):
@@ -1038,15 +1066,18 @@ def apply_minion_config(root_dir,
     #if 'engines_dirs' not in default_options:
     #    default_options['engines_dirs'] = []
 
-    #default_options['engines_dirs'].insert(0, os.path.dirname(pytestsalt.salt.engines.__file__))
+    #default_options['engines_dirs'].insert(0, engines_dir)
     #default_options['pytest_engine_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
-    default_options['log_handlers_dirs'].insert(0, os.path.dirname(pytestsalt.salt.log_handlers.__file__))
+    default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
 
-    default_options['pytest_log_port'] = salt_log_port
-    default_options['pytest_log_prefix'] = '[{0}] '.format(minion_log_prefix)
+
+    default_options['pytest_log_host'] = 'localhost'
+    default_options['pytest_log_port'] = log_server_port
+    default_options['pytest_log_level'] = log_server_level
+    default_options['pytest_log_prefix'] = minion_log_prefix
 
     log.info('Writing configuration file to %s', config_file)
 
@@ -1096,7 +1127,10 @@ def minion_config(root_dir,
                   minion_config_overrides,
                   minion_id,
                   running_username,
-                  salt_log_port,
+                  log_server_port,
+                  log_server_level,
+                  engines_dir,
+                  log_handlers_dir,
                   minion_log_prefix,
                   minion_tcp_pub_port,
                   minion_tcp_pull_port):
@@ -1111,7 +1145,10 @@ def minion_config(root_dir,
                                minion_config_overrides,
                                minion_id,
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                minion_log_prefix,
                                minion_tcp_pub_port,
                                minion_tcp_pull_port)
@@ -1125,7 +1162,10 @@ def session_minion_config(session_root_dir,
                           session_minion_config_overrides,
                           session_minion_id,
                           running_username,
-                          salt_log_port,
+                          log_server_port,
+                          log_server_level,
+                          engines_dir,
+                          log_handlers_dir,
                           session_minion_log_prefix,
                           session_minion_tcp_pub_port,
                           session_minion_tcp_pull_port):
@@ -1140,7 +1180,10 @@ def session_minion_config(session_root_dir,
                                session_minion_config_overrides,
                                session_minion_id,
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                session_minion_log_prefix,
                                session_minion_tcp_pub_port,
                                session_minion_tcp_pull_port)
@@ -1154,7 +1197,10 @@ def secondary_minion_config(secondary_root_dir,
                             secondary_minion_config_overrides,
                             secondary_minion_id,
                             running_username,
-                            salt_log_port,
+                            log_server_port,
+                            log_server_level,
+                            engines_dir,
+                            log_handlers_dir,
                             secondary_minion_log_prefix,
                             secondary_minion_tcp_pub_port,
                             secondary_minion_tcp_pull_port):
@@ -1169,7 +1215,10 @@ def secondary_minion_config(secondary_root_dir,
                                secondary_minion_config_overrides,
                                secondary_minion_id,
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                secondary_minion_log_prefix,
                                secondary_minion_tcp_pub_port,
                                secondary_minion_tcp_pull_port)
@@ -1183,7 +1232,10 @@ def session_secondary_minion_config(session_secondary_root_dir,
                                     session_secondary_minion_config_overrides,
                                     session_secondary_minion_id,
                                     running_username,
-                                    salt_log_port,
+                                    log_server_port,
+                                    log_server_level,
+                                    engines_dir,
+                                    log_handlers_dir,
                                     session_secondary_minion_log_prefix,
                                     session_secondary_minion_tcp_pub_port,
                                     session_secondary_minion_tcp_pull_port):
@@ -1198,7 +1250,10 @@ def session_secondary_minion_config(session_secondary_root_dir,
                                session_secondary_minion_config_overrides,
                                session_secondary_minion_id,
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
+                               engines_dir,
+                               log_handlers_dir,
                                session_secondary_minion_log_prefix,
                                session_secondary_minion_tcp_pub_port,
                                session_secondary_minion_tcp_pull_port)
@@ -1211,7 +1266,8 @@ def apply_syndic_config(master_config,
                         master_config_overrides,
                         minion_config_overrides,
                         running_username,
-                        salt_log_port,
+                        log_server_port,
+                        log_server_level,
                         syndic_log_prefix,
                         syndic_id):
     '''
@@ -1235,9 +1291,13 @@ def apply_syndic_config(master_config,
         'syndic_pidfile': 'run/salt-syndic.pid',
         'syndic_user': running_username,
         'syndic_log_file': 'logs/syndic.log',
-        'pytest_engine_port': engine_port,
-        'pytest_log_prefix': '[{0}] '.format(syndic_log_prefix)
+        'pytest_log_host': 'localhost',
+        'pytest_log_port': log_server_port,
+        'pytest_log_level': log_server_level,
+        'pytest_log_prefix': syndic_log_prefix,
+        'pytest_engine_port': engine_port
     }
+
     master_config = copy.deepcopy(default_master_options)
     master_config.update(master_overrides)
 
@@ -1276,7 +1336,8 @@ def syndic_config(master_config,
                   syndic_master_config_overrides,
                   syndic_minion_config_overrides,
                   running_username,
-                  salt_log_port,
+                  log_server_port,
+                  log_server_level,
                   syndic_log_prefix,
                   syndic_id):
     '''
@@ -1291,7 +1352,8 @@ def syndic_config(master_config,
                                syndic_master_config_overrides,
                                syndic_minion_config_overrides,
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
                                syndic_log_prefix,
                                syndic_id)
 
@@ -1304,7 +1366,8 @@ def session_syndic_config(session_master_config,
                           session_syndic_master_config_overrides,
                           session_syndic_minion_config_overrides,
                           running_username,
-                          salt_log_port,
+                          log_server_port,
+                          log_server_level,
                           session_syndic_log_prefix,
                           session_syndic_id):
     '''
@@ -1319,7 +1382,8 @@ def session_syndic_config(session_master_config,
                                session_syndic_master_config_overrides,
                                session_syndic_minion_config_overrides,
                                running_username,
-                               salt_log_port,
+                               log_server_port,
+                               log_server_level,
                                session_syndic_log_prefix,
                                session_syndic_id)
 
