@@ -16,10 +16,16 @@ import logging
 
 # Import salt libs
 import salt.utils.event
+try:
+    import salt.utils.asynchronous
+    HAS_SALT_ASYNC = True
+except ImportError:
+    HAS_SALT_ASYNC = False
 
 # Import 3rd-party libs
 from tornado import gen
 from tornado import ioloop
+from tornado import iostream
 from tornado import netutil
 
 log = logging.getLogger(__name__)
@@ -34,6 +40,7 @@ def __virtual__():
 def start():
     pytest_engine = PyTestEngine(__opts__)  # pylint: disable=undefined-variable
     pytest_engine.start()
+
 
 
 class PyTestEngine(object):
@@ -63,10 +70,11 @@ class PyTestEngine(object):
         self.sock.bind(('localhost', port))
         # become a server socket
         self.sock.listen(5)
-        netutil.add_accept_handler(
-            self.sock,
-            self.handle_connection,
-        )
+        if HAS_SALT_ASYNC:
+            with salt.utils.asynchronous.current_ioloop(self.io_loop):
+                netutil.add_accept_handler(self.sock, self.handle_connection)
+        else:
+            netutil.add_accept_handler(self.sock, self.handle_connection)
 
     def handle_connection(self, connection, address):
         log.warning('Accepted connection from %s. Role: %s', address, self.opts['__role'])
@@ -108,7 +116,10 @@ class PyTestEngine(object):
         timeout = 60
         while True:
             timeout -= 1
-            event_bus.fire_event(load, master_start_event_tag, timeout=500)
-            if timeout <= 0:
+            try:
+                event_bus.fire_event(load, master_start_event_tag, timeout=500)
+                if timeout <= 0:
+                    break
+                yield gen.sleep(1)
+            except iostream.StreamClosedError:
                 break
-            yield gen.sleep(1)
