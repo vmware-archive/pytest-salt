@@ -25,7 +25,7 @@ import msgpack
 log = logging.getLogger(__name__)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def log_server(salt_log_port):
     '''
     Returns a log server fixture.
