@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
-    :codeauthor: :email:`Pedro Algarvio (pedro@algarvio.me)`
-    :copyright: Copyright 2015 by the SaltStack Team, see AUTHORS for more details.
-    :license: Apache 2.0, see LICENSE for more details.
+pytestsalt.fixtures.ports
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-    pytestsalt.fixtures.ports
-    ~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    Pytest salt plugin ports fixtures
+Pytest salt plugin ports fixtures
 '''
 
 # Import python libs
@@ -174,7 +169,7 @@ def master_of_masters_master_tcp_master_pub_port():
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_tcp_master_pub_port():
+def session_master_of_masters_master_tcp_master_pub_port():
     '''
     Returns an unused localhost port
     '''
@@ -374,8 +369,16 @@ def session_sshd_port():
 
 
 @pytest.fixture(scope='session')
-def salt_log_port():
+def log_server_port():
     '''
     Returns an unused localhost port for the pytest logging manager
     '''
     return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def salt_log_port(log_server_port):
+    '''
+    Returns the log_server_port fixture value for backwards compatibility
+    '''
+    return log_server_port

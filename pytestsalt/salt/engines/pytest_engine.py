@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 '''
-    :codeauthor: :email:`Pedro Algarvio (pedro@algarvio.me)`
-    :copyright: Copyright 2015 by the SaltStack Team, see AUTHORS for more details.
-    :license: Apache 2.0, see LICENSE for more details.
+pytestsalt.engines.pytest_engine
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-    pytestsalt.engines.pytest_engine
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    Simple salt engine which will setup a socket to accept connections allowing us to know
-    when a daemon is up and running
+Simple salt engine which will setup a socket to accept connections allowing us to know
+when a daemon is up and running
 '''
 
 # Import python libs
@@ -21,10 +16,16 @@ import logging
 
 # Import salt libs
 import salt.utils.event
+try:
+    import salt.utils.asynchronous
+    HAS_SALT_ASYNC = True
+except ImportError:
+    HAS_SALT_ASYNC = False
 
 # Import 3rd-party libs
 from tornado import gen
 from tornado import ioloop
+from tornado import iostream
 from tornado import netutil
 
 log = logging.getLogger(__name__)
@@ -33,12 +34,13 @@ __virtualname__ = 'pytest'
 
 
 def __virtual__():
-    return 'pytest_port' in __opts__  # pylint: disable=undefined-variable
+    return 'pytest_engine_port' in __opts__  # pylint: disable=undefined-variable
 
 
 def start():
     pytest_engine = PyTestEngine(__opts__)  # pylint: disable=undefined-variable
     pytest_engine.start()
+
 
 
 class PyTestEngine(object):
@@ -59,7 +61,7 @@ class PyTestEngine(object):
         else:
             self.io_loop.spawn_callback(self.fire_master_started_event)
 
-        port = int(self.opts['pytest_port'])
+        port = int(self.opts['pytest_engine_port'])
         log.info('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -68,10 +70,11 @@ class PyTestEngine(object):
         self.sock.bind(('localhost', port))
         # become a server socket
         self.sock.listen(5)
-        netutil.add_accept_handler(
-            self.sock,
-            self.handle_connection,
-        )
+        if HAS_SALT_ASYNC:
+            with salt.utils.asynchronous.current_ioloop(self.io_loop):
+                netutil.add_accept_handler(self.sock, self.handle_connection)
+        else:
+            netutil.add_accept_handler(self.sock, self.handle_connection)
 
     def handle_connection(self, connection, address):
         log.warning('Accepted connection from %s. Role: %s', address, self.opts['__role'])
@@ -92,7 +95,7 @@ class PyTestEngine(object):
     @gen.coroutine
     def listen_to_minion_connected_event(self):
         log.info('Listening for minion connected event...')
-        minion_start_event_match = 'salt/minion/{0}/start'.format(self.opts['id'])
+        minion_start_event_match = 'salt/minion/{}/start'.format(self.opts['id'])
         event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=True)
         event_bus.subscribe(minion_start_event_match)
         while True:
@@ -106,14 +109,17 @@ class PyTestEngine(object):
     def fire_master_started_event(self):
         log.info('Firing salt-master started event...')
         event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=False)
-        master_start_event_tag = 'salt/master/{0}/start'.format(self.opts['id'])
+        master_start_event_tag = 'salt/master/{}/start'.format(self.opts['id'])
         load = {'id': self.opts['id'], 'tag': master_start_event_tag, 'data': {}}
         # One minute should be more than enough to fire these events every second in order
         # for pytest-salt to pickup that the master is running
         timeout = 60
         while True:
             timeout -= 1
-            event_bus.fire_event(load, master_start_event_tag, timeout=500)
-            if timeout <= 0:
+            try:
+                event_bus.fire_event(load, master_start_event_tag, timeout=500)
+                if timeout <= 0:
+                    break
+                yield gen.sleep(1)
+            except iostream.StreamClosedError:
                 break
-            yield gen.sleep(1)

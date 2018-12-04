@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
-    :codeauthor: :email:`Pedro Algarvio (pedro@algarvio.me)`
-    :copyright: Copyright 2015 by the SaltStack Team, see AUTHORS for more details.
-    :license: Apache 2.0, see LICENSE for more details.
+pytestsalt.fixtures.daemons
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-    pytestsalt.fixtures.daemons
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    Salt daemons fixtures
+Salt daemons fixtures
 '''
 # pylint: disable=redefined-outer-name
 
@@ -39,6 +34,7 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     '''
     Return the salt version for the CLI install
     '''
+    import salt
     try:
         import salt.ext.six as six
     except ImportError:
@@ -55,11 +51,11 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     stdout, stderr = proc.communicate()
     version = stdout.split()[1]
     if six.PY3:
-        version = version.decode('utf-8')
+        version = version.decode(__salt_system_encoding__)
     return version
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_master_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -74,7 +70,7 @@ def salt_master_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_master_after_start(salt_master):
     '''
     This fixture should be overridden if you need to do
@@ -113,10 +109,11 @@ def salt_master(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_master_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -131,7 +128,7 @@ def session_salt_master_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_master_after_start(session_salt_master):
     '''
     This fixture should be overridden if you need to do
@@ -170,10 +167,11 @@ def session_salt_master(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_master_of_masters_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -188,7 +186,7 @@ def salt_master_of_masters_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_master_of_masters_after_start(salt_master_of_masters):
     '''
     This fixture should be overridden if you need to do
@@ -227,10 +225,11 @@ def salt_master_of_masters(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=master_of_masters_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_master_of_masters_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -245,7 +244,7 @@ def session_salt_master_of_masters_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_master_of_masters_after_start(session_salt_master_of_masters):
     '''
     This fixture should be overridden if you need to do
@@ -284,10 +283,11 @@ def session_salt_master_of_masters(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_master_of_masters_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_minion_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -302,7 +302,7 @@ def salt_minion_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_minion_after_start(salt_minion):
     '''
     This fixture should be overridden if you need to do
@@ -342,10 +342,11 @@ def salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_minion_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -360,7 +361,7 @@ def session_salt_minion_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_minion_after_start(session_salt_minion):
     '''
     This fixture should be overridden if you need to do
@@ -400,10 +401,11 @@ def session_salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def secondary_salt_minion_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -418,7 +420,7 @@ def secondary_salt_minion_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def secondary_salt_minion_after_start(secondary_salt_minion):
     '''
     This fixture should be overridden if you need to do
@@ -444,6 +446,7 @@ def secondary_salt_minion(request,
                           log_server,
                           _cli_bin_dir,
                           _salt_fail_hard,
+                          conf_dir,
                           secondary_conf_dir):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -458,10 +461,11 @@ def secondary_salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_secondary_salt_minion_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -476,7 +480,7 @@ def session_secondary_salt_minion_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_secondary_salt_minion_after_start(session_secondary_salt_minion):
     '''
     This fixture should be overridden if you need to do
@@ -502,6 +506,7 @@ def session_secondary_salt_minion(request,
                                   log_server,
                                   _cli_bin_dir,
                                   _salt_fail_hard,
+                                  session_conf_dir,
                                   session_secondary_conf_dir):
     '''
     Returns a running salt-minion
@@ -516,10 +521,11 @@ def session_secondary_salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_syndic_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -534,7 +540,7 @@ def salt_syndic_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_syndic_after_start(salt_syndic):
     '''
     This fixture should be overridden if you need to do
@@ -558,6 +564,7 @@ def salt_syndic(request,
                 log_server,  # pylint: disable=unused-argument
                 syndic_log_prefix,
                 cli_syndic_script_name,
+                conf_dir,
                 _cli_bin_dir,
                 _salt_fail_hard):
     '''
@@ -573,10 +580,11 @@ def salt_syndic(request,
                         daemon_class=SaltSyndic,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_syndic_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -591,7 +599,7 @@ def session_salt_syndic_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_syndic_after_start(session_salt_syndic):
     '''
     This fixture should be overridden if you need to do
@@ -615,6 +623,7 @@ def session_salt_syndic(request,
                         log_server,  # pylint: disable=unused-argument
                         session_syndic_log_prefix,
                         cli_syndic_script_name,
+                        session_conf_dir,
                         _cli_bin_dir,
                         _salt_fail_hard):
     '''
@@ -630,10 +639,11 @@ def session_salt_syndic(request,
                         daemon_class=SaltSyndic,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_proxy_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -648,7 +658,7 @@ def salt_proxy_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_proxy_after_start(salt_proxy):
     '''
     This fixture should be overridden if you need to do
@@ -688,10 +698,11 @@ def salt_proxy(request,
                         daemon_class=SaltProxy,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_proxy_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -706,7 +717,7 @@ def session_salt_proxy_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_proxy_after_start(session_salt_proxy):
     '''
     This fixture should be overridden if you need to do
@@ -746,10 +757,11 @@ def session_salt_proxy(request,
                         daemon_class=SaltProxy,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -764,7 +776,7 @@ def salt_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_after_start(salt):
     '''
     This fixture should be overridden if you need to do
@@ -779,7 +791,7 @@ def salt_after_start(salt):
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt(request,
          salt_minion,
          minion_config,
@@ -803,7 +815,7 @@ def salt(request,
     yield salt
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -818,7 +830,7 @@ def session_salt_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_after_start(session_salt):
     '''
     This fixture should be overridden if you need to do
@@ -833,7 +845,7 @@ def session_salt_after_start(session_salt):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt(request,
                  session_salt_minion,
                  session_minion_config,
@@ -857,7 +869,7 @@ def session_salt(request,
     yield salt
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_call_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -872,7 +884,7 @@ def salt_call_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_call_after_start(salt_call):
     '''
     This fixture should be overridden if you need to do
@@ -887,7 +899,7 @@ def salt_call_after_start(salt_call):
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_call(request,
               salt_minion,
               salt_call_before_start,
@@ -911,7 +923,7 @@ def salt_call(request,
     yield salt_call
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_call_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -926,7 +938,7 @@ def session_salt_call_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_call_after_start(session_salt_call):
     '''
     This fixture should be overridden if you need to do
@@ -941,7 +953,7 @@ def session_salt_call_after_start(session_salt_call):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_call(request,
                       session_salt_minion,
                       session_salt_call_before_start,
@@ -965,7 +977,7 @@ def session_salt_call(request,
     yield salt_call
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_key_before_start():
     '''
     this fixture should be overridden if you need to do
@@ -980,7 +992,7 @@ def salt_key_before_start():
     # clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_key_after_start(salt_key):
     '''
     this fixture should be overridden if you need to do
@@ -995,7 +1007,7 @@ def salt_key_after_start(salt_key):
     # clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_key(request,
              salt_master,
              salt_key_before_start,
@@ -1019,7 +1031,7 @@ def salt_key(request,
     yield salt_key
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_key_before_start():
     '''
     this fixture should be overridden if you need to do
@@ -1034,7 +1046,7 @@ def session_salt_key_before_start():
     # clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_key_after_start(session_salt_key):
     '''
     this fixture should be overridden if you need to do
@@ -1049,7 +1061,7 @@ def session_salt_key_after_start(session_salt_key):
     # clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_key(request,
                      session_salt_master,
                      session_salt_key_before_start,
@@ -1073,7 +1085,7 @@ def session_salt_key(request,
     yield salt_key
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_run_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -1088,7 +1100,7 @@ def salt_run_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_run_after_start(salt_run):
     '''
     This fixture should be overridden if you need to do
@@ -1103,7 +1115,7 @@ def salt_run_after_start(salt_run):
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_run(request,
              salt_master,
              salt_run_before_start,  # pylint: disable=unused-argument
@@ -1127,7 +1139,7 @@ def salt_run(request,
     yield salt_run
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_run_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -1142,7 +1154,7 @@ def session_salt_run_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_run_after_start(session_salt_run):
     '''
     This fixture should be overridden if you need to do
@@ -1157,7 +1169,7 @@ def session_salt_run_after_start(session_salt_run):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_run(request,
                      session_salt_master,
                      session_salt_run_before_start,  # pylint: disable=unused-argument
@@ -1181,7 +1193,7 @@ def session_salt_run(request,
     yield salt_run
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_ssh_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -1196,7 +1208,7 @@ def salt_ssh_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_ssh_after_start():
     '''
     This fixture should be overridden if you need to do
@@ -1211,7 +1223,7 @@ def salt_ssh_after_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def salt_ssh(request,
              sshd_server,
              conf_dir,
@@ -1235,7 +1247,7 @@ def salt_ssh(request,
     yield salt_ssh
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_ssh_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -1250,7 +1262,7 @@ def session_salt_ssh_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_ssh_after_start():
     '''
     This fixture should be overridden if you need to do
@@ -1265,7 +1277,7 @@ def session_salt_ssh_after_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_salt_ssh(request,
                      session_sshd_server,
                      session_conf_dir,
@@ -1289,7 +1301,7 @@ def session_salt_ssh(request,
     yield salt_ssh
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sshd_server_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -1304,7 +1316,7 @@ def sshd_server_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sshd_server_after_start(sshd_server):
     '''
     This fixture should be overridden if you need to do
@@ -1319,7 +1331,7 @@ def sshd_server_after_start(sshd_server):
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sshd_server(request,
                 write_sshd_config,  # pylint: disable=unused-argument
                 sshd_server_before_start,  # pylint: disable=unused-argument
@@ -1351,8 +1363,8 @@ def sshd_server(request,
                         process.terminate()
                         if attempts >= 3:
                             pytest.xfail(
-                                'The pytest sshd server({0}) has failed to confirm '
-                                'running status after {1} attempts'.format(sshd_port, attempts))
+                                'The pytest sshd server({}) has failed to confirm '
+                                'running status after {} attempts'.format(sshd_port, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', sshd_server_log_prefix, exc, exc_info=True)
@@ -1374,7 +1386,7 @@ def sshd_server(request,
             continue
     else:
         pytest.xfail(
-            'The pytest sshd server({0}) has failed to start after {1} attempts'.format(
+            'The pytest sshd server({}) has failed to start after {} attempts'.format(
                 sshd_port,
                 attempts-1
             )
@@ -1384,7 +1396,7 @@ def sshd_server(request,
     log.info('[%s] pytest sshd server(%s) stopped', sshd_server_log_prefix, sshd_port)
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_sshd_server_before_start():
     '''
     This fixture should be overridden if you need to do
@@ -1399,7 +1411,7 @@ def session_sshd_server_before_start():
     # Clean routines go here
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def session_sshd_server_after_start(sshd_server):
     '''
     This fixture should be overridden if you need to do
@@ -1414,7 +1426,7 @@ def session_sshd_server_after_start(sshd_server):
     # Clean routines go here
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def session_sshd_server(request,
                         session_write_sshd_config,  # pylint: disable=unused-argument
                         session_sshd_server_before_start,  # pylint: disable=unused-argument
@@ -1446,8 +1458,8 @@ def session_sshd_server(request,
                         process.terminate()
                         if attempts >= 3:
                             pytest.xfail(
-                                'The pytest sshd server({0}) has failed to confirm '
-                                'running status after {1} attempts'.format(session_sshd_port, attempts))
+                                'The pytest sshd server({}) has failed to confirm '
+                                'running status after {} attempts'.format(session_sshd_port, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', session_sshd_server_log_prefix, exc, exc_info=True)
@@ -1469,7 +1481,7 @@ def session_sshd_server(request,
             continue
     else:
         pytest.xfail(
-            'The pytest sshd server({0}) has failed to start after {1} attempts'.format(
+            'The pytest sshd server({}) has failed to start after {} attempts'.format(
                 session_sshd_port,
                 attempts-1
             )
@@ -1542,7 +1554,7 @@ class SaltSSH(SaltCliScriptBase):
             '-l', 'trace',
             '-w',
             '--rand-thin-dir',
-            '--roster-file={0}'.format(os.path.join(self.config_dir, 'roster')),
+            '--roster-file={}'.format(os.path.join(self.config_dir, 'roster')),
             '--ignore-host-keys',
         ]
 
@@ -1570,7 +1582,7 @@ class SaltMinion(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltMinion, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
         if sys.platform.startswith('win'):
@@ -1595,7 +1607,7 @@ class SaltProxy(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltProxy, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
         if sys.platform.startswith('win'):
@@ -1615,7 +1627,7 @@ class SaltMaster(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltMaster, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
         if sys.platform.startswith('win'):
@@ -1629,8 +1641,10 @@ class SaltSyndic(SaltDaemonScriptBase):
     Class which runs the salt-syndic daemon
     '''
 
-    def get_check_ports(self):
-        return set([self.config['pytest_port']])
+    def get_check_events(self):
+        if sys.platform.startswith('win'):
+            return super(SaltSyndic, self).get_check_events()
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_script_args(self):
         return ['-l', 'quiet']
@@ -1665,6 +1679,6 @@ def pytest_runtest_setup(item):
     '''
     for fixture in ('salt_master', 'salt_minion', 'salt_call', 'salt', 'salt_key', 'salt_run'):
         if fixture in item.fixturenames:
-            after_start_fixture = '{0}_after_start'.format(fixture)
+            after_start_fixture = '{}_after_start'.format(fixture)
             if after_start_fixture not in item.fixturenames:
                 item.fixturenames.append(after_start_fixture)
