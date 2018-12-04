@@ -1641,8 +1641,10 @@ class SaltSyndic(SaltDaemonScriptBase):
     Class which runs the salt-syndic daemon
     '''
 
-    def get_check_ports(self):
-        return set([self.config['pytest_engine_port']])
+    def get_check_events(self):
+        if sys.platform.startswith('win'):
+            return super(SaltSyndic, self).get_check_events()
+        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_script_args(self):
         return ['-l', 'quiet']
