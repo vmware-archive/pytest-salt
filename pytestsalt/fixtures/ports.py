@@ -169,7 +169,7 @@ def master_of_masters_master_tcp_master_pub_port():
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_tcp_master_pub_port():
+def session_master_of_masters_master_tcp_master_pub_port():
     '''
     Returns an unused localhost port
     '''
