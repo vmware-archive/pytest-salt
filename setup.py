@@ -56,7 +56,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         'pytest >= 2.8.1',
-        #'pytest-catchlog',
         'pytest-tempdir',
         'pytest-helpers-namespace',
         #'Salt',
@@ -73,9 +72,8 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Operating System :: OS Independent',
         'License :: OSI Approved :: Apache Software License',
     ],
