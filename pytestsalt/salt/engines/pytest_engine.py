@@ -95,7 +95,7 @@ class PyTestEngine(object):
     @gen.coroutine
     def listen_to_minion_connected_event(self):
         log.info('Listening for minion connected event...')
-        minion_start_event_match = 'salt/minion/{0}/start'.format(self.opts['id'])
+        minion_start_event_match = 'salt/minion/{}/start'.format(self.opts['id'])
         event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=True)
         event_bus.subscribe(minion_start_event_match)
         while True:
@@ -109,7 +109,7 @@ class PyTestEngine(object):
     def fire_master_started_event(self):
         log.info('Firing salt-master started event...')
         event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=False)
-        master_start_event_tag = 'salt/master/{0}/start'.format(self.opts['id'])
+        master_start_event_tag = 'salt/master/{}/start'.format(self.opts['id'])
         load = {'id': self.opts['id'], 'tag': master_start_event_tag, 'data': {}}
         # One minute should be more than enough to fire these events every second in order
         # for pytest-salt to pickup that the master is running

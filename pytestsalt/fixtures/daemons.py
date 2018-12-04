@@ -1363,8 +1363,8 @@ def sshd_server(request,
                         process.terminate()
                         if attempts >= 3:
                             pytest.xfail(
-                                'The pytest sshd server({0}) has failed to confirm '
-                                'running status after {1} attempts'.format(sshd_port, attempts))
+                                'The pytest sshd server({}) has failed to confirm '
+                                'running status after {} attempts'.format(sshd_port, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', sshd_server_log_prefix, exc, exc_info=True)
@@ -1386,7 +1386,7 @@ def sshd_server(request,
             continue
     else:
         pytest.xfail(
-            'The pytest sshd server({0}) has failed to start after {1} attempts'.format(
+            'The pytest sshd server({}) has failed to start after {} attempts'.format(
                 sshd_port,
                 attempts-1
             )
@@ -1458,8 +1458,8 @@ def session_sshd_server(request,
                         process.terminate()
                         if attempts >= 3:
                             pytest.xfail(
-                                'The pytest sshd server({0}) has failed to confirm '
-                                'running status after {1} attempts'.format(session_sshd_port, attempts))
+                                'The pytest sshd server({}) has failed to confirm '
+                                'running status after {} attempts'.format(session_sshd_port, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', session_sshd_server_log_prefix, exc, exc_info=True)
@@ -1481,7 +1481,7 @@ def session_sshd_server(request,
             continue
     else:
         pytest.xfail(
-            'The pytest sshd server({0}) has failed to start after {1} attempts'.format(
+            'The pytest sshd server({}) has failed to start after {} attempts'.format(
                 session_sshd_port,
                 attempts-1
             )
@@ -1554,7 +1554,7 @@ class SaltSSH(SaltCliScriptBase):
             '-l', 'trace',
             '-w',
             '--rand-thin-dir',
-            '--roster-file={0}'.format(os.path.join(self.config_dir, 'roster')),
+            '--roster-file={}'.format(os.path.join(self.config_dir, 'roster')),
             '--ignore-host-keys',
         ]
 
@@ -1582,7 +1582,7 @@ class SaltMinion(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltMinion, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
         if sys.platform.startswith('win'):
@@ -1607,7 +1607,7 @@ class SaltProxy(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltProxy, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
         if sys.platform.startswith('win'):
@@ -1627,7 +1627,7 @@ class SaltMaster(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltMaster, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_check_ports(self):
         if sys.platform.startswith('win'):
@@ -1644,7 +1644,7 @@ class SaltSyndic(SaltDaemonScriptBase):
     def get_check_events(self):
         if sys.platform.startswith('win'):
             return super(SaltSyndic, self).get_check_events()
-        return set(['salt/{0}/{1}/start'.format(self.config['__role'], self.config['id'])])
+        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
 
     def get_script_args(self):
         return ['-l', 'quiet']
@@ -1679,6 +1679,6 @@ def pytest_runtest_setup(item):
     '''
     for fixture in ('salt_master', 'salt_minion', 'salt_call', 'salt', 'salt_key', 'salt_run'):
         if fixture in item.fixturenames:
-            after_start_fixture = '{0}_after_start'.format(fixture)
+            after_start_fixture = '{}_after_start'.format(fixture)
             if after_start_fixture not in item.fixturenames:
                 item.fixturenames.append(after_start_fixture)

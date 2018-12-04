@@ -11,4 +11,4 @@ from __future__ import absolute_import
 
 
 __version_info__ = (2018, 9, 28)
-__version__ = '{0}.{1}.{2}'.format(*__version_info__)
+__version__ = '{}.{}.{}'.format(*__version_info__)

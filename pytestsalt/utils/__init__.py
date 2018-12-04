@@ -44,7 +44,7 @@ else:
 def set_proc_title(title):
     if HAS_SETPROCTITLE is False:
         return
-    setproctitle.setproctitle('[{0}] - {1}'.format(title, setproctitle.getproctitle()))
+    setproctitle.setproctitle('[{}] - {}'.format(title, setproctitle.getproctitle()))
 
 
 def get_unused_localhost_port():
@@ -131,7 +131,7 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
             try:
                 cmdline = proc
             except (psutil.NoSuchProcess, psutil.AccessDenied):
-                cmdline = '<could not be retrived; dead process: {0}>'.format(proc)
+                cmdline = '<could not be retrived; dead process: {}>'.format(proc)
         proc._cmdline = cmdline
     _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
     psutil.wait_procs(process_list, timeout=15, callback=on_process_terminated)
@@ -251,8 +251,8 @@ def start_daemon(request,
                         process.terminate()
                         if attempts >= 3:
                             fail_method(
-                                'The pytest {0}({1}) has failed to confirm running status '
-                                'after {2} attempts'.format(daemon_name, daemon_id, attempts))
+                                'The pytest {}({}) has failed to confirm running status '
+                                'after {} attempts'.format(daemon_name, daemon_id, attempts))
                         continue
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
@@ -284,7 +284,7 @@ def start_daemon(request,
         if process is not None:
             terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
         fail_method(
-            'The pytest {0}({1}) has failed to start after {2} attempts'.format(
+            'The pytest {}({}) has failed to start after {} attempts'.format(
                 daemon_name,
                 daemon_id,
                 attempts-1
@@ -320,7 +320,7 @@ class SaltScriptBase(object):
             raise RuntimeError('Please provide a value for the cli_script_name keyword argument')
         self.cli_script_name = cli_script_name
         if self.cli_display_name is None:
-            self.cli_display_name = '{0}({1})'.format(self.__class__.__name__,
+            self.cli_display_name = '{}({})'.format(self.__class__.__name__,
                                                       self.cli_script_name)
         self.slow_stop = slow_stop
         self.environ = environ or os.environ.copy()
@@ -656,7 +656,7 @@ class SaltCliScriptBase(SaltScriptBase):
         minion_tgt = self.get_minion_tgt(**kwargs)
         timeout_expire = time.time() + kwargs.pop('timeout', self.default_timeout)
         environ = self.environ.copy()
-        environ['PYTEST_LOG_PREFIX'] = '[{0}] '.format(self.log_prefix)
+        environ['PYTEST_LOG_PREFIX'] = '[{}] '.format(self.log_prefix)
         environ['PYTHONUNBUFFERED'] = '1'
         proc_args = [
             self.get_script_path(self.cli_script_name)
@@ -670,7 +670,7 @@ class SaltCliScriptBase(SaltScriptBase):
             proc_args.append(minion_tgt)
         proc_args.extend(list(args))
         for key in kwargs:
-            proc_args.append('{0}={1}'.format(key, kwargs[key]))
+            proc_args.append('{}={}'.format(key, kwargs[key]))
 
         log.info('[%s][%s] Running \'%s\' in CWD: %s ...',
                  self.log_prefix, self.cli_display_name, ' '.join(proc_args), self.cwd)
@@ -707,12 +707,12 @@ class SaltCliScriptBase(SaltScriptBase):
                 if timeout_expire < time.time():
                     self.terminate()
                     fail_method(
-                        '[{0}][{1}] Failed to run: args: {2!r}; kwargs: {3!r}; Error: {4}'.format(
+                        '[{}][{}] Failed to run: args: {!r}; kwargs: {!r}; Error: {}'.format(
                             self.log_prefix,
                             self.cli_display_name,
                             args,
                             kwargs,
-                            '[{0}][{1}] Timed out after {2} seconds!'.format(self.log_prefix,
+                            '[{}][{}] Timed out after {} seconds!'.format(self.log_prefix,
                                                                              self.cli_display_name,
                                                                              timeout)
                         )
@@ -772,7 +772,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         exitcode = 0
         timeout_expire = time.time() + timeout
         environ = self.environ.copy()
-        environ['PYTEST_LOG_PREFIX'] = '{0}[EventListen]'.format(self.log_prefix)
+        environ['PYTEST_LOG_PREFIX'] = '{}[EventListen]'.format(self.log_prefix)
         environ['PYTHONUNBUFFERED'] = '1'
         proc_args = [
             self.get_script_path(self.cli_script_name)

@@ -289,7 +289,7 @@ def master_of_masters_id(salt_master_of_masters_id_counter):
     '''
     Returns the master of masters id
     '''
-    return DEFAULT_MOM_ID + '-{0}'.format(salt_master_of_masters_id_counter())
+    return DEFAULT_MOM_ID + '-{}'.format(salt_master_of_masters_id_counter())
 
 
 @pytest.fixture
@@ -297,7 +297,7 @@ def master_id(salt_master_id_counter):
     '''
     Returns the master id
     '''
-    return DEFAULT_MASTER_ID + '-{0}'.format(salt_master_id_counter())
+    return DEFAULT_MASTER_ID + '-{}'.format(salt_master_id_counter())
 
 
 @pytest.fixture
@@ -305,7 +305,7 @@ def minion_id(salt_minion_id_counter):
     '''
     Returns the minion id
     '''
-    return DEFAULT_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+    return DEFAULT_MINION_ID + '-{}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture
@@ -313,7 +313,7 @@ def secondary_minion_id(salt_minion_id_counter):
     '''
     Returns the secondary minion id
     '''
-    return DEFAULT_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+    return DEFAULT_MINION_ID + '-{}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture
@@ -321,7 +321,7 @@ def syndic_id(salt_syndic_id_counter):
     '''
     Returns the syndic id
     '''
-    return DEFAULT_SESSION_SYNDIC_ID + '-{0}'.format(salt_syndic_id_counter())
+    return DEFAULT_SESSION_SYNDIC_ID + '-{}'.format(salt_syndic_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -329,7 +329,7 @@ def session_master_of_masters_id(salt_master_of_masters_id_counter):
     '''
     Returns the master of masters id
     '''
-    return DEFAULT_MOM_ID + '-{0}'.format(salt_master_of_masters_id_counter())
+    return DEFAULT_MOM_ID + '-{}'.format(salt_master_of_masters_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -337,7 +337,7 @@ def session_master_id(salt_master_id_counter):
     '''
     Returns the session scoped master id
     '''
-    return DEFAULT_SESSION_MASTER_ID + '-{0}'.format(salt_master_id_counter())
+    return DEFAULT_SESSION_MASTER_ID + '-{}'.format(salt_master_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -345,7 +345,7 @@ def session_minion_id(salt_minion_id_counter):
     '''
     Returns the session scoped minion id
     '''
-    return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+    return DEFAULT_SESSION_MINION_ID + '-{}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -353,7 +353,7 @@ def session_secondary_minion_id(salt_minion_id_counter):
     '''
     Returns the session scoped secondary minion id
     '''
-    return DEFAULT_SESSION_MINION_ID + '-{0}'.format(salt_minion_id_counter())
+    return DEFAULT_SESSION_MINION_ID + '-{}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -361,7 +361,7 @@ def session_syndic_id(salt_syndic_id_counter):
     '''
     Returns the session scoped syndic id
     '''
-    return DEFAULT_SESSION_SYNDIC_ID + '-{0}'.format(salt_syndic_id_counter())
+    return DEFAULT_SESSION_SYNDIC_ID + '-{}'.format(salt_syndic_id_counter())
 
 
 @pytest.fixture
@@ -558,102 +558,102 @@ def session_syndic_minion_config_overrides():
 
 @pytest.fixture
 def master_log_prefix(master_id):
-    return 'salt-master/{0}'.format(master_id)
+    return 'salt-master/{}'.format(master_id)
 
 
 @pytest.fixture(scope='session')
 def session_master_log_prefix(session_master_id):
-    return 'salt-master/{0}'.format(session_master_id)
+    return 'salt-master/{}'.format(session_master_id)
 
 
 @pytest.fixture
 def master_of_masters_log_prefix(master_of_masters_id):
-    return 'salt-master/{0}'.format(master_of_masters_id)
+    return 'salt-master/{}'.format(master_of_masters_id)
 
 
 @pytest.fixture(scope='session')
 def session_master_of_masters_log_prefix(session_master_of_masters_id):
-    return 'salt-master/{0}'.format(session_master_of_masters_id)
+    return 'salt-master/{}'.format(session_master_of_masters_id)
 
 
 @pytest.fixture
 def minion_log_prefix(minion_id):
-    return 'salt-minion/{0}'.format(minion_id)
+    return 'salt-minion/{}'.format(minion_id)
 
 
 @pytest.fixture(scope='session')
 def session_minion_log_prefix(session_minion_id):
-    return 'salt-minion/{0}'.format(session_minion_id)
+    return 'salt-minion/{}'.format(session_minion_id)
 
 
 @pytest.fixture
 def proxy_log_prefix(minion_id):
-    return 'salt-proxy/{0}'.format(minion_id)
+    return 'salt-proxy/{}'.format(minion_id)
 
 
 @pytest.fixture(scope='session')
 def session_proxy_log_prefix(session_minion_id):
-    return 'salt-proxy/{0}'.format(session_minion_id)
+    return 'salt-proxy/{}'.format(session_minion_id)
 
 
 @pytest.fixture
 def secondary_minion_log_prefix(secondary_minion_id):
-    return 'salt-minion/{0}'.format(secondary_minion_id)
+    return 'salt-minion/{}'.format(secondary_minion_id)
 
 
 @pytest.fixture(scope='session')
 def session_secondary_minion_log_prefix(session_secondary_minion_id):
-    return 'salt-minion/{0}'.format(session_secondary_minion_id)
+    return 'salt-minion/{}'.format(session_secondary_minion_id)
 
 
 @pytest.fixture
 def syndic_log_prefix(syndic_id):
-    return 'salt-syndic/{0}'.format(syndic_id)
+    return 'salt-syndic/{}'.format(syndic_id)
 
 
 @pytest.fixture(scope='session')
 def session_syndic_log_prefix(session_syndic_id):
-    return 'salt-syndic/{0}'.format(session_syndic_id)
+    return 'salt-syndic/{}'.format(session_syndic_id)
 
 
 @pytest.fixture
 def salt_log_prefix(minion_id):
-    return 'salt/{0}'.format(minion_id)
+    return 'salt/{}'.format(minion_id)
 
 
 @pytest.fixture(scope='session')
 def session_salt_log_prefix(session_minion_id):
-    return 'salt/{0}'.format(session_minion_id)
+    return 'salt/{}'.format(session_minion_id)
 
 
 @pytest.fixture
 def salt_call_log_prefix(master_id):
-    return 'salt-call/{0}'.format(master_id)
+    return 'salt-call/{}'.format(master_id)
 
 
 @pytest.fixture(scope='session')
 def session_salt_call_log_prefix(session_master_id):
-    return 'salt-call/{0}'.format(session_master_id)
+    return 'salt-call/{}'.format(session_master_id)
 
 
 @pytest.fixture
 def salt_key_log_prefix(master_id):
-    return 'salt-key/{0}'.format(master_id)
+    return 'salt-key/{}'.format(master_id)
 
 
 @pytest.fixture(scope='session')
 def session_salt_key_log_prefix(session_master_id):
-    return 'salt-key/{0}'.format(session_master_id)
+    return 'salt-key/{}'.format(session_master_id)
 
 
 @pytest.fixture
 def salt_run_log_prefix(master_id):
-    return 'salt-run/{0}'.format(master_id)
+    return 'salt-run/{}'.format(master_id)
 
 
 @pytest.fixture(scope='session')
 def session_salt_run_log_prefix(session_master_id):
-    return 'salt-run/{0}'.format(session_master_id)
+    return 'salt-run/{}'.format(session_master_id)
 
 
 def apply_master_config(default_options,
@@ -1506,12 +1506,12 @@ def session_syndic_config(session_master_config,
 
 @pytest.fixture
 def salt_ssh_log_prefix(sshd_port):
-    return 'salt-ssh/{0}'.format(sshd_port)
+    return 'salt-ssh/{}'.format(sshd_port)
 
 
 @pytest.fixture(scope='session')
 def session_salt_ssh_log_prefix(session_sshd_port):
-    return 'salt-ssh/{0}'.format(session_sshd_port)
+    return 'salt-ssh/{}'.format(session_sshd_port)
 
 
 @pytest.fixture
@@ -1535,7 +1535,7 @@ def _sshd_config_lines(sshd_port):
     Return a list of lines which will make the sshd_config file
     '''
     return [
-        'Port {0}'.format(sshd_port),
+        'Port {}'.format(sshd_port),
         'ListenAddress 127.0.0.1',
         'Protocol 2',
         'UsePrivilegeSeparation yes',
@@ -1636,10 +1636,10 @@ def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
     _generate_ssh_key(server_ed25519_key_file, 'ed25519', 521)
 
     sshd_config = sshd_config_lines[:]
-    sshd_config.append('AuthorizedKeysFile {0}.pub'.format(ssh_client_key))
-    sshd_config.append('HostKey {0}'.format(server_dsa_key_file))
-    sshd_config.append('HostKey {0}'.format(server_ecdsa_key_file))
-    sshd_config.append('HostKey {0}'.format(server_ed25519_key_file))
+    sshd_config.append('AuthorizedKeysFile {}.pub'.format(ssh_client_key))
+    sshd_config.append('HostKey {}'.format(server_dsa_key_file))
+    sshd_config.append('HostKey {}'.format(server_ecdsa_key_file))
+    sshd_config.append('HostKey {}'.format(server_ed25519_key_file))
 
     with compat.fopen(sshd_config_dir.join('sshd_config').realpath().strpath, 'w') as wfh:
         wfh.write('\n'.join(sshd_config))
@@ -1650,7 +1650,7 @@ def sshd_server_log_prefix(sshd_port):
     '''
     The log prefix to use for the sshd server fixture
     '''
-    return 'sshd-server/{0}'.format(sshd_port)
+    return 'sshd-server/{}'.format(sshd_port)
 
 
 @pytest.fixture(scope='session')
@@ -1658,7 +1658,7 @@ def session_sshd_server_log_prefix(session_sshd_port):
     '''
     The log prefix to use for the sshd server fixture
     '''
-    return 'session-sshd-server/{0}'.format(session_sshd_port)
+    return 'session-sshd-server/{}'.format(session_sshd_port)
 
 
 def _generate_ssh_key(key_path, key_type='ecdsa', key_size=521):
@@ -1688,7 +1688,7 @@ def _generate_ssh_key(key_path, key_type='ecdsa', key_size=521):
     _, keygen_err = keygen_process.communicate()
     if keygen_err:
         pytest.skip(
-            'ssh-keygen had errors generating {0}({1}:{2}): {3}'.format(
+            'ssh-keygen had errors generating {}({}:{}): {}'.format(
                 os.path.basename(key_path),
                 key_type,
                 key_size,
