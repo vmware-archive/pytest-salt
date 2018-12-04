@@ -33,12 +33,16 @@ def log_server_level(request):
     levels = [logging.ERROR]
     logging_plugin = request.config.pluginmanager.get_plugin('logging-plugin')
     try:
-        levels.append(logging_plugin.log_cli_handler.level)
+        level = logging_plugin.log_cli_handler.level
+        if level is not None:
+            levels.append(level)
     except AttributeError:
         # PyTest CLI logging not configured
         pass
     try:
-        levels.append(logging_plugin.log_file_level)
+        level = logging_plugin.log_file_level
+        if level is not None:
+            levels.append(level)
     except AttributeError:
         # PyTest Log File logging not configured
         pass
