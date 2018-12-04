@@ -109,6 +109,7 @@ def salt_master(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
@@ -166,6 +167,7 @@ def session_salt_master(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
@@ -223,6 +225,7 @@ def salt_master_of_masters(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=master_of_masters_conf_dir,
                         start_timeout=30)
 
 
@@ -280,6 +283,7 @@ def session_salt_master_of_masters(request,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_master_of_masters_conf_dir,
                         start_timeout=30)
 
 
@@ -338,6 +342,7 @@ def salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
@@ -396,6 +401,7 @@ def session_salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
@@ -440,6 +446,7 @@ def secondary_salt_minion(request,
                           log_server,
                           _cli_bin_dir,
                           _salt_fail_hard,
+                          conf_dir,
                           secondary_conf_dir):  # pylint: disable=unused-argument
     '''
     Returns a running salt-minion
@@ -454,6 +461,7 @@ def secondary_salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
@@ -498,6 +506,7 @@ def session_secondary_salt_minion(request,
                                   log_server,
                                   _cli_bin_dir,
                                   _salt_fail_hard,
+                                  session_conf_dir,
                                   session_secondary_conf_dir):
     '''
     Returns a running salt-minion
@@ -512,6 +521,7 @@ def session_secondary_salt_minion(request,
                         daemon_class=SaltMinion,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
@@ -554,6 +564,7 @@ def salt_syndic(request,
                 log_server,  # pylint: disable=unused-argument
                 syndic_log_prefix,
                 cli_syndic_script_name,
+                conf_dir,
                 _cli_bin_dir,
                 _salt_fail_hard):
     '''
@@ -569,6 +580,7 @@ def salt_syndic(request,
                         daemon_class=SaltSyndic,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
@@ -611,6 +623,7 @@ def session_salt_syndic(request,
                         log_server,  # pylint: disable=unused-argument
                         session_syndic_log_prefix,
                         cli_syndic_script_name,
+                        session_conf_dir,
                         _cli_bin_dir,
                         _salt_fail_hard):
     '''
@@ -626,6 +639,7 @@ def session_salt_syndic(request,
                         daemon_class=SaltSyndic,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 
@@ -684,6 +698,7 @@ def salt_proxy(request,
                         daemon_class=SaltProxy,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=conf_dir,
                         start_timeout=30)
 
 
@@ -742,6 +757,7 @@ def session_salt_proxy(request,
                         daemon_class=SaltProxy,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
+                        event_listener_config_dir=session_conf_dir,
                         start_timeout=30)
 
 

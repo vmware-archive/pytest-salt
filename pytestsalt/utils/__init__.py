@@ -387,6 +387,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
     def __init__(self, *args, **kwargs):
         self._process_cli_output_in_thread = kwargs.pop('process_cli_output_in_thread', True)
+        self.event_listener_config_dir = kwargs.pop('event_listener_config_dir', None)
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = threading.Event()
         self._connectable = threading.Event()
@@ -427,8 +428,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
             cli_script_name = self.request.getfuncargvalue('cli_run_script_name')
 
         return SaltRunEventListener(self.request,
-                                    self.config,
-                                    self.config_dir,
+                                    None,
+                                    self.event_listener_config_dir or self.config_dir,
                                     self.bin_dir_path,
                                     self.log_prefix,
                                     cli_script_name=cli_script_name)
@@ -771,7 +772,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         exitcode = 0
         timeout_expire = time.time() + timeout
         environ = self.environ.copy()
-        environ['PYTEST_LOG_PREFIX'] = '[{0}][EventListen] '.format(self.log_prefix)
+        environ['PYTEST_LOG_PREFIX'] = '{0}[EventListen]'.format(self.log_prefix)
         environ['PYTHONUNBUFFERED'] = '1'
         proc_args = [
             self.get_script_path(self.cli_script_name)
