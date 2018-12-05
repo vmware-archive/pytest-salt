@@ -48,7 +48,7 @@ def session_root_dir(tempdir):
 
 
 @pytest.fixture
-def master_of_masters_root_dir(tempdir):
+def syndic_master_root_dir(tempdir):
     '''
     Return the function scoped salt master of masters root dir
     '''
@@ -56,7 +56,7 @@ def master_of_masters_root_dir(tempdir):
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_root_dir(tempdir):
+def session_syndic_master_root_dir(tempdir):
     '''
     Return the session scoped salt master of masters root dir
     '''
@@ -102,23 +102,23 @@ def session_conf_dir(session_root_dir):
 
 
 @pytest.fixture
-def master_of_masters_conf_dir(master_of_masters_conf_dir):
+def syndic_master_conf_dir(syndic_master_conf_dir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_root_dir.join('conf')
+    dirname = syndic_master_root_dir.join('conf')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_conf_dir(session_master_of_masters_root_dir):
+def session_syndic_master_conf_dir(session_syndic_master_root_dir):
     '''
     Fixture which returns the salt configuration directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_root_dir.join('conf')
+    dirname = session_syndic_master_root_dir.join('conf')
     dirname.ensure(dir=True)
     return dirname
 
@@ -200,23 +200,23 @@ def session_master_config_includes_dir(session_conf_dir):
 
 
 @pytest.fixture
-def master_of_masters_config_includes_dir(master_of_masters_conf_dir):
+def syndic_master_config_includes_dir(syndic_master_conf_dir):
     '''
     Fixture which returns the salt master configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_conf_dir.join('master.d')
+    dirname = syndic_master_conf_dir.join('master.d')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_config_includes_dir(session_master_of_masters_conf_dir):
+def session_syndic_master_config_includes_dir(session_syndic_master_conf_dir):
     '''
     Fixture which returns the salt master configuration includes directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_conf_dir.join('master.d')
+    dirname = session_syndic_master_conf_dir.join('master.d')
     dirname.ensure(dir=True)
     return dirname
 
@@ -343,78 +343,78 @@ def prod_env_pillar_tree_root_dir(pillar_tree_root_dir):
 
 
 @pytest.fixture
-def master_of_masters_integration_files_dir(master_of_masters_root_dir):
+def syndic_master_integration_files_dir(syndic_master_root_dir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_root_dir.join('integration-files')
+    dirname = syndic_master_root_dir.join('integration-files')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture
-def master_of_masters_state_tree_root_dir(master_of_masters_integration_files_dir):
+def syndic_master_state_tree_root_dir(syndic_master_integration_files_dir):
     '''
     Fixture which returns the salt state tree root directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_integration_files_dir.join('state-tree')
+    dirname = syndic_master_integration_files_dir.join('state-tree')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture
-def master_of_masters_pillar_tree_root_dir(master_of_masters_integration_files_dir):
+def syndic_master_pillar_tree_root_dir(syndic_master_integration_files_dir):
     '''
     Fixture which returns the salt pillar tree root directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_integration_files_dir.join('pillar-tree')
+    dirname = syndic_master_integration_files_dir.join('pillar-tree')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture
-def master_of_masters_base_env_state_tree_root_dir(master_of_masters_state_tree_root_dir):
+def syndic_master_base_env_state_tree_root_dir(syndic_master_state_tree_root_dir):
     '''
     Fixture which returns the salt base environment state tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_state_tree_root_dir.join('base')
+    dirname = syndic_master_state_tree_root_dir.join('base')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture
-def master_of_masters_prod_env_state_tree_root_dir(master_of_masters_state_tree_root_dir):
+def syndic_master_prod_env_state_tree_root_dir(syndic_master_state_tree_root_dir):
     '''
     Fixture which returns the salt prod environment state tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_state_tree_root_dir.join('prod')
+    dirname = syndic_master_state_tree_root_dir.join('prod')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture
-def master_of_masters_base_env_pillar_tree_root_dir(master_of_masters_pillar_tree_root_dir):
+def syndic_master_base_env_pillar_tree_root_dir(syndic_master_pillar_tree_root_dir):
     '''
     Fixture which returns the salt base environment pillar tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_pillar_tree_root_dir.join('base')
+    dirname = syndic_master_pillar_tree_root_dir.join('base')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture
-def master_of_masters_prod_env_pillar_tree_root_dir(master_of_masters_pillar_tree_root_dir):
+def syndic_master_prod_env_pillar_tree_root_dir(syndic_master_pillar_tree_root_dir):
     '''
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = master_of_masters_pillar_tree_root_dir.join('prod')
+    dirname = syndic_master_pillar_tree_root_dir.join('prod')
     dirname.ensure(dir=True)
     return dirname
 
@@ -497,73 +497,73 @@ def session_prod_env_pillar_tree_root_dir(session_pillar_tree_root_dir):
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_integration_files_dir(session_master_of_masters_root_dir):
+def session_syndic_master_integration_files_dir(session_syndic_master_root_dir):
     '''
     Fixture which returns the salt integration files directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_root_dir.join('integration-files')
+    dirname = session_syndic_master_root_dir.join('integration-files')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_state_tree_root_dir(session_master_of_masters_integration_files_dir):
+def session_syndic_master_state_tree_root_dir(session_syndic_master_integration_files_dir):
     '''
     Fixture which returns the salt state tree root directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_integration_files_dir.join('state-tree')
+    dirname = session_syndic_master_integration_files_dir.join('state-tree')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_pillar_tree_root_dir(session_master_of_masters_integration_files_dir):
+def session_syndic_master_pillar_tree_root_dir(session_syndic_master_integration_files_dir):
     '''
     Fixture which returns the salt pillar tree root directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_integration_files_dir.join('pillar-tree')
+    dirname = session_syndic_master_integration_files_dir.join('pillar-tree')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_base_env_state_tree_root_dir(session_master_of_masters_state_tree_root_dir):
+def session_syndic_master_base_env_state_tree_root_dir(session_syndic_master_state_tree_root_dir):
     '''
     Fixture which returns the salt base environment state tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_state_tree_root_dir.join('base')
+    dirname = session_syndic_master_state_tree_root_dir.join('base')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_prod_env_state_tree_root_dir(session_master_of_masters_state_tree_root_dir):
+def session_syndic_master_prod_env_state_tree_root_dir(session_syndic_master_state_tree_root_dir):
     '''
     Fixture which returns the salt prod environment state tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_state_tree_root_dir.join('prod')
+    dirname = session_syndic_master_state_tree_root_dir.join('prod')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_base_env_pillar_tree_root_dir(session_master_of_masters_pillar_tree_root_dir):
+def session_syndic_master_base_env_pillar_tree_root_dir(session_syndic_master_pillar_tree_root_dir):
     '''
     Fixture which returns the salt base environment pillar tree directory path.
     Creates the directory if it does not yet exist.
     '''
-    dirname = session_master_of_masters_pillar_tree_root_dir.join('base')
+    dirname = session_syndic_master_pillar_tree_root_dir.join('base')
     dirname.ensure(dir=True)
     return dirname
 
 
 @pytest.fixture(scope='session')
-def session_master_of_masters_prod_env_pillar_tree_root_dir(session_master_of_masters_pillar_tree_root_dir):
+def session_syndic_master_prod_env_pillar_tree_root_dir(session_syndic_master_pillar_tree_root_dir):
     '''
     Fixture which returns the salt prod environment pillar tree directory path.
     Creates the directory if it does not yet exist.
