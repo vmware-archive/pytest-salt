@@ -111,7 +111,9 @@ disable=R,
   E8402,
   E8731,
   locally-disabled,
-  repr-flag-used-in-string
+  repr-flag-used-in-string,
+  un-indexed-curly-braces-error,
+  un-indexed-curly-braces-warning
 
 # Disabled:
 # R* [refactoring suggestions & reports]
