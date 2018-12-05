@@ -6,7 +6,7 @@ getTerminalSize()
  - works on linux,os x,windows,cygwin(windows)
  - taken from http://stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
 '''
-
+# pylint: disable=broad-except
 # Import python libs
 from __future__ import absolute_import, print_function
 import os
