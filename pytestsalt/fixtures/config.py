@@ -26,21 +26,23 @@ if IS_WINDOWS:
 else:
     import pwd
 
-DEFAULT_MOM_ID = 'pytest-salt-mom'
-DEFAULT_MASTER_ID = 'pytest-salt-master'
-DEFAULT_MINION_ID = 'pytest-salt-minion'
-DEFAULT_SYNDIC_ID = 'pytest-salt-syndic'
-DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-mom'
-DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
-DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
-DEFAULT_SESSION_SYNDIC_ID = 'pytest-session-salt-syndic'
-
 try:
     import shutil
     COLUMNS = shutil.get_terminal_size((80, 20)).columns
 except AttributeError:
     from pytestsalt.ext.console import getTerminalSize
     COLUMNS, _ = getTerminalSize()
+
+DEFAULT_MOM_ID = 'pytest-salt-mom'
+DEFAULT_MASTER_ID = 'pytest-salt-master'
+DEFAULT_MINION_ID = 'pytest-salt-minion'
+DEFAULT_SYNDIC_ID = 'pytest-salt-syndic'
+DEFAULT_SECONDARY_MINION_ID = 'pytest-salt-sec-minion'
+DEFAULT_SESSION_MOM_ID = 'pytest-session-salt-mom'
+DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
+DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
+DEFAULT_SESSION_SYNDIC_ID = 'pytest-session-salt-syndic'
+DEFAULT_SESSION_SECONDARY_MINION_ID = 'pytest-session-salt-sec-minion'
 
 log = logging.getLogger(__name__)
 
@@ -313,7 +315,7 @@ def secondary_minion_id(salt_minion_id_counter):
     '''
     Returns the secondary minion id
     '''
-    return DEFAULT_MINION_ID + '-{}'.format(salt_minion_id_counter())
+    return DEFAULT_SECONDARY_MINION_ID + '-{}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture
@@ -321,7 +323,7 @@ def syndic_id(salt_syndic_id_counter):
     '''
     Returns the syndic id
     '''
-    return DEFAULT_SESSION_SYNDIC_ID + '-{}'.format(salt_syndic_id_counter())
+    return DEFAULT_SYNDIC_ID + '-{}'.format(salt_syndic_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -329,7 +331,7 @@ def session_master_of_masters_id(salt_master_of_masters_id_counter):
     '''
     Returns the master of masters id
     '''
-    return DEFAULT_MOM_ID + '-{}'.format(salt_master_of_masters_id_counter())
+    return DEFAULT_SESSION_MOM_ID + '-{}'.format(salt_master_of_masters_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -353,7 +355,7 @@ def session_secondary_minion_id(salt_minion_id_counter):
     '''
     Returns the session scoped secondary minion id
     '''
-    return DEFAULT_SESSION_MINION_ID + '-{}'.format(salt_minion_id_counter())
+    return DEFAULT_SESSION_SECONDARY_MINION_ID + '-{}'.format(salt_minion_id_counter())
 
 
 @pytest.fixture(scope='session')
