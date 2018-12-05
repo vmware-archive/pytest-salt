@@ -172,7 +172,7 @@ def session_salt_master(request,
 
 
 @pytest.fixture
-def salt_syndic_master_before_start():
+def salt_master_of_masters_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work before starting
@@ -187,7 +187,7 @@ def salt_syndic_master_before_start():
 
 
 @pytest.fixture
-def salt_syndic_master_after_start(salt_syndic_master):
+def salt_master_of_masters_after_start(salt_master_of_masters):
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work after starting
@@ -202,13 +202,13 @@ def salt_syndic_master_after_start(salt_syndic_master):
 
 
 @pytest.fixture
-def salt_syndic_master(request,
-                           syndic_master_conf_dir,
-                           syndic_master_id,
-                           syndic_master_config,
-                           salt_syndic_master_before_start,  # pylint: disable=unused-argument
+def salt_master_of_masters(request,
+                           master_of_masters_conf_dir,
+                           master_of_masters_id,
+                           master_of_masters_config,
+                           salt_master_of_masters_before_start,  # pylint: disable=unused-argument
                            log_server,  # pylint: disable=unused-argument
-                           syndic_master_log_prefix,
+                           master_of_masters_log_prefix,
                            cli_master_script_name,
                            _cli_bin_dir,
                            _salt_fail_hard):
@@ -217,20 +217,20 @@ def salt_syndic_master(request,
     '''
     return start_daemon(request,
                         daemon_name='salt-master',
-                        daemon_id=syndic_master_id,
-                        daemon_log_prefix=syndic_master_log_prefix,
+                        daemon_id=master_of_masters_id,
+                        daemon_log_prefix=master_of_masters_log_prefix,
                         daemon_cli_script_name=cli_master_script_name,
-                        daemon_config=syndic_master_config,
-                        daemon_config_dir=syndic_master_conf_dir,
+                        daemon_config=master_of_masters_config,
+                        daemon_config_dir=master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
-                        event_listener_config_dir=syndic_master_conf_dir,
+                        event_listener_config_dir=master_of_masters_conf_dir,
                         start_timeout=30)
 
 
 @pytest.fixture(scope='session')
-def session_salt_syndic_master_before_start():
+def session_salt_master_of_masters_before_start():
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work before starting
@@ -245,7 +245,7 @@ def session_salt_syndic_master_before_start():
 
 
 @pytest.fixture(scope='session')
-def session_salt_syndic_master_after_start(session_salt_syndic_master):
+def session_salt_master_of_masters_after_start(session_salt_master_of_masters):
     '''
     This fixture should be overridden if you need to do
     some preparation and clean up work after starting
@@ -260,13 +260,13 @@ def session_salt_syndic_master_after_start(session_salt_syndic_master):
 
 
 @pytest.fixture(scope='session')
-def session_salt_syndic_master(request,
-                                   session_syndic_master_conf_dir,
-                                   session_syndic_master_id,
-                                   session_syndic_master_config,
-                                   session_salt_syndic_master_before_start,  # pylint: disable=unused-argument
+def session_salt_master_of_masters(request,
+                                   session_master_of_masters_conf_dir,
+                                   session_master_of_masters_id,
+                                   session_master_of_masters_config,
+                                   session_salt_master_of_masters_before_start,  # pylint: disable=unused-argument
                                    log_server,  # pylint: disable=unused-argument
-                                   session_syndic_master_log_prefix,
+                                   session_master_of_masters_log_prefix,
                                    cli_master_script_name,
                                    _cli_bin_dir,
                                    _salt_fail_hard):
@@ -275,15 +275,15 @@ def session_salt_syndic_master(request,
     '''
     return start_daemon(request,
                         daemon_name='salt-master',
-                        daemon_id=session_syndic_master_id,
-                        daemon_log_prefix=session_syndic_master_log_prefix,
+                        daemon_id=session_master_of_masters_id,
+                        daemon_log_prefix=session_master_of_masters_log_prefix,
                         daemon_cli_script_name=cli_master_script_name,
-                        daemon_config=session_syndic_master_config,
-                        daemon_config_dir=session_syndic_master_conf_dir,
+                        daemon_config=session_master_of_masters_config,
+                        daemon_config_dir=session_master_of_masters_conf_dir,
                         daemon_class=SaltMaster,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
-                        event_listener_config_dir=session_syndic_master_conf_dir,
+                        event_listener_config_dir=session_master_of_masters_conf_dir,
                         start_timeout=30)
 
 

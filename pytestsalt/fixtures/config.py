@@ -26,14 +26,14 @@ if IS_WINDOWS:
 else:
     import pwd
 
+DEFAULT_MOM_ID = 'pytest-salt-mom'
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
 DEFAULT_SYNDIC_ID = 'pytest-salt-syndic'
-DEFAULT_SYNDIC_MASTER_ID = 'pytest-salt-syndic-master'
+DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-mom'
 DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
 DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
 DEFAULT_SESSION_SYNDIC_ID = 'pytest-session-salt-syndic'
-DEFAULT_SESSION_SYNDIC_MASTER_ID = 'pytest-session-salt-syndic-master'
 
 try:
     import shutil
@@ -186,7 +186,7 @@ def salt_master_id_counter():
 
 
 @pytest.fixture(scope='session')
-def salt_syndic_master_id_counter():
+def salt_master_of_masters_id_counter():
     '''
     Fixture which return a number to include in the master ID.
     Every call to this fixture increases the counter.
@@ -285,11 +285,11 @@ def cli_ssh_script_name():
 
 
 @pytest.fixture
-def syndic_master_id(salt_syndic_master_id_counter):
+def master_of_masters_id(salt_master_of_masters_id_counter):
     '''
     Returns the master of masters id
     '''
-    return DEFAULT_SYNDIC_MASTER_ID + '-{}'.format(salt_syndic_master_id_counter())
+    return DEFAULT_MOM_ID + '-{}'.format(salt_master_of_masters_id_counter())
 
 
 @pytest.fixture
@@ -325,11 +325,11 @@ def syndic_id(salt_syndic_id_counter):
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_id(salt_syndic_master_id_counter):
+def session_master_of_masters_id(salt_master_of_masters_id_counter):
     '''
     Returns the master of masters id
     '''
-    return DEFAULT_SESSION_SYNDIC_MASTER_ID + '-{}'.format(salt_syndic_master_id_counter())
+    return DEFAULT_MOM_ID + '-{}'.format(salt_master_of_masters_id_counter())
 
 
 @pytest.fixture(scope='session')
@@ -373,11 +373,11 @@ def master_config_file(conf_dir):
 
 
 @pytest.fixture
-def syndic_master_config_file(syndic_master_conf_dir):
+def master_of_masters_config_file(master_of_masters_conf_dir):
     '''
     Returns the path to the salt master configuration file
     '''
-    return syndic_master_conf_dir.join('master').realpath().strpath
+    return master_of_masters_conf_dir.join('master').realpath().strpath
 
 
 @pytest.fixture
@@ -406,6 +406,16 @@ def proxy_config_file(conf_dir):
 
 @pytest.fixture
 def master_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt master
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture
+def master_of_masters_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt master
     configuration options.
@@ -463,11 +473,11 @@ def session_master_config_file(session_conf_dir):
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_config_file(session_syndic_master_conf_dir):
+def session_master_of_masters_config_file(session_master_of_masters_conf_dir):
     '''
     Returns the path to the salt master configuration file
     '''
-    return session_syndic_master_conf_dir.join('master').realpath().strpath
+    return session_master_of_masters_conf_dir.join('master').realpath().strpath
 
 
 @pytest.fixture(scope='session')
@@ -488,6 +498,16 @@ def session_secondary_minion_config_file(session_secondary_conf_dir):
 
 @pytest.fixture(scope='session')
 def session_master_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt master
+    configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture(scope='session')
+def session_master_of_masters_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt master
     configuration options.
@@ -547,13 +567,13 @@ def session_master_log_prefix(session_master_id):
 
 
 @pytest.fixture
-def syndic_master_log_prefix(syndic_master_id):
-    return 'salt-master/{}'.format(syndic_master_id)
+def master_of_masters_log_prefix(master_of_masters_id):
+    return 'salt-master/{}'.format(master_of_masters_id)
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_log_prefix(session_syndic_master_id):
-    return 'salt-master/{}'.format(session_syndic_master_id)
+def session_master_of_masters_log_prefix(session_master_of_masters_id):
+    return 'salt-master/{}'.format(session_master_of_masters_id)
 
 
 @pytest.fixture
@@ -917,33 +937,33 @@ def session_master_config(session_root_dir,
 
 
 @pytest.fixture(scope='session')
-def syndic_master_default_options():
+def master_of_masters_default_options():
     return {}
 
 
 @pytest.fixture
-def syndic_master_config(syndic_master_root_dir,
-                         syndic_master_config_file,
-                         syndic_master_default_options,
-                         syndic_master_publish_port,
-                         syndic_master_return_port,
-                         syndic_master_engine_port,
-                         syndic_master_config_overrides,
-                         syndic_master_id,
-                         syndic_master_base_env_state_tree_root_dir,
-                         syndic_master_prod_env_state_tree_root_dir,
-                         syndic_master_base_env_pillar_tree_root_dir,
-                         syndic_master_prod_env_pillar_tree_root_dir,
-                         running_username,
-                         log_server_port,
-                         log_server_level,
-                         engines_dir,
-                         log_handlers_dir,
-                         syndic_master_log_prefix,
-                         syndic_master_master_tcp_master_pub_port,
-                         syndic_master_master_tcp_master_pull_port,
-                         syndic_master_master_tcp_master_publish_pull,
-                         syndic_master_master_tcp_master_workers):
+def master_of_masters_config(master_of_masters_root_dir,
+                             master_of_masters_config_file,
+                             master_of_masters_default_options,
+                             master_of_masters_publish_port,
+                             master_of_masters_return_port,
+                             master_of_masters_engine_port,
+                             master_of_masters_config_overrides,
+                             master_of_masters_id,
+                             master_of_masters_base_env_state_tree_root_dir,
+                             master_of_masters_prod_env_state_tree_root_dir,
+                             master_of_masters_base_env_pillar_tree_root_dir,
+                             master_of_masters_prod_env_pillar_tree_root_dir,
+                             running_username,
+                             log_server_port,
+                             log_server_level,
+                             engines_dir,
+                             log_handlers_dir,
+                             master_of_masters_log_prefix,
+                             master_of_masters_master_tcp_master_pub_port,
+                             master_of_masters_master_tcp_master_pull_port,
+                             master_of_masters_master_tcp_master_publish_pull,
+                             master_of_masters_master_tcp_master_workers):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``master_config_overrides``
@@ -951,59 +971,59 @@ def syndic_master_config(syndic_master_root_dir,
     direct_overrides = {
         'order_masters': True,
     }
-    return apply_master_config(syndic_master_default_options,
-                               syndic_master_root_dir,
-                               syndic_master_config_file,
-                               syndic_master_publish_port,
-                               syndic_master_return_port,
-                               syndic_master_engine_port,
-                               syndic_master_config_overrides,
-                               syndic_master_id,
-                               [syndic_master_base_env_state_tree_root_dir.strpath],
-                               [syndic_master_prod_env_state_tree_root_dir.strpath],
-                               [syndic_master_base_env_pillar_tree_root_dir.strpath],
-                               [syndic_master_prod_env_pillar_tree_root_dir.strpath],
+    return apply_master_config(master_of_masters_default_options,
+                               master_of_masters_root_dir,
+                               master_of_masters_config_file,
+                               master_of_masters_publish_port,
+                               master_of_masters_return_port,
+                               master_of_masters_engine_port,
+                               master_of_masters_config_overrides,
+                               master_of_masters_id,
+                               [master_of_masters_base_env_state_tree_root_dir.strpath],
+                               [master_of_masters_prod_env_state_tree_root_dir.strpath],
+                               [master_of_masters_base_env_pillar_tree_root_dir.strpath],
+                               [master_of_masters_prod_env_pillar_tree_root_dir.strpath],
                                running_username,
                                log_server_port,
                                log_server_level,
                                engines_dir,
                                log_handlers_dir,
-                               syndic_master_log_prefix,
-                               syndic_master_master_tcp_master_pub_port,
-                               syndic_master_master_tcp_master_pull_port,
-                               syndic_master_master_tcp_master_publish_pull,
-                               syndic_master_master_tcp_master_workers,
+                               master_of_masters_log_prefix,
+                               master_of_masters_master_tcp_master_pub_port,
+                               master_of_masters_master_tcp_master_pull_port,
+                               master_of_masters_master_tcp_master_publish_pull,
+                               master_of_masters_master_tcp_master_workers,
                                direct_overrides=direct_overrides)
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_default_options():
+def session_master_of_masters_default_options():
     return {}
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_config(session_syndic_master_root_dir,
-                                 session_syndic_master_config_file,
-                                 session_syndic_master_publish_port,
-                                 session_syndic_master_return_port,
-                                 session_syndic_master_engine_port,
-                                 session_syndic_master_default_options,
-                                 session_syndic_master_config_overrides,
-                                 session_syndic_master_id,
-                                 session_base_env_state_tree_root_dir,
-                                 session_prod_env_state_tree_root_dir,
-                                 session_base_env_pillar_tree_root_dir,
-                                 session_prod_env_pillar_tree_root_dir,
-                                 running_username,
-                                 log_server_port,
-                                 log_server_level,
-                                 engines_dir,
-                                 log_handlers_dir,
-                                 session_syndic_master_log_prefix,
-                                 session_syndic_master_master_tcp_master_pub_port,
-                                 session_syndic_master_master_tcp_master_pull_port,
-                                 session_syndic_master_master_tcp_master_publish_pull,
-                                 session_syndic_master_master_tcp_master_workers):
+def session_master_of_masters_config(session_master_of_masters_root_dir,
+                                     session_master_of_masters_config_file,
+                                     session_master_of_masters_publish_port,
+                                     session_master_of_masters_return_port,
+                                     session_master_of_masters_engine_port,
+                                     session_master_of_masters_default_options,
+                                     session_master_of_masters_config_overrides,
+                                     session_master_of_masters_id,
+                                     session_base_env_state_tree_root_dir,
+                                     session_prod_env_state_tree_root_dir,
+                                     session_base_env_pillar_tree_root_dir,
+                                     session_prod_env_pillar_tree_root_dir,
+                                     running_username,
+                                     log_server_port,
+                                     log_server_level,
+                                     engines_dir,
+                                     log_handlers_dir,
+                                     session_master_of_masters_log_prefix,
+                                     session_master_of_masters_master_tcp_master_pub_port,
+                                     session_master_of_masters_master_tcp_master_pull_port,
+                                     session_master_of_masters_master_tcp_master_publish_pull,
+                                     session_master_of_masters_master_tcp_master_workers):
     '''
     This fixture will return the salt master configuration options after being
     overridden with any options passed from ``session_master_config_overrides``
@@ -1011,14 +1031,14 @@ def session_syndic_master_config(session_syndic_master_root_dir,
     direct_overrides = {
         'order_masters': True,
     }
-    return apply_master_config(session_syndic_master_default_options,
-                               session_syndic_master_root_dir,
-                               session_syndic_master_config_file,
-                               session_syndic_master_publish_port,
-                               session_syndic_master_return_port,
-                               session_syndic_master_engine_port,
-                               session_syndic_master_config_overrides,
-                               session_syndic_master_id,
+    return apply_master_config(session_master_of_masters_default_options,
+                               session_master_of_masters_root_dir,
+                               session_master_of_masters_config_file,
+                               session_master_of_masters_publish_port,
+                               session_master_of_masters_return_port,
+                               session_master_of_masters_engine_port,
+                               session_master_of_masters_config_overrides,
+                               session_master_of_masters_id,
                                [session_base_env_state_tree_root_dir.strpath],
                                [session_prod_env_state_tree_root_dir.strpath],
                                [session_base_env_pillar_tree_root_dir.strpath],
@@ -1028,11 +1048,11 @@ def session_syndic_master_config(session_syndic_master_root_dir,
                                log_server_level,
                                engines_dir,
                                log_handlers_dir,
-                               session_syndic_master_log_prefix,
-                               session_syndic_master_master_tcp_master_pub_port,
-                               session_syndic_master_master_tcp_master_pull_port,
-                               session_syndic_master_master_tcp_master_publish_pull,
-                               session_syndic_master_master_tcp_master_workers,
+                               session_master_of_masters_log_prefix,
+                               session_master_of_masters_master_tcp_master_pub_port,
+                               session_master_of_masters_master_tcp_master_pull_port,
+                               session_master_of_masters_master_tcp_master_publish_pull,
+                               session_master_of_masters_master_tcp_master_workers,
                                direct_overrides=direct_overrides)
 
 
@@ -1411,6 +1431,11 @@ def syndic_minion_default_options():
 
 
 @pytest.fixture
+def syndic_master_default_options():
+    return {}
+
+
+@pytest.fixture
 def syndic_config(master_config,
                   minion_config,
                   syndic_conf_dir,
@@ -1446,6 +1471,11 @@ def syndic_config(master_config,
 
 @pytest.fixture(scope='session')
 def session_syndic_minion_default_options():
+    return {}
+
+
+@pytest.fixture(scope='session')
+def session_syndic_master_default_options():
     return {}
 
 

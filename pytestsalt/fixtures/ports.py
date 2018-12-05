@@ -129,7 +129,7 @@ def session_master_engine_port():
 
 
 @pytest.fixture
-def syndic_master_publish_port():
+def master_of_masters_publish_port():
     '''
     Returns an unused localhost port for the master publish interface
     '''
@@ -137,7 +137,7 @@ def syndic_master_publish_port():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_publish_port():
+def session_master_of_masters_publish_port():
     '''
     Returns an unused localhost port for the master publish interface
     '''
@@ -145,7 +145,7 @@ def session_syndic_master_publish_port():
 
 
 @pytest.fixture
-def syndic_master_return_port():
+def master_of_masters_return_port():
     '''
     Returns an unused localhost port for the master return interface
     '''
@@ -153,7 +153,7 @@ def syndic_master_return_port():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_return_port():
+def session_master_of_masters_return_port():
     '''
     Returns an unused localhost port for the master return interface
     '''
@@ -161,7 +161,7 @@ def session_syndic_master_return_port():
 
 
 @pytest.fixture
-def syndic_master_master_tcp_master_pub_port():
+def master_of_masters_master_tcp_master_pub_port():
     '''
     Returns an unused localhost port
     '''
@@ -169,7 +169,7 @@ def syndic_master_master_tcp_master_pub_port():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_master_tcp_master_pub_port():
+def session_master_of_masters_master_tcp_master_pub_port():
     '''
     Returns an unused localhost port
     '''
@@ -177,7 +177,7 @@ def session_syndic_master_master_tcp_master_pub_port():
 
 
 @pytest.fixture
-def syndic_master_master_tcp_master_pull_port():
+def master_of_masters_master_tcp_master_pull_port():
     '''
     Returns an unused localhost port
     '''
@@ -185,7 +185,7 @@ def syndic_master_master_tcp_master_pull_port():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_master_tcp_master_pull_port():
+def session_master_of_masters_master_tcp_master_pull_port():
     '''
     Returns an unused localhost port
     '''
@@ -193,7 +193,7 @@ def session_syndic_master_master_tcp_master_pull_port():
 
 
 @pytest.fixture
-def syndic_master_master_tcp_master_publish_pull():
+def master_of_masters_master_tcp_master_publish_pull():
     '''
     Returns an unused localhost port
     '''
@@ -201,7 +201,7 @@ def syndic_master_master_tcp_master_publish_pull():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_master_tcp_master_publish_pull():
+def session_master_of_masters_master_tcp_master_publish_pull():
     '''
     Returns an unused localhost port
     '''
@@ -209,7 +209,7 @@ def session_syndic_master_master_tcp_master_publish_pull():
 
 
 @pytest.fixture
-def syndic_master_master_tcp_master_workers():
+def master_of_masters_master_tcp_master_workers():
     '''
     Returns an unused localhost port
     '''
@@ -217,7 +217,7 @@ def syndic_master_master_tcp_master_workers():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_master_tcp_master_workers():
+def session_master_of_masters_master_tcp_master_workers():
     '''
     Returns an unused localhost port
     '''
@@ -225,7 +225,7 @@ def session_syndic_master_master_tcp_master_workers():
 
 
 @pytest.fixture
-def syndic_master_engine_port():
+def master_of_masters_engine_port():
     '''
     Returns an unused localhost port for the pytest salt master engine
     '''
@@ -233,7 +233,7 @@ def syndic_master_engine_port():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_engine_port():
+def session_master_of_masters_engine_port():
     '''
     Returns an unused localhost port for the pytest session salt master engine
     '''
