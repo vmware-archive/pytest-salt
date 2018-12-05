@@ -1499,7 +1499,7 @@ class Salt(SaltCliScriptBase):
     def get_minion_tgt(self, **kwargs):
         return kwargs.pop('minion_tgt', self.config['id'])
 
-    def process_output(self, tgt, stdout, stderr, cli_cmd):
+    def process_output(self, tgt, stdout, stderr, cli_cmd):  # pylint: disable=signature-differs
         if 'No minions matched the target. No command was sent, no jid was assigned.\n' in stdout:
             stdout = stdout.split('\n', 1)[1:][0]
         old_stdout = None
@@ -1537,7 +1537,7 @@ class SaltRun(SaltCliScriptBase):
     Class which runs salt-run commands
     '''
 
-    def process_output(self, tgt, stdout, stderr, cli_cmd):
+    def process_output(self, tgt, stdout, stderr, cli_cmd):  # pylint: disable=signature-differs
         if 'No minions matched the target. No command was sent, no jid was assigned.\n' in stdout:
             stdout = stdout.split('\n', 1)[1:][0]
         stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr, cli_cmd)
@@ -1561,7 +1561,7 @@ class SaltSSH(SaltCliScriptBase):
     def get_minion_tgt(self, **kwargs):
         return 'localhost'
 
-    def process_output(self, tgt, stdout, stderr, cli_cmd):
+    def process_output(self, tgt, stdout, stderr, cli_cmd):  # pylint: disable=signature-differs
         stdout, stderr, json_out = SaltCliScriptBase.process_output(self, tgt, stdout, stderr, cli_cmd)
         if json_out:
             return stdout, stderr, json_out[tgt]
