@@ -734,6 +734,11 @@ def apply_master_config(default_options,
         },
         'hash_type': 'sha256'
     }
+    for varname in ('sock_dir',):
+        # These are settings which are tested against and provided by Salt's test suite, so,
+        # let's not override them if provided
+        if varname in default_options:
+            _default_options.pop(varname)
     # Merge in the initial default options with the internal _default_options
     dictupdate.update(default_options, _default_options, merge_lists=True)
 
@@ -1098,6 +1103,11 @@ def apply_minion_config(default_options,
         'log_fmt_logfile': "[%(asctime)s,%(msecs)03.0f][%(name)-5s:%(lineno)-4d][%(levelname)-8s] %(message)s",
         'hash_type': 'sha256'
     }
+    for varname in ('sock_dir',):
+        # These are settings which are tested against and provided by Salt's test suite, so,
+        # let's not override them if provided
+        if varname in default_options:
+            _default_options.pop(varname)
     # Merge in the initial default options with the internal _default_options
     dictupdate.update(default_options, _default_options, merge_lists=True)
 
