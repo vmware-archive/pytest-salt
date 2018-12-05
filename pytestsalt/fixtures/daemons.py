@@ -739,7 +739,7 @@ def session_salt_proxy(request,
                        session_proxy_config,
                        session_salt_proxy_before_start,  # pylint: disable=unused-argument
                        session_proxy_log_prefix,
-                       cli_minion_script_name,
+                       cli_proxy_script_name,
                        log_server,
                        _cli_bin_dir,
                        session_conf_dir,
