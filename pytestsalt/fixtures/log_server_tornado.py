@@ -28,7 +28,7 @@ class LogServer(TCPServer):
         unpacker = msgpack.Unpacker(raw=False)
         while True:
             try:
-                wire_bytes = yield strean.read_bytes(1024, partial=True)
+                wire_bytes = yield stream.read_bytes(1024, partial=True)
                 if not wire_bytes:
                     break
                 try:
@@ -41,7 +41,7 @@ class LogServer(TCPServer):
                     record = logging.makeLogRecord(record_dict)
                     logger = logging.getLogger(record.name)
                     logger.handle(record)
-            except (EOFError, KeyboardInterrupt, SystemExit):
+            except (EOFError, KeyboardInterrupt, SystemExit, StreamClosedError):
                 break
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception(exc)
