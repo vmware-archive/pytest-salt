@@ -8,6 +8,7 @@
 
 # Import Python libs
 from __future__ import absolute_import, print_function, unicode_literals
+import os
 from collections import OrderedDict
 
 # Import 3rd-party libs
@@ -100,7 +101,3 @@ def pytest_configure(config):
 
         config.pluginmanager.unregister(standard_reporter)
         config.pluginmanager.register(salt_reporter, 'terminalreporter')
-
-
-def pytest_sessionstart(session):
-    session.stats_processes = OrderedDict()
