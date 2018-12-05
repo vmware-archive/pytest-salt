@@ -810,7 +810,7 @@ def apply_master_config(default_options,
         ])
 
     try:
-        salt_verify.verify_env(
+        salt_verify.verify_env(  # pylint: disable=unexpected-keyword-arg
             verify_env_entries,
             running_username,
             sensitive_dirs=[options['pki_dir']]
@@ -1129,7 +1129,6 @@ def apply_minion_config(default_options,
         default_options['log_handlers_dirs'] = []
     default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
 
-
     default_options['pytest_log_host'] = 'localhost'
     default_options['pytest_log_port'] = log_server_port
     default_options['pytest_log_level'] = log_server_level
@@ -1162,7 +1161,7 @@ def apply_minion_config(default_options,
     ]
     try:
         # Salt > v2017.7.x
-        salt_verify.verify_env(
+        salt_verify.verify_env(  # pylint: disable=unexpected-keyword-arg
             verify_env_entries,
             running_username,
             sensitive_dirs=[options['pki_dir']]
