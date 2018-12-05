@@ -331,7 +331,7 @@ class SaltScriptBase(object):
         '''
         Returns the path to the script to run
         '''
-        script_path =  os.path.join(self.bin_dir_path, script_name)
+        script_path = os.path.join(self.bin_dir_path, script_name)
         if not os.path.exists(script_path):
             pytest.fail('The CLI script {!r} does not exist'.format(script_path))
         return script_path
