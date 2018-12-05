@@ -15,10 +15,7 @@ import logging
 # Import pytest libs
 import pytest
 
-# Import 3rd-party libs
-import msgpack
 if sys.version_info > (3, 5):
-#if False:
     from pytestsalt.fixtures.log_server_asyncio import log_server_asyncio as salt_log_server
 else:
     from pytestsalt.fixtures.log_server_tornado import log_server_tornado as salt_log_server
