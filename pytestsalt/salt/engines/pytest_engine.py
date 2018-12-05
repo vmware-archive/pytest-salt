@@ -42,7 +42,6 @@ def start():
     pytest_engine.start()
 
 
-
 class PyTestEngine(object):
     def __init__(self, opts):
         self.opts = opts
