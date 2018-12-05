@@ -16,9 +16,9 @@ import logging
 import pytest
 
 if sys.version_info > (3, 5):
-    from pytestsalt.fixtures.log_server_asyncio import log_server_asyncio as salt_log_server
+    from pytestsalt.utils.log_server_asyncio import log_server_asyncio as salt_log_server
 else:
-    from pytestsalt.fixtures.log_server_tornado import log_server_tornado as salt_log_server
+    from pytestsalt.utils.log_server_tornado import log_server_tornado as salt_log_server
 
 
 log = logging.getLogger(__name__)
