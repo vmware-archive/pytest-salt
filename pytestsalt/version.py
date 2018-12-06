@@ -10,5 +10,5 @@ pytest salt plugin version information
 from __future__ import absolute_import
 
 
-__version_info__ = (2018, 9, 28)
+__version_info__ = (2018, 12, 6)
 __version__ = '{}.{}.{}'.format(*__version_info__)
