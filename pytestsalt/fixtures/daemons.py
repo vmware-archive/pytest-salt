@@ -1641,11 +1641,6 @@ class SaltSyndic(SaltDaemonScriptBase):
     Class which runs the salt-syndic daemon
     '''
 
-    def get_check_events(self):
-        if sys.platform.startswith('win'):
-            return super(SaltSyndic, self).get_check_events()
-        return set(['salt/{}/{}/start'.format(self.config['__role'], self.config['id'])])
-
     def get_script_args(self):
         return ['-l', 'quiet']
 
