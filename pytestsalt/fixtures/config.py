@@ -447,16 +447,6 @@ def secondary_minion_config_overrides():
 
 
 @pytest.fixture
-def syndic_master_config_overrides():
-    '''
-    This fixture should be implemented to overwrite default salt syndic
-    master configuration options.
-
-    It will be applied over the loaded default options
-    '''
-
-
-@pytest.fixture
 def syndic_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt syndic
@@ -533,16 +523,6 @@ def session_secondary_minion_config_overrides():
     '''
     This fixture should be implemented to overwrite default secondary salt minion
     configuration options.
-
-    It will be applied over the loaded default options
-    '''
-
-
-@pytest.fixture(scope='session')
-def session_syndic_master_config_overrides():
-    '''
-    This fixture should be implemented to overwrite default salt syndic
-    master configuration options.
 
     It will be applied over the loaded default options
     '''
@@ -1072,7 +1052,8 @@ def apply_minion_config(default_options,
                         log_handlers_dir,
                         minion_log_prefix,
                         tcp_pub_port,
-                        tcp_pull_port):
+                        tcp_pull_port,
+                        direct_overrides=None):
     '''
     This fixture will return the salt minion configuration options after being
     overridden with any options passed from ``config_overrides``
@@ -1135,6 +1116,11 @@ def apply_minion_config(default_options,
     default_options['pytest_log_port'] = log_server_port
     default_options['pytest_log_level'] = log_server_level
     default_options['pytest_log_prefix'] = minion_log_prefix
+
+    if direct_overrides is not None:
+        # We've been passed some direct override configuration.
+        # Apply it!
+        dictupdate.update(default_options, direct_overrides, merge_lists=True)
 
     log.info('Writing to configuration file %s. Configuration:\n%s',
              config_file,
@@ -1346,19 +1332,19 @@ def session_secondary_minion_config(session_secondary_root_dir,
                                session_secondary_minion_tcp_pull_port)
 
 
-def apply_syndic_config(syndic_master_default_options,
-                        syndic_default_options,
-                        master_config,
-                        minion_config,
+def apply_syndic_config(syndic_default_options,
+                        master_config_file,
                         syndic_conf_dir,
-                        engine_port,
-                        master_config_overrides,
-                        minion_config_overrides,
+                        syndic_engine_port,
+                        syndic_config_overrides,
                         running_username,
                         log_server_port,
                         log_server_level,
                         syndic_log_prefix,
-                        syndic_id):
+                        syndic_id,
+                        engines_dir,
+                        log_handlers_dir,
+                        root_dir):
     '''
     This fixture will return the salt syndic configuration options after being
     overridden with any options passed from ``config_overrides``
@@ -1369,10 +1355,9 @@ def apply_syndic_config(syndic_master_default_options,
     import salt.utils.dictupdate as dictupdate
     import salt.utils.verify as salt_verify
     import salt.serializers.yaml as yamlserialize
-    syndic_master_config_file = syndic_conf_dir.join('master').realpath().strpath
 
-    default_master_options = copy.deepcopy(master_config)
-    dictupdate.update(default_master_options, syndic_master_default_options, merge_lists=True)
+    with compat.fopen(master_config_file) as rfh:
+        master_config = yamlserialize.deserialize(rfh.read())
 
     master_overrides = {
         'syndic_master': 'localhost',
@@ -1380,19 +1365,11 @@ def apply_syndic_config(syndic_master_default_options,
         'syndic_pidfile': 'run/salt-syndic.pid',
         'syndic_user': running_username,
         'syndic_log_file': 'logs/syndic.log',
-        'pytest_log_host': 'localhost',
-        'pytest_log_port': log_server_port,
-        'pytest_log_level': log_server_level,
-        'pytest_log_prefix': syndic_log_prefix,
-        'pytest_engine_port': engine_port
     }
 
-    master_config = copy.deepcopy(default_master_options)
-    master_config.update(master_overrides)
+    dictupdate.update(master_config, master_overrides, merge_lists=True)
 
-    if master_config_overrides:
-        # Merge in the default options with the minion_config_overrides
-        dictupdate.update(master_config, master_config_overrides, merge_lists=True)
+    syndic_master_config_file = syndic_conf_dir.join('master').realpath().strpath
 
     # Write down the master computed configuration into the config file
     log.info('Writing to configuration file %s. Configuration:\n%s',
@@ -1402,29 +1379,29 @@ def apply_syndic_config(syndic_master_default_options,
         wfh.write(yamlserialize.serialize(master_config))
 
     syndic_config_file = syndic_conf_dir.join('minion').realpath().strpath
-    default_minion_options = copy.deepcopy(minion_config)
-    dictupdate.update(default_minion_options, syndic_default_options, merge_lists=True)
-
-    default_minion_options = copy.deepcopy(minion_config)
-    minion_overrides = {
+    direct_overrides = copy.deepcopy(master_overrides)
+    direct_overrides.update({
         'id': syndic_id,
-    }
-    minion_config = copy.deepcopy(default_minion_options)
-    minion_config.update(minion_overrides)
+    })
 
-    if minion_config_overrides:
-        # Merge in the default options with the minion_config_overrides
-        dictupdate.update(minion_config, minion_config_overrides, merge_lists=True)
+    apply_minion_config(syndic_default_options,
+                        root_dir,
+                        syndic_config_file,
+                        master_config['ret_port'],  # master_return_port
+                        syndic_engine_port,
+                        syndic_config_overrides,
+                        syndic_id,
+                        running_username,
+                        log_server_port,
+                        log_server_level,
+                        engines_dir,
+                        log_handlers_dir,
+                        syndic_log_prefix,
+                        None,  # minion_tcp_pub_port,
+                        None,  # minion_tcp_pull_port,
+                        direct_overrides=direct_overrides)
 
-    # Write down the minion computed configuration into the config file
-    log.info('Writing to configuration file %s. Configuration:\n%s',
-              syndic_config_file,
-              pprint.pformat(minion_config))
-    with compat.fopen(syndic_config_file, 'w') as wfh:
-        wfh.write(yamlserialize.serialize(minion_config))
-
-    options = salt.config.syndic_config(syndic_master_config_file, syndic_config_file)
-    return options
+    return salt.config.syndic_config(syndic_master_config_file, syndic_config_file)
 
 
 @pytest.fixture
@@ -1433,42 +1410,37 @@ def syndic_default_options():
 
 
 @pytest.fixture
-def syndic_master_default_options():
-    return {}
-
-
-@pytest.fixture
 def syndic_config(master_config,
-                  minion_config,
+                  master_config_file,
                   syndic_conf_dir,
                   syndic_engine_port,
-                  syndic_master_default_options,
                   syndic_default_options,
-                  syndic_master_config_overrides,
                   syndic_config_overrides,
                   running_username,
                   log_server_port,
                   log_server_level,
                   syndic_log_prefix,
-                  syndic_id):
+                  syndic_id,
+                  engines_dir,
+                  log_handlers_dir,
+                  root_dir):
     '''
     This fixture will return the salt syndic configuration options after being
-    overridden with any options passed from ``syndic_master_config_overrides``
-    and ``syndic_config_overrides``
+    overridden with any options passed from ``syndic_config_overrides``
     '''
-    return apply_syndic_config(syndic_master_default_options,
-                               syndic_default_options,
-                               master_config,
-                               minion_config,
+    return apply_syndic_config(syndic_default_options,
+                               master_config_file,
                                syndic_conf_dir,
                                syndic_engine_port,
-                               syndic_master_config_overrides,
                                syndic_config_overrides,
                                running_username,
                                log_server_port,
                                log_server_level,
                                syndic_log_prefix,
-                               syndic_id)
+                               syndic_id,
+                               engines_dir,
+                               log_handlers_dir,
+                               root_dir)
 
 
 @pytest.fixture(scope='session')
@@ -1477,42 +1449,36 @@ def session_syndic_default_options():
 
 
 @pytest.fixture(scope='session')
-def session_syndic_master_default_options():
-    return {}
-
-
-@pytest.fixture(scope='session')
-def session_syndic_config(session_master_config,
-                          session_minion_config,
+def session_syndic_config(session_master_config_file,
                           session_syndic_conf_dir,
                           session_syndic_engine_port,
-                          session_syndic_master_default_options,
                           session_syndic_default_options,
-                          session_syndic_master_config_overrides,
                           session_syndic_config_overrides,
                           running_username,
                           log_server_port,
                           log_server_level,
                           session_syndic_log_prefix,
-                          session_syndic_id):
+                          session_syndic_id,
+                          engines_dir,
+                          log_handlers_dir,
+                          session_root_dir):
     '''
     This fixture will return the salt syndic configuration options after being
-    overridden with any options passed from ``syndic_master_config_overrides``
-    and ``syndic_config_overrides``
+    overridden with any options passed from ``syndic_config_overrides``
     '''
-    return apply_syndic_config(session_syndic_master_default_options,
-                               session_syndic_default_options,
-                               session_master_config,
-                               session_minion_config,
+    return apply_syndic_config(session_syndic_default_options,
+                               session_master_config_file,
                                session_syndic_conf_dir,
                                session_syndic_engine_port,
-                               session_syndic_master_config_overrides,
                                session_syndic_config_overrides,
                                running_username,
                                log_server_port,
                                log_server_level,
                                session_syndic_log_prefix,
-                               session_syndic_id)
+                               session_syndic_id,
+                               engines_dir,
+                               log_handlers_dir,
+                               session_root_dir)
 
 
 @pytest.fixture
