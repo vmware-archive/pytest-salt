@@ -428,7 +428,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             cli_script_name = self.request.getfuncargvalue('cli_run_script_name')
 
         return SaltRunEventListener(self.request,
-                                    None,
+                                    self.config,
                                     self.event_listener_config_dir or self.config_dir,
                                     self.bin_dir_path,
                                     self.log_prefix,
@@ -767,6 +767,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         '''
         Run the given command synchronously
         '''
+        log.info('%s checking for tags: %s', self.__class__.__name__, tags)
         # Late import
         import salt.ext.six as six
         exitcode = 0
@@ -869,6 +870,12 @@ class SaltRunEventListener(SaltCliScriptBase):
             stdout = stdout.decode(__salt_system_encoding__)
             stderr = stderr.decode(__salt_system_encoding__)
             # pylint: enable=undefined-variable
+
+        if to_match_events:
+            stop_sending_events_file = self.config.get('pytest_stop_sending_events_file')
+            if stop_sending_events_file and os.path.exists(stop_sending_events_file):
+                log.warning('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
+                os.unlink(stop_sending_events_file)
 
         json_out = {
             'matched': matched_events,

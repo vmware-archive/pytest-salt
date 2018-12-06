@@ -9,6 +9,7 @@ when a daemon is up and running
 
 # Import python libs
 from __future__ import absolute_import, print_function
+import os
 import sys
 import errno
 import socket
@@ -50,6 +51,7 @@ class PyTestEngine(object):
         self.sock_dir = opts['sock_dir']
         self.port = int(opts['pytest_engine_port'])
         self.tcp_server_sock = None
+        self.stop_sending_events_file = opts.get('pytest_stop_sending_events_file')
 
     def start(self):
         self.io_loop = ioloop.IOLoop()
@@ -103,6 +105,9 @@ class PyTestEngine(object):
         # for pytest-salt to pickup that the master is running
         timeout = 30
         while True:
+            if self.stop_sending_events_file and not os.path.exists(self.stop_sending_events_file):
+                log.info('The stop sending events file "marker" is done. Stop sending events...')
+                break
             timeout -= 1
             try:
                 event_bus.fire_event(load, master_start_event_tag, timeout=500)
