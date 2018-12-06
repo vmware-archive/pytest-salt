@@ -76,8 +76,6 @@ class PyTestEngine(object):
 
         if self.role == 'master':
             yield self.fire_master_started_event()
-        else:
-            yield self.listen_to_minion_connected_event()
 
     def handle_connection(self, connection, address):
         log.warning('Accepted connection from %s. Role: %s  ID: %s', address, self.role, self.id)
@@ -94,19 +92,6 @@ class PyTestEngine(object):
             except AttributeError:
                 # This is not macOS !?
                 pass
-
-    @gen.coroutine
-    def listen_to_minion_connected_event(self):
-        start_event_match = 'salt/{}/{}/start'.format(self.role, self.id)
-        log.info('Listening for salt-%s connected event. Tag: %s', self.role, start_event_match)
-        event_bus = salt.utils.event.get_master_event(self.opts, self.sock_dir, listen=True)
-        event_bus.subscribe(start_event_match)
-        while True:
-            event = event_bus.get_event(full=True, no_block=True)
-            if event is not None and event['tag'] == start_event_match:
-                log.info('Got salt-%s connected event: %s', self.role, event)
-                break
-            yield gen.sleep(0.25)
 
     @gen.coroutine
     def fire_master_started_event(self):
