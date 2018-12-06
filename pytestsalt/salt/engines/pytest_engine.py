@@ -45,7 +45,11 @@ def start():
 class PyTestEngine(object):
     def __init__(self, opts):
         self.opts = opts
-        self.sock = None
+        self.id = opts['id']
+        self.role = opts['__role']
+        self.sock_dir = opts['sock_dir']
+        self.port = int(opts['pytest_engine_port'])
+        self.tcp_server_sock = None
 
     def start(self):
         self.io_loop = ioloop.IOLoop()
@@ -55,28 +59,28 @@ class PyTestEngine(object):
 
     @gen.coroutine
     def _start(self):
-        if self.opts['__role'] == 'minion':
-            yield self.listen_to_minion_connected_event()
-        else:
-            self.io_loop.spawn_callback(self.fire_master_started_event)
+        log.info('Starting Pytest Engine(role=%s, id=%s) on port %s', self.role, self.id, self.port)
 
-        port = int(self.opts['pytest_engine_port'])
-        log.info('Starting Pytest Engine(role=%s) on port %s', self.opts['__role'], port)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.setblocking(0)
+        self.tcp_server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.tcp_server_sock.setblocking(0)
         # bind the socket to localhost on the config provided port
-        self.sock.bind(('localhost', port))
+        self.tcp_server_sock.bind(('localhost', self.port))
         # become a server socket
-        self.sock.listen(5)
+        self.tcp_server_sock.listen(5)
         if HAS_SALT_ASYNC:
             with salt.utils.asynchronous.current_ioloop(self.io_loop):
-                netutil.add_accept_handler(self.sock, self.handle_connection)
+                netutil.add_accept_handler(self.tcp_server_sock, self.handle_connection)
         else:
-            netutil.add_accept_handler(self.sock, self.handle_connection)
+            netutil.add_accept_handler(self.tcp_server_sock, self.handle_connection)
+
+        if self.role == 'master':
+            yield self.fire_master_started_event()
+        else:
+            yield self.listen_to_minion_connected_event()
 
     def handle_connection(self, connection, address):
-        log.warning('Accepted connection from %s. Role: %s', address, self.opts['__role'])
+        log.warning('Accepted connection from %s. Role: %s  ID: %s', address, self.role, self.id)
         # We just need to know that the daemon running the engine is alive...
         try:
             connection.shutdown(socket.SHUT_RDWR)  # pylint: disable=no-member
@@ -93,26 +97,26 @@ class PyTestEngine(object):
 
     @gen.coroutine
     def listen_to_minion_connected_event(self):
-        log.info('Listening for minion connected event...')
-        minion_start_event_match = 'salt/minion/{}/start'.format(self.opts['id'])
-        event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=True)
-        event_bus.subscribe(minion_start_event_match)
+        start_event_match = 'salt/{}/{}/start'.format(self.role, self.id)
+        log.info('Listening for salt-%s connected event. Tag: %s', self.role, start_event_match)
+        event_bus = salt.utils.event.get_master_event(self.opts, self.sock_dir, listen=True)
+        event_bus.subscribe(start_event_match)
         while True:
             event = event_bus.get_event(full=True, no_block=True)
-            if event is not None and event['tag'] == minion_start_event_match:
-                log.info('Got minion connected event: %s', event)
+            if event is not None and event['tag'] == start_event_match:
+                log.info('Got salt-%s connected event: %s', self.role, event)
                 break
             yield gen.sleep(0.25)
 
     @gen.coroutine
     def fire_master_started_event(self):
-        log.info('Firing salt-master started event...')
-        event_bus = salt.utils.event.get_master_event(self.opts, self.opts['sock_dir'], listen=False)
-        master_start_event_tag = 'salt/master/{}/start'.format(self.opts['id'])
-        load = {'id': self.opts['id'], 'tag': master_start_event_tag, 'data': {}}
-        # One minute should be more than enough to fire these events every second in order
+        master_start_event_tag = 'salt/master/{}/start'.format(self.id)
+        log.info('Firing salt-%s started event. Tag: %s', self.role, master_start_event_tag)
+        event_bus = salt.utils.event.get_master_event(self.opts, self.sock_dir, listen=False)
+        load = {'id': self.id, 'tag': master_start_event_tag, 'data': {}}
+        # 30 seconds should be more than enough to fire these events every second in order
         # for pytest-salt to pickup that the master is running
-        timeout = 60
+        timeout = 30
         while True:
             timeout -= 1
             try:
