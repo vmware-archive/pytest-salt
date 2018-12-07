@@ -670,7 +670,7 @@ def apply_master_config(default_options,
     import salt.utils
     import salt.utils.dictupdate as dictupdate
     import salt.utils.verify as salt_verify
-    import salt.serializers.yaml as yamlserialize
+    import salt.utils.yaml as yamlserialize
     _default_options = {
         'id': master_id,
         'interface': '127.0.0.1',
@@ -758,7 +758,7 @@ def apply_master_config(default_options,
 
     # Write down the computed configuration into the config file
     with compat.fopen(config_file, 'w') as wfh:
-        wfh.write(yamlserialize.serialize(default_options))
+        yamlserialize.safe_dump(default_options, wfh, default_flow_style=False)
 
     # Make sure to load the config file as a salt-master starting from CLI
     options = salt.config.master_config(config_file)
@@ -1063,7 +1063,7 @@ def apply_minion_config(default_options,
     import salt.utils
     import salt.utils.dictupdate as dictupdate
     import salt.utils.verify as salt_verify
-    import salt.serializers.yaml as yamlserialize
+    import salt.utils.yaml as yamlserialize
     _default_options = {
         'root_dir': root_dir.strpath,
         'interface': '127.0.0.1',
@@ -1128,7 +1128,7 @@ def apply_minion_config(default_options,
 
     # Write down the computed configuration into the config file
     with compat.fopen(config_file, 'w') as wfh:
-        wfh.write(yamlserialize.serialize(default_options))
+        yamlserialize.safe_dump(default_options, wfh, default_flow_style=False)
 
     # Make sure to load the config file as a salt-master starting from CLI
     options = salt.config.minion_config(config_file)
@@ -1354,10 +1354,10 @@ def apply_syndic_config(syndic_default_options,
     import salt.utils
     import salt.utils.dictupdate as dictupdate
     import salt.utils.verify as salt_verify
-    import salt.serializers.yaml as yamlserialize
+    import salt.utils.yaml as yamlserialize
 
     with compat.fopen(master_config_file) as rfh:
-        master_config = yamlserialize.deserialize(rfh.read())
+        master_config = yamlserialize.safe_load(rfh.read())
 
     master_overrides = {
         'syndic_master': 'localhost',
@@ -1379,7 +1379,7 @@ def apply_syndic_config(syndic_default_options,
               syndic_master_config_file,
               pprint.pformat(master_config))
     with compat.fopen(syndic_master_config_file, 'w') as wfh:
-        wfh.write(yamlserialize.serialize(master_config))
+        yamlserialize.safe_dump(master_config, wfh, default_flow_style=False)
 
     syndic_config_file = syndic_conf_dir.join('minion').realpath().strpath
     direct_overrides = copy.deepcopy(master_overrides)
@@ -1716,12 +1716,12 @@ def session_roster_config_overrides():
 
 def _roster_config(config_file, config, config_overrides):
     import pytestsalt.utils.compat as compat
-    import salt.serializers.yaml as yamlserialize
+    import salt.utils.yaml as yamlserialize
     if config_overrides:
         config.update(config_overrides)
 
     with compat.fopen(config_file, 'w') as wfh:
-        wfh.write(yamlserialize.serialize(config))
+        yamlserialize.safe_dump(config, wfh, default_flow_style=False)
     return config
 
 
