@@ -1366,6 +1366,9 @@ def apply_syndic_config(syndic_default_options,
         'syndic_user': running_username,
         'syndic_log_file': 'logs/syndic.log',
     }
+    if syndic_default_options:
+        # Override pytest salt overrides with any value comming in from syndic_default_options
+        master_overrides.update(syndic_default_options)
 
     dictupdate.update(master_config, master_overrides, merge_lists=True)
 
