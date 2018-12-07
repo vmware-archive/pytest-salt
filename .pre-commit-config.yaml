@@ -19,3 +19,4 @@
       additional_dependencies:
         - salt
         - SaltPyLint >= 2018.11.19
+      exclude: (versioneer.py|pytestsalt/_version.py)

@@ -6,6 +6,7 @@ import os
 import sys
 import codecs
 from setuptools import setup, find_packages
+import versioneer
 
 # Change to source's directory prior to running any command
 try:
@@ -28,23 +29,9 @@ def read(fname):
         return rfh.read()
 
 
-# Version info -- read without importing
-_LOCALS = {}
-with codecs.open(os.path.join(SETUP_DIRNAME, 'pytestsalt', 'version.py'), encoding='utf-8') as rfh:
-    contents = rfh.read()
-    try:
-        exec(contents, None, _LOCALS)  # pylint: disable=exec-used
-    except SyntaxError:
-        # SyntaxError: encoding declaration in Unicode string
-        exec(contents.encode('utf-8'), None, _LOCALS)  # pylint: disable=exec-used
-
-
-VERSION = _LOCALS['__version__']
-LONG_DESCRIPTION = read('README.rst')
-
 setup(
     name='pytest-salt',
-    version=VERSION,
+    version=versioneer.get_version(),
     author='Pedro Algarvio',
     author_email='pedro@algarvio.me',
     maintainer='Pedro Algarvio',
@@ -52,8 +39,9 @@ setup(
     license='Apache Software License 2.0',
     url='https://github.com/saltstack/pytest-salt',
     description='Pytest Salt Plugin',
-    long_description=LONG_DESCRIPTION,
+    long_description=read('README.rst'),
     packages=find_packages(),
+    cmdclass=versioneer.get_cmdclass(),
     install_requires=[
         'pytest >= 2.8.1',
         'pytest-tempdir',
