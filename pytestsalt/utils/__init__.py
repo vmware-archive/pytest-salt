@@ -218,6 +218,7 @@ def start_daemon(request,
                  slow_stop=False,
                  environ=None,
                  cwd=None,
+                 max_attempts=3,
                  **kwargs):
     '''
     Returns a running salt daemon
@@ -229,7 +230,7 @@ def start_daemon(request,
     log.info('[%s] Starting pytest %s(%s)', daemon_name, daemon_log_prefix, daemon_id)
     attempts = 0
     process = None
-    while attempts <= 3:  # pylint: disable=too-many-nested-blocks
+    while attempts <= max_attempts:  # pylint: disable=too-many-nested-blocks
         attempts += 1
         process = daemon_class(request,
                                daemon_config,
@@ -249,7 +250,7 @@ def start_daemon(request,
                     connectable = process.wait_until_running(timeout=start_timeout/2)
                     if connectable is False:
                         process.terminate()
-                        if attempts >= 3:
+                        if attempts >= max_attempts:
                             fail_method(
                                 'The pytest {}({}) has failed to confirm running status '
                                 'after {} attempts'.format(daemon_name, daemon_id, attempts))
@@ -257,7 +258,7 @@ def start_daemon(request,
             except Exception as exc:  # pylint: disable=broad-except
                 log.exception('[%s] %s', daemon_log_prefix, exc, exc_info=True)
                 terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
-                if attempts >= 3:
+                if attempts >= max_attempts:
                     fail_method(str(exc))
                 continue
             log.info(
