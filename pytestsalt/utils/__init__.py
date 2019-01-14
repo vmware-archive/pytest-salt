@@ -153,22 +153,6 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
         log.warning('Some processes failed to properly terminate: %s', process_list)
 
 
-def terminate_child_processes(pid=None, children=None, kill=False, slow_stop=False):
-    '''
-    Try to terminate/kill any started child processes of the provided pid
-    '''
-    if pid:
-        if not children:
-            # Let's get the child processes of the started subprocess
-            children = collect_child_processes(pid)
-        else:
-            # Let's collect children again since there might be new ones
-            children.extend(collect_child_processes(pid))
-
-    if children:
-        terminate_process_list(children, kill=slow_stop is False, slow_stop=slow_stop)
-
-
 def terminate_process(pid=None, process=None, children=None, kill_children=False, slow_stop=False):
     '''
     Try to terminate/kill the started processe
