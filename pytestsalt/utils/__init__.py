@@ -788,6 +788,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         events_processed = 0
         try:
             while True:
+                time.sleep(0.5)
                 if terminal.stdout is not None:
                     try:
                         out = terminal.recv(4096)
