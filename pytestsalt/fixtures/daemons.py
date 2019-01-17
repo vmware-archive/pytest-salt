@@ -34,7 +34,7 @@ def salt_version(_cli_bin_dir, cli_master_script_name, python_executable_path):
     '''
     Return the salt version for the CLI install
     '''
-    import salt
+    import salt  # pylint: disable=unused-import
     try:
         import salt.ext.six as six
     except ImportError:
@@ -110,7 +110,7 @@ def salt_master(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture(scope='session')
@@ -168,7 +168,7 @@ def session_salt_master(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=session_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture
@@ -226,7 +226,7 @@ def salt_master_of_masters(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=master_of_masters_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture(scope='session')
@@ -284,7 +284,7 @@ def session_salt_master_of_masters(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=session_master_of_masters_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture
@@ -343,7 +343,7 @@ def salt_minion(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture(scope='session')
@@ -402,7 +402,7 @@ def session_salt_minion(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=session_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture
@@ -462,7 +462,7 @@ def secondary_salt_minion(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture(scope='session')
@@ -522,7 +522,7 @@ def session_secondary_salt_minion(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=session_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture
@@ -581,7 +581,7 @@ def salt_syndic(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture(scope='session')
@@ -640,7 +640,7 @@ def session_salt_syndic(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=session_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture
@@ -699,7 +699,7 @@ def salt_proxy(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture(scope='session')
@@ -758,7 +758,7 @@ def session_salt_proxy(request,
                         bin_dir_path=_cli_bin_dir,
                         fail_hard=_salt_fail_hard,
                         event_listener_config_dir=session_conf_dir,
-                        start_timeout=30)
+                        start_timeout=60)
 
 
 @pytest.fixture
