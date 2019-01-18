@@ -372,7 +372,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
     def __init__(self, *args, **kwargs):
         self._process_cli_output_in_thread = kwargs.pop('process_cli_output_in_thread', True)
-        self.event_listener_config_dir = kwargs.pop('event_listener_config_dir', None)
+        event_listener_config_dir = kwargs.pop('event_listener_config_dir', None)
+        if event_listener_config_dir and not isinstance(event_listener_config_dir, str):
+            event_listener_config_dir = event_listener_config_dir.realpath().strpath
+        self.event_listener_config_dir = event_listener_config_dir
         super(SaltDaemonScriptBase, self).__init__(*args, **kwargs)
         self._running = threading.Event()
         self._connectable = threading.Event()
