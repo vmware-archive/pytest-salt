@@ -406,19 +406,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         except AttributeError:
             return self.request.getfuncargvalue('salt_run')
 
-    def get_salt_run_event_listener(self):
-        try:
-            cli_script_name = self.request.getfixturevalue('cli_run_script_name')
-        except AttributeError:
-            cli_script_name = self.request.getfuncargvalue('cli_run_script_name')
-
-        return SaltRunEventListener(self.request,
-                                    self.config,
-                                    self.event_listener_config_dir or self.config_dir,
-                                    self.bin_dir_path,
-                                    self.log_prefix,
-                                    cli_script_name=cli_script_name)
-
     def start(self):
         '''
         Start the daemon subprocess
@@ -509,7 +496,10 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 check_events
             )
         log.debug('Wait until running expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
-        event_listener = self.get_salt_run_event_listener()
+        event_listener = EventListener(
+            self.event_listener_config_dir or self.config_dir,
+            self.log_prefix
+        )
         try:
             while True:
                 if self._running.is_set() is False:
@@ -527,10 +517,8 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     break
 
                 if check_events:
-                    result = event_listener.run(check_events, timeout=timeout - 0.5)
-                    if result.exitcode == 0:
-                        for tag in result.json['matched']:
-                            check_events.remove(tag)
+                    for tag in event_listener.wait_for_events(check_events, timeout=timeout - 0.5):
+                        check_events.remove(tag)
 
                 for port in set(check_ports):
                     if isinstance(port, int):
@@ -868,6 +856,72 @@ class SaltRunEventListener(SaltCliScriptBase):
             'unmatched': to_match_events
         }
         return ShellResult(exitcode, stdout, stderr, json_out)
+
+
+class EventListener:
+
+    DEFAULT_TIMEOUT = 60
+
+    def __init__(self, config_dir, log_prefix):
+        # Late import
+        self.config_dir = config_dir
+        self.log_prefix = '[{}][PyTestEventListener]'.format(log_prefix)
+        self._listener = None
+
+    def wait_for_events(self, check_events, timeout=None):
+        if timeout is None:
+            timeout = self.DEFAULT_TIMEOUT
+        log.info('%s waiting %s seconds for events: %s',
+                 self.log_prefix,
+                 timeout,
+                 check_events)
+        matched_events = set()
+        events_to_match = set(check_events)
+        events_processed = 0
+        max_timeout = time.time() + timeout
+        while True:
+            if not events_to_match:
+                log.info('%s ALL EVENT TAGS FOUND!!!', self.log_prefix)
+                return matched_events
+
+            if time.time() > max_timeout:
+                log.warning(
+                    '%s Failed to find all of the required event tags. '
+                    'Total events processed: %s',
+                    self.log_prefix,
+                    events_processed
+                )
+                return matched_events
+
+            event = self.listener.get_event(full=True, auto_reconnect=True)
+            if event is None:
+                continue
+
+            tag = event['tag']
+            log.warning('Got event: %s', event)
+            if tag in events_to_match:
+                matched_events.add(tag)
+                events_to_match.remove(tag)
+
+            events_processed += 1
+            log.info('%s Events processed so far: %d',
+                     self.log_prefix,
+                     events_processed)
+
+    def terminate(self):
+        listener = self.listener
+        self._listener = None
+        listener.destroy()
+
+    @property
+    def listener(self):
+        if self._listener is None:
+            # Late import
+            import salt.config
+            import salt.utils.event
+            opts = salt.config.master_config(os.path.join(self.config_dir, 'master'))
+            self._listener = salt.utils.event.get_event('master', opts=opts, listen=True)
+        return self._listener
 
 
 @pytest.mark.trylast
