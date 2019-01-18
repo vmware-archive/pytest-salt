@@ -520,6 +520,12 @@ class SaltDaemonScriptBase(SaltScriptBase):
                     for tag in event_listener.wait_for_events(check_events, timeout=timeout - 0.5):
                         check_events.remove(tag)
 
+                if not check_events:
+                    stop_sending_events_file = self.config.get('pytest_stop_sending_events_file')
+                    if stop_sending_events_file and os.path.exists(stop_sending_events_file):
+                        log.warning('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
+                        os.unlink(stop_sending_events_file)
+
                 for port in set(check_ports):
                     if isinstance(port, int):
                         log.debug('[%s][%s] Checking connectable status on port: %s',
