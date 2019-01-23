@@ -38,11 +38,13 @@ DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
 DEFAULT_SYNDIC_ID = 'pytest-salt-syndic'
 DEFAULT_SECONDARY_MINION_ID = 'pytest-salt-sec-minion'
+DEFAULT_PROXY_MINION_ID = 'pytest-salt-proxy'
 DEFAULT_SESSION_MOM_ID = 'pytest-session-salt-mom'
 DEFAULT_SESSION_MASTER_ID = 'pytest-session-salt-master'
 DEFAULT_SESSION_MINION_ID = 'pytest-session-salt-minion'
 DEFAULT_SESSION_SYNDIC_ID = 'pytest-session-salt-syndic'
 DEFAULT_SESSION_SECONDARY_MINION_ID = 'pytest-session-salt-sec-minion'
+DEFAULT_SESSION_PROXY_MINION_ID = 'pytest-session-salt-proxy'
 
 log = logging.getLogger(__name__)
 
@@ -215,6 +217,15 @@ def salt_syndic_id_counter():
 
 
 @pytest.fixture(scope='session')
+def salt_proxy_id_counter():
+    '''
+    Fixture which return a number to include in the minion proxy ID.
+    Every call to this fixture increases the counter.
+    '''
+    return Counter()
+
+
+@pytest.fixture(scope='session')
 def cli_master_script_name():
     '''
     Return the CLI script basename
@@ -326,6 +337,14 @@ def syndic_id(salt_syndic_id_counter):
     return DEFAULT_SYNDIC_ID + '-{}'.format(salt_syndic_id_counter())
 
 
+@pytest.fixture
+def proxy_id(salt_proxy_id_counter):
+    '''
+    Returns the proxy minion id
+    '''
+    return DEFAULT_PROXY_MINION_ID + '-{}'.format(salt_proxy_id_counter())
+
+
 @pytest.fixture(scope='session')
 def session_master_of_masters_id(salt_master_of_masters_id_counter):
     '''
@@ -364,6 +383,14 @@ def session_syndic_id(salt_syndic_id_counter):
     Returns the session scoped syndic id
     '''
     return DEFAULT_SESSION_SYNDIC_ID + '-{}'.format(salt_syndic_id_counter())
+
+
+@pytest.fixture(scope='session')
+def session_proxy_id(salt_proxy_id_counter):
+    '''
+    Returns the session scoped minion id
+    '''
+    return DEFAULT_SESSION_PROXY_MINION_ID + '-{}'.format(salt_proxy_id_counter())
 
 
 @pytest.fixture
@@ -456,6 +483,16 @@ def syndic_config_overrides():
     '''
 
 
+@pytest.fixture
+def proxy_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt proxy
+    minion configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
 @pytest.fixture(scope='session')
 def session_master_config_file(session_conf_dir):
     '''
@@ -486,6 +523,14 @@ def session_secondary_minion_config_file(session_secondary_conf_dir):
     Returns the path to the salt secondary minion configuration file
     '''
     return session_secondary_conf_dir.join('minion').realpath().strpath
+
+
+@pytest.fixture(scope='session')
+def session_proxy_config_file(session_conf_dir):
+    '''
+    Returns the path to the salt proxy configuration file
+    '''
+    return session_conf_dir.join('proxy').realpath().strpath
 
 
 @pytest.fixture(scope='session')
@@ -532,6 +577,16 @@ def session_secondary_minion_config_overrides():
 def session_syndic_config_overrides():
     '''
     This fixture should be implemented to overwrite default salt syndic
+    minion configuration options.
+
+    It will be applied over the loaded default options
+    '''
+
+
+@pytest.fixture(scope='session')
+def session_proxy_config_overrides():
+    '''
+    This fixture should be implemented to overwrite default salt proxy
     minion configuration options.
 
     It will be applied over the loaded default options
@@ -1042,13 +1097,11 @@ def apply_minion_config(default_options,
                         root_dir,
                         config_file,
                         return_port,
-                        engine_port,
                         config_overrides,
                         minion_id,
                         running_username,
                         log_server_port,
                         log_server_level,
-                        engines_dir,
                         log_handlers_dir,
                         minion_log_prefix,
                         tcp_pub_port,
@@ -1097,16 +1150,6 @@ def apply_minion_config(default_options,
     if config_overrides:
         # Merge in the default options with the minion_config_overrides
         dictupdate.update(default_options, config_overrides, merge_lists=True)
-
-    #default_options.setdefault('engines', [])
-    #if 'pytest' not in default_options['engines']:
-    #    default_options['engines'].append('pytest')
-
-    #if 'engines_dirs' not in default_options:
-    #    default_options['engines_dirs'] = []
-
-    #default_options['engines_dirs'].insert(0, engines_dir)
-    #default_options['pytest_engine_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
@@ -1164,6 +1207,113 @@ def apply_minion_config(default_options,
     return options
 
 
+def apply_proxy_config(default_options,
+                       root_dir,
+                       config_file,
+                       return_port,
+                       config_overrides,
+                       proxy_id,
+                       running_username,
+                       log_server_port,
+                       log_server_level,
+                       log_handlers_dir,
+                       proxy_log_prefix,
+                       tcp_pub_port,
+                       tcp_pull_port,
+                       direct_overrides=None):
+    '''
+    This fixture will return the salt proxy configuration options after being
+    overridden with any options passed from ``config_overrides``
+    '''
+    import pytestsalt.utils.compat as compat
+    import salt.config
+    import salt.utils
+    import salt.utils.dictupdate as dictupdate
+    import salt.utils.verify as salt_verify
+    import salt.utils.yaml as yamlserialize
+    _default_options = {
+        'root_dir': root_dir.strpath,
+        'interface': '127.0.0.1',
+        'master': '127.0.0.1',
+        'master_port': return_port,
+        'tcp_pub_port': tcp_pub_port,
+        'tcp_pull_port': tcp_pull_port,
+        'id': proxy_id,
+        'pidfile': 'run/proxy.pid',
+        'pki_dir': 'pki',
+        'cachedir': 'cache',
+        'sock_dir': '.salt-unix',
+        'log_file': 'logs/proxy.log',
+        'log_level_logfile': 'debug',
+        'loop_interval': 0.05,
+        'open_mode': True,
+        'user': running_username,
+        'log_fmt_console': "[%(levelname)-8s][%(name)-5s:%(lineno)-4d] %(message)s",
+        'log_fmt_logfile': "[%(asctime)s,%(msecs)03.0f][%(name)-5s:%(lineno)-4d][%(levelname)-8s] %(message)s",
+        'hash_type': 'sha256',
+        'add_proxymodule_to_opts': False,
+        'proxy': {'proxytype': 'dummy'}
+    }
+    for varname in ('sock_dir',):
+        # These are settings which are tested against and provided by Salt's test suite, so,
+        # let's not override them if provided
+        if varname in default_options:
+            _default_options.pop(varname)
+    # Merge in the initial default options with the internal _default_options
+    dictupdate.update(default_options, _default_options, merge_lists=True)
+
+    if config_overrides:
+        # Merge in the default options with the proxy_config_overrides
+        dictupdate.update(default_options, config_overrides, merge_lists=True)
+
+    if 'log_handlers_dirs' not in default_options:
+        default_options['log_handlers_dirs'] = []
+    default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
+
+    default_options['pytest_log_host'] = 'localhost'
+    default_options['pytest_log_port'] = log_server_port
+    default_options['pytest_log_level'] = log_server_level
+    default_options['pytest_log_prefix'] = proxy_log_prefix
+
+    if direct_overrides is not None:
+        # We've been passed some direct override configuration.
+        # Apply it!
+        dictupdate.update(default_options, direct_overrides, merge_lists=True)
+
+    log.info('Writing to configuration file %s. Configuration:\n%s',
+             config_file,
+             pprint.pformat(default_options))
+
+    # Write down the computed configuration into the config file
+    with compat.fopen(config_file, 'w') as wfh:
+        yamlserialize.safe_dump(default_options, wfh, default_flow_style=False)
+
+    # Make sure to load the config file as a salt-master starting from CLI
+    options = salt.config.proxy_config(config_file)
+
+    # verify env to make sure all required directories are created and have the
+    # right permissions
+    verify_env_entries = [
+        os.path.dirname(options['log_file']),
+        options['sock_dir'],
+    ]
+    try:
+        # Salt > v2017.7.x
+        salt_verify.verify_env(  # pylint: disable=unexpected-keyword-arg
+            verify_env_entries,
+            running_username,
+            sensitive_dirs=[options['pki_dir']]
+        )
+    except TypeError:
+        # Salt <= v2017.7.x
+        salt_verify.verify_env(
+            verify_env_entries,
+            running_username,
+            pki_dir=options['pki_dir']
+        )
+    return options
+
+
 @pytest.fixture
 def minion_default_options():
     return {}
@@ -1173,14 +1323,12 @@ def minion_default_options():
 def minion_config(root_dir,
                   minion_config_file,
                   master_return_port,
-                  minion_engine_port,
                   minion_default_options,
                   minion_config_overrides,
                   minion_id,
                   running_username,
                   log_server_port,
                   log_server_level,
-                  engines_dir,
                   log_handlers_dir,
                   minion_log_prefix,
                   minion_tcp_pub_port,
@@ -1193,13 +1341,11 @@ def minion_config(root_dir,
                                root_dir,
                                minion_config_file,
                                master_return_port,
-                               minion_engine_port,
                                minion_config_overrides,
                                minion_id,
                                running_username,
                                log_server_port,
                                log_server_level,
-                               engines_dir,
                                log_handlers_dir,
                                minion_log_prefix,
                                minion_tcp_pub_port,
@@ -1215,14 +1361,12 @@ def session_minion_default_options():
 def session_minion_config(session_root_dir,
                           session_minion_config_file,
                           session_master_return_port,
-                          session_minion_engine_port,
                           session_minion_default_options,
                           session_minion_config_overrides,
                           session_minion_id,
                           running_username,
                           log_server_port,
                           log_server_level,
-                          engines_dir,
                           log_handlers_dir,
                           session_minion_log_prefix,
                           session_minion_tcp_pub_port,
@@ -1235,13 +1379,11 @@ def session_minion_config(session_root_dir,
                                session_root_dir,
                                session_minion_config_file,
                                session_master_return_port,
-                               session_minion_engine_port,
                                session_minion_config_overrides,
                                session_minion_id,
                                running_username,
                                log_server_port,
                                log_server_level,
-                               engines_dir,
                                log_handlers_dir,
                                session_minion_log_prefix,
                                session_minion_tcp_pub_port,
@@ -1257,14 +1399,12 @@ def secondary_minion_default_options():
 def secondary_minion_config(secondary_root_dir,
                             secondary_minion_config_file,
                             master_return_port,
-                            secondary_minion_engine_port,
                             secondary_minion_default_options,
                             secondary_minion_config_overrides,
                             secondary_minion_id,
                             running_username,
                             log_server_port,
                             log_server_level,
-                            engines_dir,
                             log_handlers_dir,
                             secondary_minion_log_prefix,
                             secondary_minion_tcp_pub_port,
@@ -1277,13 +1417,11 @@ def secondary_minion_config(secondary_root_dir,
                                secondary_root_dir,
                                secondary_minion_config_file,
                                master_return_port,
-                               secondary_minion_engine_port,
                                secondary_minion_config_overrides,
                                secondary_minion_id,
                                running_username,
                                log_server_port,
                                log_server_level,
-                               engines_dir,
                                log_handlers_dir,
                                secondary_minion_log_prefix,
                                secondary_minion_tcp_pub_port,
@@ -1299,14 +1437,12 @@ def session_secondary_minion_default_options():
 def session_secondary_minion_config(session_secondary_root_dir,
                                     session_secondary_minion_config_file,
                                     session_master_return_port,
-                                    session_secondary_minion_engine_port,
                                     session_secondary_minion_default_options,
                                     session_secondary_minion_config_overrides,
                                     session_secondary_minion_id,
                                     running_username,
                                     log_server_port,
                                     log_server_level,
-                                    engines_dir,
                                     log_handlers_dir,
                                     session_secondary_minion_log_prefix,
                                     session_secondary_minion_tcp_pub_port,
@@ -1319,13 +1455,11 @@ def session_secondary_minion_config(session_secondary_root_dir,
                                session_secondary_root_dir,
                                session_secondary_minion_config_file,
                                session_master_return_port,
-                               session_secondary_minion_engine_port,
                                session_secondary_minion_config_overrides,
                                session_secondary_minion_id,
                                running_username,
                                log_server_port,
                                log_server_level,
-                               engines_dir,
                                log_handlers_dir,
                                session_secondary_minion_log_prefix,
                                session_secondary_minion_tcp_pub_port,
@@ -1335,14 +1469,12 @@ def session_secondary_minion_config(session_secondary_root_dir,
 def apply_syndic_config(syndic_default_options,
                         master_config_file,
                         syndic_conf_dir,
-                        syndic_engine_port,
                         syndic_config_overrides,
                         running_username,
                         log_server_port,
                         log_server_level,
                         syndic_log_prefix,
                         syndic_id,
-                        engines_dir,
                         log_handlers_dir,
                         root_dir):
     '''
@@ -1353,7 +1485,6 @@ def apply_syndic_config(syndic_default_options,
     import salt.config
     import salt.utils
     import salt.utils.dictupdate as dictupdate
-    import salt.utils.verify as salt_verify
     import salt.utils.yaml as yamlserialize
 
     with compat.fopen(master_config_file) as rfh:
@@ -1376,8 +1507,8 @@ def apply_syndic_config(syndic_default_options,
 
     # Write down the master computed configuration into the config file
     log.info('Writing to configuration file %s. Configuration:\n%s',
-              syndic_master_config_file,
-              pprint.pformat(master_config))
+             syndic_master_config_file,
+             pprint.pformat(master_config))
     with compat.fopen(syndic_master_config_file, 'w') as wfh:
         yamlserialize.safe_dump(master_config, wfh, default_flow_style=False)
 
@@ -1391,13 +1522,11 @@ def apply_syndic_config(syndic_default_options,
                         root_dir,
                         syndic_config_file,
                         master_config['ret_port'],  # master_return_port
-                        syndic_engine_port,
                         syndic_config_overrides,
                         syndic_id,
                         running_username,
                         log_server_port,
                         log_server_level,
-                        engines_dir,
                         log_handlers_dir,
                         syndic_log_prefix,
                         None,  # minion_tcp_pub_port,
@@ -1416,7 +1545,6 @@ def syndic_default_options():
 def syndic_config(master_config,
                   master_config_file,
                   syndic_conf_dir,
-                  syndic_engine_port,
                   syndic_default_options,
                   syndic_config_overrides,
                   running_username,
@@ -1424,7 +1552,6 @@ def syndic_config(master_config,
                   log_server_level,
                   syndic_log_prefix,
                   syndic_id,
-                  engines_dir,
                   log_handlers_dir,
                   root_dir):
     '''
@@ -1434,14 +1561,12 @@ def syndic_config(master_config,
     return apply_syndic_config(syndic_default_options,
                                master_config_file,
                                syndic_conf_dir,
-                               syndic_engine_port,
                                syndic_config_overrides,
                                running_username,
                                log_server_port,
                                log_server_level,
                                syndic_log_prefix,
                                syndic_id,
-                               engines_dir,
                                log_handlers_dir,
                                root_dir)
 
@@ -1454,7 +1579,6 @@ def session_syndic_default_options():
 @pytest.fixture(scope='session')
 def session_syndic_config(session_master_config_file,
                           session_syndic_conf_dir,
-                          session_syndic_engine_port,
                           session_syndic_default_options,
                           session_syndic_config_overrides,
                           running_username,
@@ -1462,7 +1586,6 @@ def session_syndic_config(session_master_config_file,
                           log_server_level,
                           session_syndic_log_prefix,
                           session_syndic_id,
-                          engines_dir,
                           log_handlers_dir,
                           session_root_dir):
     '''
@@ -1472,16 +1595,90 @@ def session_syndic_config(session_master_config_file,
     return apply_syndic_config(session_syndic_default_options,
                                session_master_config_file,
                                session_syndic_conf_dir,
-                               session_syndic_engine_port,
                                session_syndic_config_overrides,
                                running_username,
                                log_server_port,
                                log_server_level,
                                session_syndic_log_prefix,
                                session_syndic_id,
-                               engines_dir,
                                log_handlers_dir,
                                session_root_dir)
+
+
+@pytest.fixture
+def proxy_default_options():
+    return {}
+
+
+@pytest.fixture
+def proxy_config(root_dir,
+                 proxy_config_file,
+                 master_return_port,
+                 proxy_default_options,
+                 proxy_config_overrides,
+                 proxy_id,
+                 running_username,
+                 log_server_port,
+                 log_server_level,
+                 log_handlers_dir,
+                 proxy_log_prefix,
+                 proxy_tcp_pub_port,
+                 proxy_tcp_pull_port):
+    '''
+    This fixture will return the salt proxy configuration options after being
+    overrided with any options passed from ``proxy_config_overrides``
+    '''
+    return apply_proxy_config(proxy_default_options,
+                              root_dir,
+                              proxy_config_file,
+                              master_return_port,
+                              proxy_config_overrides,
+                              proxy_id,
+                              running_username,
+                              log_server_port,
+                              log_server_level,
+                              log_handlers_dir,
+                              proxy_log_prefix,
+                              proxy_tcp_pub_port,
+                              proxy_tcp_pull_port)
+
+
+@pytest.fixture(scope='session')
+def session_proxy_default_options():
+    return {}
+
+
+@pytest.fixture(scope='session')
+def session_proxy_config(session_root_dir,
+                         session_proxy_config_file,
+                         session_master_return_port,
+                         session_proxy_default_options,
+                         session_proxy_config_overrides,
+                         session_proxy_id,
+                         running_username,
+                         log_server_port,
+                         log_server_level,
+                         log_handlers_dir,
+                         session_proxy_log_prefix,
+                         session_proxy_tcp_pub_port,
+                         session_proxy_tcp_pull_port):
+    '''
+    This fixture will return the session salt proxy configuration options after being
+    overrided with any options passed from ``session_proxy_config_overrides``
+    '''
+    return apply_proxy_config(session_proxy_default_options,
+                              session_root_dir,
+                              session_proxy_config_file,
+                              session_master_return_port,
+                              session_proxy_config_overrides,
+                              session_proxy_id,
+                              running_username,
+                              log_server_port,
+                              log_server_level,
+                              log_handlers_dir,
+                              session_proxy_log_prefix,
+                              session_proxy_tcp_pub_port,
+                              session_proxy_tcp_pull_port)
 
 
 @pytest.fixture

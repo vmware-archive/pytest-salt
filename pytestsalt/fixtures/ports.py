@@ -273,6 +273,38 @@ def session_minion_tcp_pull_port():
 
 
 @pytest.fixture
+def proxy_tcp_pub_port():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_proxy_tcp_pub_port():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def proxy_tcp_pull_port():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_proxy_tcp_pull_port():
+    '''
+    Returns an unused localhost port
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
 def minion_engine_port():
     '''
     Returns an unused localhost port for the pytest salt minion engine
@@ -332,6 +364,22 @@ def secondary_minion_engine_port():
 def session_secondary_minion_engine_port():
     '''
     Returns an unused localhost port for the pytest session salt secondary minion engine
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture
+def proxy_engine_port():
+    '''
+    Returns an unused localhost port for the pytest salt proxy engine
+    '''
+    return get_unused_localhost_port()
+
+
+@pytest.fixture(scope='session')
+def session_proxy_engine_port():
+    '''
+    Returns an unused localhost port for the pytest session salt proxy engine
     '''
     return get_unused_localhost_port()
 
