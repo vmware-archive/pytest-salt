@@ -50,9 +50,8 @@ def log_server_level(request):
 
 @pytest.fixture(scope='session')
 def log_server(salt_log_port):
-    log.warning('Starting log server')
+    log.info('Starting log server')
     salt_log_server(salt_log_port)
-
-    log.warning('Log Server Started')
+    log.info('Log Server Started')
     # Run tests
     yield
