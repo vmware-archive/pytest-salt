@@ -9,6 +9,7 @@
 # Import Python libs
 from __future__ import absolute_import, print_function, unicode_literals
 import os
+import sys
 from collections import OrderedDict
 
 # Import 3rd-party libs
@@ -17,6 +18,8 @@ import psutil
 # Import pytest libs
 import pytest
 from _pytest.terminal import TerminalReporter
+
+IS_WINDOWS = sys.platform.startswith('win')
 
 
 class SaltTerminalReporter(TerminalReporter):
@@ -38,9 +41,13 @@ class SaltTerminalReporter(TerminalReporter):
             return
 
         if self.verbosity > 1:
+            # Late Import
             self.ensure_newline()
             self.section('Processes Statistics', sep='-', bold=True)
-            template = ' {}  -  CPU: {:6.2f} %   MEM: {:6.2f} %   SWAP: {:6.2f} %\n'
+            template = ' {}  -  CPU: {:6.2f} %   MEM: {:6.2f} %'
+            if not IS_WINDOWS:
+                template += '   SWAP: {:6.2f} %'
+            template += '\n'
             self.write(
                 template.format(
                     '            System',
@@ -53,8 +60,12 @@ class SaltTerminalReporter(TerminalReporter):
                 with psproc.oneshot():
                     cpu = psproc.cpu_percent()
                     mem = psproc.memory_percent('vms')
-                    swap = psproc.memory_percent('swap')
-                    self.write(template.format(name, cpu, mem, swap))
+                    if not IS_WINDOWS:
+                        swap = psproc.memory_percent('swap')
+                        formatted = template.format(name, cpu, mem, swap)
+                    else:
+                        formatted = template.format(name, cpu, mem)
+                    self.write(formatted)
 
     def _get_progress_information_message(self):
         msg = TerminalReporter._get_progress_information_message(self)
