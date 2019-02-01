@@ -54,7 +54,7 @@ def log_server_tornado(log_server_port):
 
     def process_logs(port):
         server = LogServer()
-        server.listen(port, address='localhost')
+        server.listen(port, address='127.0.0.1')
         try:
             IOLoop.current().start()
         except KeyboardInterrupt:
