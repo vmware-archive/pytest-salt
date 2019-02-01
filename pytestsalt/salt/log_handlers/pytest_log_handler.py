@@ -71,7 +71,7 @@ def setup_handlers():
     # can't process fast enough of in case it can't deliver the log records at all.
     queue_size = 10000000
     queue = Queue(queue_size)
-    handler = salt.log.setup.QueueHandler(queue)
+    handler = salt.log.setup.SaltLogQueueHandler(queue)
     level = salt.log.setup.LOG_LEVELS[(__opts__.get('pytest_log_level') or 'error').lower()]
     handler.setLevel(level)
     pytest_log_prefix = os.environ.get('PYTEST_LOG_PREFIX') or __opts__['pytest_log_prefix']
