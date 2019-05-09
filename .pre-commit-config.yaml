@@ -1,4 +1,5 @@
 ---
+minimum_pre_commit_version: 1.15.2
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.1.0
@@ -12,7 +13,7 @@ repos:
     - id: check-merge-conflict  # Check for files that contain merge conflict strings.
     - id: check-ast             # Simply check whether files parse as valid python.
 - repo: https://github.com/pre-commit/mirrors-pylint
-  rev: v2.2.2
+  rev: v2.3.1
   hooks:
     - id: pylint
       name: PyLint
