@@ -25,6 +25,12 @@ try:
 except ImportError:
     import salt.utils
     to_unicode = salt.utils.to_unicode
+try:
+    import salt.utils.platforms
+    is_darwin = salt.utils.platforms.is_darwin
+except ImportError:
+    import salt.utils
+    is_darwin = salt.utils.is_darwin
 
 __virtualname__ = 'pytest_log_handler'
 
@@ -65,11 +71,16 @@ def setup_handlers():
     finally:
         sock.close()
 
-    # One million log messages is more than enough to queue.
-    # Above that value, if `process_queue` can't process fast enough,
-    # start dropping. This will contain a memory leak in case `process_queue`
-    # can't process fast enough of in case it can't deliver the log records at all.
-    queue_size = 10000000
+    if is_darwin():
+        # The maximum for the multiprocessing queue on MacOS is 32767, so if we running on MacOS
+        # then we use that maximum.
+        queue_size = 32767
+    else:
+        # One million log messages is more than enough to queue.
+        # Above that value, if `process_queue` can't process fast enough,
+        # start dropping. This will contain a memory leak in case `process_queue`
+        # can't process fast enough of in case it can't deliver the log records at all.
+        queue_size = 10000000
     queue = Queue(queue_size)
     handler = salt.log.setup.SaltLogQueueHandler(queue)
     level = salt.log.setup.LOG_LEVELS[(__opts__.get('pytest_log_level') or 'error').lower()]
