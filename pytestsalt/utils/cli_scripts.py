@@ -92,6 +92,7 @@ def generate_script(bin_dir,
                     executable,
                     code_dir,
                     extra_code=None,
+                    inject_coverage=False,
                     inject_sitecustomize=False):
     '''
     Generate script
@@ -145,7 +146,7 @@ def generate_script(bin_dir,
             if extra_code:
                 script_contents += '\n' + extra_code + '\n'
 
-            if 'COVERAGE_PROCESS_START' in os.environ:
+            if inject_coverage:
                 script_contents += '\n' + SCRIPT_TEMPLATES['coverage'] + '\n'
 
             if inject_sitecustomize:
