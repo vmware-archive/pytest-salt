@@ -19,6 +19,7 @@ import msgpack
 
 # Import Salt libs
 import salt.log.setup
+# pylint: disable=no-member,invalid-name
 try:
     import salt.utils.stringutils
     to_unicode = salt.utils.stringutils.to_unicode
@@ -26,11 +27,12 @@ except ImportError:
     import salt.utils
     to_unicode = salt.utils.to_unicode
 try:
-    import salt.utils.platforms
-    is_darwin = salt.utils.platforms.is_darwin
+    import salt.utils.platform
+    is_darwin = salt.utils.platform.is_darwin
 except ImportError:
     import salt.utils
     is_darwin = salt.utils.is_darwin
+# pylint: enable=no-member,invalid-name
 
 __virtualname__ = 'pytest_log_handler'
 
