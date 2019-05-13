@@ -1795,9 +1795,8 @@ def _write_sshd_config(sshd_config_dir, sshd_config_lines, ssh_client_key):
     '''
     This fixture will write the necessary configuration to run an SSHD server to be used in tests
     '''
-    import salt.utils
     import pytestsalt.utils.compat as compat
-    sshd = salt.utils.which('sshd')
+    sshd = compat.which('sshd')
 
     if not sshd:
         pytest.skip('"sshd" not found.')
@@ -1842,9 +1841,9 @@ def _generate_ssh_key(key_path, key_type='ecdsa', key_size=521):
     '''
     Generate an SSH key
     '''
-    import salt.utils
+    import pytestsalt.utils.compat as compat
     log.debug('Generating ssh key(type: %s; size: %d; path: %s;)', key_type, key_size, key_path)
-    keygen = salt.utils.which('ssh-keygen')
+    keygen = compat.which('ssh-keygen')
     if not keygen:
         pytest.skip('"ssh-keygen" not found')
 

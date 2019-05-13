@@ -15,3 +15,12 @@ except AttributeError:
     # Salt <= 2017.1.1
     # pylint: disable=invalid-name
     fopen = salt.utils.fopen
+
+try:
+    # Salt >= 2018.3.0
+    # pylint: disable=invalid-name
+    from salt.utils.path import which
+except ImportError:
+    # Salt < 2018.3.0
+    # pylint: disable=invalid-name
+    from salt.utils import which
