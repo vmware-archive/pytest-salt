@@ -1654,8 +1654,8 @@ class SSHD(SaltDaemonScriptBase):
         '''
         Returns the path to the script to run
         '''
-        import salt.utils
-        sshd = salt.utils.which(self.cli_script_name)
+        import pytestsalt.utils.compat as compat
+        sshd = compat.which(self.cli_script_name)
         if not sshd:
             pytest.skip('"sshd" not found')
         return sshd
