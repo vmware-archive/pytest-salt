@@ -41,16 +41,17 @@ class SaltTerminalReporter(TerminalReporter):
             return
 
         if self.verbosity > 1:
-            # Late Import
             self.ensure_newline()
             self.section('Processes Statistics', sep='-', bold=True)
-            template = ' {}  -  CPU: {:6.2f} %   MEM: {:6.2f} %'
+            left_padding = len(max(['System'] + list(self._session.stats_processes), key=len))
+            template = '  ...{}  {}  -  CPU: {:6.2f} %   MEM: {:6.2f} %'
             if not IS_WINDOWS:
                 template += '   SWAP: {:6.2f} %'
             template += '\n'
             self.write(
                 template.format(
-                    '            System',
+                    '.' * (left_padding - len('System')),
+                    'System',
                     psutil.cpu_percent(),
                     psutil.virtual_memory().percent,
                     psutil.swap_memory().percent
@@ -60,11 +61,12 @@ class SaltTerminalReporter(TerminalReporter):
                 with psproc.oneshot():
                     cpu = psproc.cpu_percent()
                     mem = psproc.memory_percent('vms')
+                    dots = '.' * (left_padding - len(name))
                     if not IS_WINDOWS:
                         swap = psproc.memory_percent('swap')
-                        formatted = template.format(name, cpu, mem, swap)
+                        formatted = template.format(dots, name, cpu, mem, swap)
                     else:
-                        formatted = template.format(name, cpu, mem)
+                        formatted = template.format(dots, name, cpu, mem)
                     self.write(formatted)
 
     def _get_progress_information_message(self):
@@ -82,7 +84,7 @@ class SaltTerminalReporter(TerminalReporter):
 
 def pytest_sessionstart(session):
     session.stats_processes = OrderedDict((
-        ('    Test Suite Run', psutil.Process(os.getpid())),
+        ('Test Suite Run', psutil.Process(os.getpid())),
     ))
 
 
