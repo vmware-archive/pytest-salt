@@ -26,13 +26,6 @@ if IS_WINDOWS:
 else:
     import pwd
 
-try:
-    import shutil
-    COLUMNS = shutil.get_terminal_size((80, 20)).columns
-except AttributeError:
-    from pytestsalt.ext.console import getTerminalSize
-    COLUMNS, _ = getTerminalSize()
-
 DEFAULT_MOM_ID = 'pytest-salt-mom'
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
