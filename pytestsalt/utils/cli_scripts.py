@@ -61,8 +61,8 @@ SCRIPT_TEMPLATES = {
         # Setup coverage environment variables
         COVERAGE_FILE = os.path.join(CODE_DIR, '.coverage')
         COVERAGE_PROCESS_START = os.path.join(CODE_DIR, '.coveragerc')
-        os.environ['COVERAGE_FILE'] = COVERAGE_FILE
-        os.environ['COVERAGE_PROCESS_START'] = COVERAGE_PROCESS_START
+        os.environ[str('COVERAGE_FILE')] = str(COVERAGE_FILE)
+        os.environ[str('COVERAGE_PROCESS_START')] = str(COVERAGE_PROCESS_START)
         '''
     ),
     'sitecustomize': textwrap.dedent(
@@ -78,7 +78,7 @@ SCRIPT_TEMPLATES = {
                 PYTHON_PATH_ENTRIES.remove(SITECUSTOMIZE_DIR)
             PYTHON_PATH_ENTRIES.insert(0, SITECUSTOMIZE_DIR)
             PYTHONPATH_ENV_VAR = os.pathsep.join(PYTHON_PATH_ENTRIES)
-        os.environ['PYTHONPATH'] = PYTHONPATH_ENV_VAR
+        os.environ[str('PYTHONPATH')] = str(PYTHONPATH_ENV_VAR)
         if SITECUSTOMIZE_DIR in sys.path:
             sys.path.remove(SITECUSTOMIZE_DIR)
         sys.path.insert(0, SITECUSTOMIZE_DIR)
