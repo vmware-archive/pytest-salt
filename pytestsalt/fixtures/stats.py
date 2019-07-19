@@ -70,8 +70,7 @@ class SaltTerminalReporter(TerminalReporter):
                             formatted = template.format(dots, name, cpu, mem)
                         self.write(formatted)
                 except psutil.NoSuchProcess:
-                    formatted = template.format(dots, 'DEAD', 'DEAD', 'DEAD', 'DEAD')
-                    self.write(formatted)
+                    continue
 
     def _get_progress_information_message(self):
         msg = TerminalReporter._get_progress_information_message(self)
