@@ -58,15 +58,19 @@ class SaltTerminalReporter(TerminalReporter):
                 )
             )
             for name, psproc in self._session.stats_processes.items():
-                with psproc.oneshot():
-                    cpu = psproc.cpu_percent()
-                    mem = psproc.memory_percent('vms')
-                    dots = '.' * (left_padding - len(name))
-                    if not IS_WINDOWS:
-                        swap = psproc.memory_percent('swap')
-                        formatted = template.format(dots, name, cpu, mem, swap)
-                    else:
-                        formatted = template.format(dots, name, cpu, mem)
+                dots = '.' * (left_padding - len(name))
+                try:
+                    with psproc.oneshot():
+                        cpu = psproc.cpu_percent()
+                        mem = psproc.memory_percent('vms')
+                        if not IS_WINDOWS:
+                            swap = psproc.memory_percent('swap')
+                            formatted = template.format(dots, name, cpu, mem, swap)
+                        else:
+                            formatted = template.format(dots, name, cpu, mem)
+                        self.write(formatted)
+                except psutil.NoSuchProcess:
+                    formatted = template.format(dots, 'DEAD', 'DEAD', 'DEAD', 'DEAD')
                     self.write(formatted)
 
     def _get_progress_information_message(self):
