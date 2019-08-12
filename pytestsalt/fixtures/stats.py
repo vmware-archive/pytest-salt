@@ -25,6 +25,9 @@ IS_WINDOWS = sys.platform.startswith('win')
 class SaltTerminalReporter(TerminalReporter):
     def __init__(self, config):
         TerminalReporter.__init__(self, config)
+        self._session = None
+        self._show_sys_stats = config.getoption('--sys-stats') is True
+        self._sys_stats_no_children = config.getoption('--sys-stats-no-children') is True
 
     @pytest.hookimpl(trylast=True)
     def pytest_sessionstart(self, session):
@@ -35,9 +38,11 @@ class SaltTerminalReporter(TerminalReporter):
         TerminalReporter.pytest_runtest_logreport(self, report)
         if self.verbosity <= 0:
             return
+
         if report.when != 'call':
             return
-        if self.config.getoption('--sys-stats') is False:
+
+        if self._show_sys_stats is False:
             return
 
         if self.verbosity > 1:
@@ -45,6 +50,8 @@ class SaltTerminalReporter(TerminalReporter):
             self.section('Processes Statistics', sep='-', bold=True)
             left_padding = len(max(['System'] + list(self._session.stats_processes), key=len))
             template = '  ...{}  {}  -  CPU: {:6.2f} %   MEM: {:6.2f} %'
+            if self._sys_stats_no_children is False:
+                template += '   MEM W/CHILDREN(--): ---.-- %'
             if not IS_WINDOWS:
                 template += '   SWAP: {:6.2f} %'
             template += '\n'
@@ -57,18 +64,41 @@ class SaltTerminalReporter(TerminalReporter):
                     psutil.swap_memory().percent
                 )
             )
+            template = '  ...{dots}  {name}  -  CPU: {cpu:6.2f} %   MEM: {mem:6.2f} %'
+            if self._sys_stats_no_children is False:
+                template += '   MEM W/CHILDREN({c_count: >2}): {c_mem} %'
+            if not IS_WINDOWS:
+                template += '   SWAP: {swap:6.2f} %'
+            template += '\n'
             for name, psproc in self._session.stats_processes.items():
                 dots = '.' * (left_padding - len(name))
                 try:
                     with psproc.oneshot():
-                        cpu = psproc.cpu_percent()
-                        mem = psproc.memory_percent('vms')
+                        stats = {
+                            'name': name,
+                            'dots': dots,
+                            'cpu': psproc.cpu_percent(),
+                            'mem': psproc.memory_percent('vms')
+                        }
+                        if self._sys_stats_no_children is False:
+                            children = psproc.children(True)
+                            if children:
+                                stats['c_count'] = 0
+                                c_mem = stats['mem']
+                                for child in children:
+                                    try:
+                                        with child.oneshot():
+                                            c_mem += psproc.memory_percent('vms')
+                                            stats['c_count'] += 1
+                                    except psutil.NoSuchProcess:
+                                        continue
+                                stats['c_mem'] = '{:6.2f}'.format(c_mem)
+                            else:
+                                stats['c_count'] = 0
+                                stats['c_mem'] = '---.--'
                         if not IS_WINDOWS:
-                            swap = psproc.memory_percent('swap')
-                            formatted = template.format(dots, name, cpu, mem, swap)
-                        else:
-                            formatted = template.format(dots, name, cpu, mem)
-                        self.write(formatted)
+                            stats['swap'] = psproc.memory_percent('swap')
+                        self.write(template.format(**stats))
                 except psutil.NoSuchProcess:
                     continue
 
@@ -101,6 +131,12 @@ def pytest_addoption(parser):
         default=False,
         action='store_true',
         help='Print System CPU and MEM statistics after each test execution.'
+    )
+    output_options_group.addoption(
+        '--sys-stats-no-children',
+        default=False,
+        action='store_true',
+        help='Don\'t include child processes memory statistics.'
     )
 
 
