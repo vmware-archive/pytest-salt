@@ -10,6 +10,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import os
 import sys
+import logging
 from collections import OrderedDict
 
 # Import 3rd-party libs
@@ -18,6 +19,8 @@ import psutil
 # Import pytest libs
 import pytest
 from _pytest.terminal import TerminalReporter
+
+log = logging.getLogger(__name__)
 
 IS_WINDOWS = sys.platform.startswith('win')
 
@@ -28,6 +31,10 @@ class SaltTerminalReporter(TerminalReporter):
         self._session = None
         self._show_sys_stats = config.getoption('--sys-stats') is True
         self._sys_stats_no_children = config.getoption('--sys-stats-no-children') is True
+        if config.getoption('--sys-stats-uss-mem') is True:
+            self._sys_stats_mem_type = 'uss'
+        else:
+            self._sys_stats_mem_type = 'rss'
 
     @pytest.hookimpl(trylast=True)
     def pytest_sessionstart(self, session):
@@ -76,23 +83,30 @@ class SaltTerminalReporter(TerminalReporter):
             for name, psproc in self._session.stats_processes.items():
                 template = no_children_template
                 dots = '.' * (left_padding - len(name))
+                pids = []
                 try:
                     with psproc.oneshot():
                         stats = {
                             'name': name,
                             'dots': dots,
                             'cpu': psproc.cpu_percent(),
-                            'mem': psproc.memory_percent('vms')
+                            'mem': psproc.memory_percent(self._sys_stats_mem_type)
                         }
                         if self._sys_stats_no_children is False:
+                            pids.append(psproc.pid)
                             children = psproc.children(recursive=True)
                             if children:
                                 template = children_template
                                 stats['c_count'] = 0
                                 c_mem = stats['mem']
                                 for child in children:
+                                    if child.pid in pids:
+                                        continue
+                                    pids.append(child.pid)
+                                    if not psutil.pid_exists(child.pid):
+                                        continue
                                     try:
-                                        c_mem += child.memory_percent('vms')
+                                        c_mem += child.memory_percent(self._sys_stats_mem_type)
                                         stats['c_count'] += 1
                                     except psutil.NoSuchProcess:
                                         continue
@@ -141,6 +155,13 @@ def pytest_addoption(parser):
         default=False,
         action='store_true',
         help='Don\'t include child processes memory statistics.'
+    )
+    output_options_group.addoption(
+        '--sys-stats-uss-mem',
+        default=False,
+        action='store_true',
+        help='Use the USS("Unique Set Size", memory unique to a process which would be freed if the process was '
+             'terminated) memory instead which is more expensive to calculate.'
     )
 
 
