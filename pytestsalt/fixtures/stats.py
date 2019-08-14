@@ -10,7 +10,6 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import os
 import sys
-import logging
 from collections import OrderedDict
 
 # Import 3rd-party libs
@@ -19,8 +18,6 @@ import psutil
 # Import pytest libs
 import pytest
 from _pytest.terminal import TerminalReporter
-
-log = logging.getLogger(__name__)
 
 IS_WINDOWS = sys.platform.startswith('win')
 
@@ -61,7 +58,7 @@ class SaltTerminalReporter(TerminalReporter):
                 template += '  SWAP: {swap:6.2f} %   CPU: {cpu:6.2f} %'
             else:
                 template += '  CPU: {cpu:6.2f} %'
-            template += '   MEM: {mem:6.2f} %\n'
+            template += '   MEM: {mem:6.2f} (Virtual Memory) %\n'
             stats = {
                 'name': 'System',
                 'dots': '.' * (left_padding - len('System')),
@@ -77,8 +74,9 @@ class SaltTerminalReporter(TerminalReporter):
                 template += '  SWAP: {swap:6.2f} %   CPU: {cpu:6.2f} %'
             else:
                 template += '  CPU: {cpu:6.2f} %'
-            children_template = template + '   MEM: {mem:6.2f} %   MEM SUM: {c_mem} %   CHILD PROCS: {c_count}\n'
-            no_children_template = template + '   MEM: {mem:6.2f} %\n'
+            template += '   MEM: {mem:6.2f} % {m_type}'
+            children_template = template + '   MEM SUM: {c_mem} % {m_type}   CHILD PROCS: {c_count}\n'
+            no_children_template = template + '\n'
 
             for name, psproc in self._session.stats_processes.items():
                 template = no_children_template
@@ -90,7 +88,8 @@ class SaltTerminalReporter(TerminalReporter):
                             'name': name,
                             'dots': dots,
                             'cpu': psproc.cpu_percent(),
-                            'mem': psproc.memory_percent(self._sys_stats_mem_type)
+                            'mem': psproc.memory_percent(self._sys_stats_mem_type),
+                            'm_type': self._sys_stats_mem_type.upper()
                         }
                         if self._sys_stats_no_children is False:
                             pids.append(psproc.pid)
