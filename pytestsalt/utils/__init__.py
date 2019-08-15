@@ -919,7 +919,7 @@ class EventListener:
                 events_to_match.remove(tag)
 
             events_processed += 1
-            if tme.time() - last_log > log_freq:
+            if time.time() - last_log > log_freq:
                 log.info('%s Events processed so far: %d',
                          self.log_prefix,
                          events_processed)
