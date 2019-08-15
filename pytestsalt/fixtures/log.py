@@ -9,16 +9,17 @@ from external process to log them in the current process
 
 # Import python libs
 from __future__ import absolute_import, print_function, unicode_literals
-import sys
+#import sys
 import logging
 
 # Import pytest libs
 import pytest
 
-if sys.version_info > (3, 5):
-    from pytestsalt.utils.log_server_asyncio import log_server_asyncio as salt_log_server
-else:
-    from pytestsalt.utils.log_server_tornado import log_server_tornado as salt_log_server
+#if sys.version_info > (3, 5):
+#    from pytestsalt.utils.log_server_asyncio import log_server_asyncio as salt_log_server
+#else:
+#    from pytestsalt.utils.log_server_tornado import log_server_tornado as salt_log_server
+from pytestsalt.utils.log_server_tornado import log_server_tornado as salt_log_server
 
 
 log = logging.getLogger(__name__)

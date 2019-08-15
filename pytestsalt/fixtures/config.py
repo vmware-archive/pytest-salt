@@ -26,13 +26,6 @@ if IS_WINDOWS:
 else:
     import pwd
 
-try:
-    import shutil
-    COLUMNS = shutil.get_terminal_size((80, 20)).columns
-except AttributeError:
-    from pytestsalt.ext.console import getTerminalSize
-    COLUMNS, _ = getTerminalSize()
-
 DEFAULT_MOM_ID = 'pytest-salt-mom'
 DEFAULT_MASTER_ID = 'pytest-salt-master'
 DEFAULT_MINION_ID = 'pytest-salt-minion'
@@ -807,9 +800,9 @@ def apply_master_config(default_options,
         # Apply it!
         dictupdate.update(default_options, direct_overrides, merge_lists=True)
 
-    log.info('Writing to configuration file %s. Configuration:\n%s',
-             config_file,
-             pprint.pformat(default_options))
+    log.debug('Writing to configuration file %s. Configuration:\n%s',
+              config_file,
+              pprint.pformat(default_options))
 
     # Write down the computed configuration into the config file
     with compat.fopen(config_file, 'w') as wfh:
@@ -1165,9 +1158,9 @@ def apply_minion_config(default_options,
         # Apply it!
         dictupdate.update(default_options, direct_overrides, merge_lists=True)
 
-    log.info('Writing to configuration file %s. Configuration:\n%s',
-             config_file,
-             pprint.pformat(default_options))
+    log.debug('Writing to configuration file %s. Configuration:\n%s',
+              config_file,
+              pprint.pformat(default_options))
 
     # Write down the computed configuration into the config file
     with compat.fopen(config_file, 'w') as wfh:
@@ -1280,9 +1273,9 @@ def apply_proxy_config(default_options,
         # Apply it!
         dictupdate.update(default_options, direct_overrides, merge_lists=True)
 
-    log.info('Writing to configuration file %s. Configuration:\n%s',
-             config_file,
-             pprint.pformat(default_options))
+    log.debug('Writing to configuration file %s. Configuration:\n%s',
+              config_file,
+              pprint.pformat(default_options))
 
     # Write down the computed configuration into the config file
     with compat.fopen(config_file, 'w') as wfh:
@@ -1506,9 +1499,9 @@ def apply_syndic_config(syndic_default_options,
     syndic_master_config_file = syndic_conf_dir.join('master').realpath().strpath
 
     # Write down the master computed configuration into the config file
-    log.info('Writing to configuration file %s. Configuration:\n%s',
-             syndic_master_config_file,
-             pprint.pformat(master_config))
+    log.debug('Writing to configuration file %s. Configuration:\n%s',
+              syndic_master_config_file,
+              pprint.pformat(master_config))
     with compat.fopen(syndic_master_config_file, 'w') as wfh:
         yamlserialize.safe_dump(master_config, wfh, default_flow_style=False)
 
