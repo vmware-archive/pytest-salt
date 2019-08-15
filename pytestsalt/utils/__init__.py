@@ -783,6 +783,8 @@ class SaltRunEventListener(SaltCliScriptBase):
 
         process_output = six.b('')
         events_processed = 0
+        last_log = 0
+        log_freq = 10
         try:
             while True:
                 time.sleep(0.5)
@@ -827,10 +829,12 @@ class SaltRunEventListener(SaltCliScriptBase):
                                 matched_events[tag] = json.loads(data + '}')
                                 to_match_events.remove(tag)
 
-                    log.info('[%s][%s] Events processed so far: %d',
-                             self.log_prefix,
-                             self.cli_display_name,
-                             events_processed)
+                    if time.time() - last_log > log_freq:
+                        log.info('[%s][%s] Events processed so far: %d',
+                                 self.log_prefix,
+                                 self.cli_display_name,
+                                 events_processed)
+                        last_log = time.time()
 
                 if not to_match_events:
                     log.debug('[%s][%s] ALL EVENT TAGS FOUND!!!', self.log_prefix, self.cli_display_name)
@@ -888,6 +892,8 @@ class EventListener:
         events_to_match = set(check_events)
         events_processed = 0
         max_timeout = time.time() + timeout
+        last_log = 0
+        log_freq = 10
         while True:
             if not events_to_match:
                 log.info('%s ALL EVENT TAGS FOUND!!!', self.log_prefix)
@@ -913,9 +919,11 @@ class EventListener:
                 events_to_match.remove(tag)
 
             events_processed += 1
-            log.info('%s Events processed so far: %d',
-                     self.log_prefix,
-                     events_processed)
+            if tme.time() - last_log > log_freq:
+                log.info('%s Events processed so far: %d',
+                         self.log_prefix,
+                         events_processed)
+                last_log = time.time()
 
     def terminate(self):
         listener = self.listener
