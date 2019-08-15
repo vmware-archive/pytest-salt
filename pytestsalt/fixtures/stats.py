@@ -74,8 +74,8 @@ class SaltTerminalReporter(TerminalReporter):
                 template += '  SWAP: {swap:6.2f} %   CPU: {cpu:6.2f} %'
             else:
                 template += '  CPU: {cpu:6.2f} %'
-            template += '   MEM: {mem:6.2f} % {m_type}'
-            children_template = template + '   MEM SUM: {c_mem} % {m_type}   CHILD PROCS: {c_count}\n'
+            template += '   MEM: {mem:6.2f} % ({m_type})'
+            children_template = template + '   MEM SUM: {c_mem} % ({m_type})   CHILD PROCS: {c_count}\n'
             no_children_template = template + '\n'
 
             for name, psproc in self._session.stats_processes.items():
