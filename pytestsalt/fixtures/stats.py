@@ -58,7 +58,7 @@ class SaltTerminalReporter(TerminalReporter):
                 template += '  SWAP: {swap:6.2f} %   CPU: {cpu:6.2f} %'
             else:
                 template += '  CPU: {cpu:6.2f} %'
-            template += '   MEM: {mem:6.2f} (Virtual Memory) %\n'
+            template += '   MEM: {mem:6.2f} % (Virtual Memory)\n'
             stats = {
                 'name': 'System',
                 'dots': '.' * (left_padding - len('System')),
