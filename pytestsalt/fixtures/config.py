@@ -783,12 +783,16 @@ def apply_master_config(default_options,
     if 'engines_dirs' not in default_options:
         default_options['engines_dirs'] = []
 
-    default_options['engines_dirs'].insert(0, engines_dir)
+    if engines_dir not in default_options['engines']:
+        default_options['engines_dirs'].insert(0, engines_dir)
+
     default_options['pytest_engine_port'] = engine_port
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
-    default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
+
+    if log_handlers_dir not in default_options['log_handlers_dirs']:
+        default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
 
     default_options['pytest_log_host'] = 'localhost'
     default_options['pytest_log_port'] = log_server_port
@@ -1146,7 +1150,9 @@ def apply_minion_config(default_options,
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
-    default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
+
+    if log_handlers_dir not in default_options['log_handlers_dirs']:
+        default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
 
     default_options['pytest_log_host'] = 'localhost'
     default_options['pytest_log_port'] = log_server_port
@@ -1261,7 +1267,9 @@ def apply_proxy_config(default_options,
 
     if 'log_handlers_dirs' not in default_options:
         default_options['log_handlers_dirs'] = []
-    default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
+
+    if log_handlers_dir not in default_options['log_handlers_dirs']:
+        default_options['log_handlers_dirs'].insert(0, log_handlers_dir)
 
     default_options['pytest_log_host'] = 'localhost'
     default_options['pytest_log_port'] = log_server_port
