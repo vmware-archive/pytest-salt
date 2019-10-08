@@ -34,12 +34,6 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-if sys.platform.startswith('win'):
-    SIGINT = SIGTERM = signal.CTRL_BREAK_EVENT  # pylint: disable=no-member
-else:
-    SIGINT = signal.SIGINT
-    SIGTERM = signal.SIGTERM
-
 
 def set_proc_title(title):
     if HAS_SETPROCTITLE is False:
@@ -95,7 +89,7 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
                 try:
                     if slow_stop:
                         # Allow coverage data to be written down to disk
-                        process.send_signal(SIGTERM)
+                        process.send_signal(signal.SIGTERM)
                         try:
                             process.wait(2)
                         except psutil.TimeoutExpired:
