@@ -18,7 +18,6 @@ from multiprocessing import Queue
 import msgpack
 
 # Import Salt libs
-import salt.log.setup
 # pylint: disable=no-member,invalid-name
 try:
     import salt.utils.stringutils
@@ -40,6 +39,9 @@ log = logging.getLogger(__name__)
 
 
 def __virtual__():
+    if 'log_forwarding_consumer' in __opts__:
+        # New Salt Logging in place. This handler is not needed
+        return
     if 'pytest_log_port' not in __opts__:
         return False, "'pytest_log_port' not in options"
     return True
@@ -83,9 +85,12 @@ def setup_handlers():
         # start dropping. This will contain a memory leak in case `process_queue`
         # can't process fast enough of in case it can't deliver the log records at all.
         queue_size = 10000000
+
+    # Late Imports Because of Salt's logging refactoring
+    from salt.log.setup import SaltLogQueueHandler, LOG_LEVELS
     queue = Queue(queue_size)
-    handler = salt.log.setup.SaltLogQueueHandler(queue)
-    level = salt.log.setup.LOG_LEVELS[(__opts__.get('pytest_log_level') or 'error').lower()]
+    handler = SaltLogQueueHandler(queue)
+    level = LOG_LEVELS[(__opts__.get('pytest_log_level') or 'error').lower()]
     handler.setLevel(level)
     pytest_log_prefix = os.environ.get('PYTEST_LOG_PREFIX') or __opts__['pytest_log_prefix']
     process_queue_thread = threading.Thread(target=process_queue,
