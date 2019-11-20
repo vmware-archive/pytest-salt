@@ -53,18 +53,21 @@ class SaltTerminalReporter(TerminalReporter):
             self.ensure_newline()
             self.section('Processes Statistics', sep='-', bold=True)
             left_padding = len(max(['System'] + list(self._session.stats_processes), key=len))
-            template = '  ...{dots}  {name}  -  CPU: {cpu:6.2f} %'
-            if not IS_WINDOWS:
-                template += '  SWAP: {swap:6.2f} %'
-            template += '   MEM: {mem:6.2f} % (Virtual Memory)\n'
+            template = '  ...{dots}  {name}  -  CPU: {cpu:6.2f} %   MEM: {mem:6.2f} % (Virtual Memory)'
+
             stats = {
                 'name': 'System',
                 'dots': '.' * (left_padding - len('System')),
                 'cpu': psutil.cpu_percent(),
                 'mem': psutil.virtual_memory().percent
             }
-            if not IS_WINDOWS:
-                stats['swap'] = psutil.swap_memory().percent
+
+            swap = psutil.swap_memory().percent
+            if swap > 0:
+                template += '  SWAP: {swap:6.2f} %'
+                stats['swap'] = swap
+
+            template += '\n'
             self.write(template.format(**stats))
 
             template = '  ...{dots}  {name}  -  CPU: {cpu:6.2f} %   MEM: {mem:6.2f} % ({m_type})'
