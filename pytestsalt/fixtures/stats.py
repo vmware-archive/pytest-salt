@@ -53,11 +53,9 @@ class SaltTerminalReporter(TerminalReporter):
             self.ensure_newline()
             self.section('Processes Statistics', sep='-', bold=True)
             left_padding = len(max(['System'] + list(self._session.stats_processes), key=len))
-            template = '  ...{dots}  {name}  -'
+            template = '  ...{dots}  {name}  -  CPU: {cpu:6.2f} %'
             if not IS_WINDOWS:
-                template += '  SWAP: {swap:6.2f} %   CPU: {cpu:6.2f} %'
-            else:
-                template += '  CPU: {cpu:6.2f} %'
+                template += '  SWAP: {swap:6.2f} %'
             template += '   MEM: {mem:6.2f} % (Virtual Memory)\n'
             stats = {
                 'name': 'System',
@@ -69,12 +67,7 @@ class SaltTerminalReporter(TerminalReporter):
                 stats['swap'] = psutil.swap_memory().percent
             self.write(template.format(**stats))
 
-            template = '  ...{dots}  {name}  -'
-            if not IS_WINDOWS:
-                template += '  SWAP: {swap:6.2f} %   CPU: {cpu:6.2f} %'
-            else:
-                template += '  CPU: {cpu:6.2f} %'
-            template += '   MEM: {mem:6.2f} % ({m_type})'
+            template = '  ...{dots}  {name}  -  CPU: {cpu:6.2f} %   MEM: {mem:6.2f} % ({m_type})'
             children_template = template + '   MEM SUM: {c_mem} % ({m_type})   CHILD PROCS: {c_count}\n'
             no_children_template = template + '\n'
 
@@ -113,8 +106,6 @@ class SaltTerminalReporter(TerminalReporter):
                                     stats['c_mem'] = '{:6.2f}'.format(c_mem)
                                 else:
                                     template = no_children_template
-                        if not IS_WINDOWS:
-                            stats['swap'] = psproc.memory_percent('swap')
                         self.write(template.format(**stats))
                 except psutil.NoSuchProcess:
                     continue
