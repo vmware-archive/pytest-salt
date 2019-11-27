@@ -103,7 +103,7 @@ class SaltTerminalReporter(TerminalReporter):
                                     try:
                                         c_mem += child.memory_percent(self._sys_stats_mem_type)
                                         stats['c_count'] += 1
-                                    except psutil.NoSuchProcess:
+                                    except (psutil.AccessDenied, psutil.NoSuchProcess):
                                         continue
                                 if stats['c_count']:
                                     stats['c_mem'] = '{:6.2f}'.format(c_mem)
