@@ -41,7 +41,7 @@ log = logging.getLogger(__name__)
 def __virtual__():
     if 'log_forwarding_consumer' in __opts__:
         # New Salt Logging in place. This handler is not needed
-        return
+        return False, "New Salt Logging in place. Not loading."
     if 'pytest_log_port' not in __opts__:
         return False, "'pytest_log_port' not in options"
     return True
