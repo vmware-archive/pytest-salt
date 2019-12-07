@@ -111,7 +111,7 @@ def process_queue(host, port, prefix, queue):
         sock.close()
         return
 
-    log.warning('Sending log records to Remote log server')
+    log.debug('Sending log records to Remote log server')
     while True:
         try:
             record = queue.get()
