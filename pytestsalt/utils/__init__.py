@@ -254,12 +254,11 @@ def start_daemon(request,
                 log.info('[%s] pytest %s(%s) stopped', daemon_log_prefix, daemon_name, daemon_id)
 
             request.addfinalizer(stop_daemon)
-            return process
+            break
         else:
             terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
             continue
-    else:   # pylint: disable=useless-else-on-loop
-            # Wrong, we have a return, its not useless
+    else:
         if process is not None:
             terminate_process(process.pid, kill_children=True, slow_stop=slow_stop)
         fail_method(
@@ -269,6 +268,7 @@ def start_daemon(request,
                 attempts-1
             )
         )
+    return process
 
 
 class SaltScriptBase(object):
@@ -478,7 +478,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         expire = time.time() + timeout
         check_ports = self.get_check_ports()
         if check_ports:
-            log.debug(
+            log.info(
                 '[%s][%s] Checking the following ports to assure running status: %s',
                 self.log_prefix,
                 self.cli_display_name,
@@ -486,7 +486,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
             )
         check_events = self.get_check_events()
         if check_events:
-            log.debug(
+            log.info(
                 '[%s][%s] Checking the following event tags to assure running status: %s',
                 self.log_prefix,
                 self.cli_display_name,
@@ -506,7 +506,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
 
                 if time.time() > expire:
                     # Timeout, break
-                    log.debug('Expired at %s(was set to %s)', time.time(), expire)
+                    log.warning('Wait until running expired at %s(was set to %s)', time.time(), expire)
                     break
 
                 if not check_ports and not check_events:
@@ -520,7 +520,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 if not check_events:
                     stop_sending_events_file = self.config.get('pytest_stop_sending_events_file')
                     if stop_sending_events_file and os.path.exists(stop_sending_events_file):
-                        log.warning('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
+                        log.info('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
                         os.unlink(stop_sending_events_file)
 
                 for port in set(check_ports):
@@ -550,7 +550,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
                         if minions_joined.exitcode == 0:
                             if minions_joined.json and port in minions_joined.json:
                                 check_ports.remove(port)
-                                log.warning('Removed ID %r  Still left: %r', port, check_ports)
+                                log.info('Removed ID %r  Still left: %r', port, check_ports)
                             elif minions_joined.json is None:
                                 log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
                 time.sleep(0.5)
@@ -559,7 +559,7 @@ class SaltDaemonScriptBase(SaltScriptBase):
         finally:
             event_listener.terminate()
         if self._connectable.is_set():
-            log.debug('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
+            log.info('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         return self._connectable.is_set()
 
 
@@ -855,7 +855,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         if to_match_events:
             stop_sending_events_file = self.config.get('pytest_stop_sending_events_file')
             if stop_sending_events_file and os.path.exists(stop_sending_events_file):
-                log.warning('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
+                log.info('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
                 os.unlink(stop_sending_events_file)
 
         json_out = {
@@ -895,10 +895,12 @@ class EventListener:
 
             if time.time() > max_timeout:
                 log.warning(
-                    '%s Failed to find all of the required event tags. '
-                    'Total events processed: %s',
+                    '%s Failed to find all of the required event tags(%s). '
+                    'Total events processed: %s. Total events found: %s.',
                     self.log_prefix,
-                    events_processed
+                    check_events,
+                    events_processed,
+                    len(matched_events)
                 )
                 return matched_events
 
@@ -907,16 +909,16 @@ class EventListener:
                 continue
 
             tag = event['tag']
-            log.warning('Got event: %s', event)
+            log.info('Got event: %s', event)
             if tag in events_to_match:
                 matched_events.add(tag)
                 events_to_match.remove(tag)
 
             events_processed += 1
             if time.time() - last_log > log_freq:
-                log.info('%s Events processed so far: %d',
-                         self.log_prefix,
-                         events_processed)
+                log.debug('%s Events processed so far: %d',
+                          self.log_prefix,
+                          events_processed)
                 last_log = time.time()
 
     def terminate(self):
