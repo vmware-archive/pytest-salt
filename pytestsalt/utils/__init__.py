@@ -15,11 +15,13 @@ import json
 import time
 import errno
 import atexit
+import pprint
 import signal
 import socket
 import logging
 import subprocess
 import threading
+import weakref
 from operator import itemgetter
 from collections import namedtuple
 
@@ -65,7 +67,35 @@ def collect_child_processes(pid):
     return children
 
 
+def _get_cmdline(proc):
+    # pylint: disable=protected-access
+    try:
+        return proc._cmdline
+    except AttributeError:
+        # Cache the cmdline since that will be inaccessible once the process is terminated
+        # and we use it in log calls
+        try:
+            cmdline = proc.cmdline()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            # OSX is more restrictive about the above information
+            cmdline = None
+        if not cmdline:
+            try:
+                cmdline = proc.as_dict()
+            except psutil.NoSuchProcess:
+                cmdline = '<could not be retrived; dead process: {}>'.format(proc)
+            except psutil.AccessDenied:
+                cmdline = weakref.proxy(proc)
+        proc._cmdline = cmdline
+    return proc._cmdline
+    # pylint: enable=protected-access
+
+
 def _terminate_process_list(process_list, kill=False, slow_stop=False):
+    log.info(
+        'Terminating process list:\n%s',
+        pprint.pformat([_get_cmdline(proc) for proc in process_list])
+    )
     for process in process_list[:]:  # Iterate over copy of the list
         if not psutil.pid_exists(process.pid):
             process_list.remove(process)
@@ -74,18 +104,11 @@ def _terminate_process_list(process_list, kill=False, slow_stop=False):
             if not kill and process.status() == psutil.STATUS_ZOMBIE:
                 # Zombie processes will exit once child processes also exit
                 continue
-            try:
-                cmdline = process.cmdline()
-            except psutil.AccessDenied:
-                # OSX is more restrictive about the above information
-                cmdline = None
-            if not cmdline:
-                cmdline = process.as_dict()
             if kill:
-                log.info('Killing process(%s): %s', process.pid, cmdline)
+                log.info('Killing process(%s): %s', process.pid, _get_cmdline(process))
                 process.kill()
             else:
-                log.info('Terminating process(%s): %s', process.pid, cmdline)
+                log.info('Terminating process(%s): %s', process.pid, _get_cmdline(process))
                 try:
                     if slow_stop:
                         # Allow coverage data to be written down to disk
@@ -114,19 +137,17 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
     # Try to terminate processes with the provided kill and slow_stop parameters
     log.info('Terminating process list. 1st step. kill: %s, slow stop: %s', kill, slow_stop)
 
-    # Cache the cmdline since that will be inaccessible once the process is terminated
-    for proc in process_list:
-        try:
-            cmdline = proc.cmdline()
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            # OSX is more restrictive about the above information
-            cmdline = None
-        if not cmdline:
-            try:
-                cmdline = proc
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                cmdline = '<could not be retrived; dead process: {}>'.format(proc)
-        proc._cmdline = cmdline
+    # Remove duplicates from the process list
+    seen_pids = []
+    start_count = len(process_list)
+    for proc in process_list[:]:
+        if proc.pid in seen_pids:
+            process_list.remove(proc)
+        seen_pids.append(proc.pid)
+    end_count = len(process_list)
+    if end_count < start_count:
+        log.debug('Removed %d duplicates from the initial process list', start_count - end_count)
+
     _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
     psutil.wait_procs(process_list, timeout=15, callback=on_process_terminated)
 
@@ -147,14 +168,16 @@ def terminate_process_list(process_list, kill=False, slow_stop=False):
         log.warning('Some processes failed to properly terminate: %s', process_list)
 
 
-def terminate_process(pid=None, process=None, children=None, kill_children=False, slow_stop=False):
+def terminate_process(pid=None, process=None, children=None, kill_children=None, slow_stop=False):
     '''
     Try to terminate/kill the started processe
     '''
     children = children or []
     process_list = []
-    # Always kill children if kill the parent process.
-    kill_children = True if slow_stop is False else kill_children
+
+    if kill_children is None:
+        # Always kill children if kill the parent process and kill_children was not set
+        kill_children = True if slow_stop is False else kill_children
 
     if pid and not process:
         try:
@@ -166,11 +189,7 @@ def terminate_process(pid=None, process=None, children=None, kill_children=False
 
     if kill_children:
         if process:
-            if not children:
-                children = collect_child_processes(process.pid)
-            else:
-                # Let's collect children again since there might be new ones
-                children.extend(collect_child_processes(pid))
+            children.extend(collect_child_processes(pid))
         if children:
             process_list.extend(children)
 
@@ -300,7 +319,7 @@ class SaltScriptBase(object):
         self.cli_script_name = cli_script_name
         if self.cli_display_name is None:
             self.cli_display_name = '{}({})'.format(self.__class__.__name__,
-                                                      self.cli_script_name)
+                                                    self.cli_script_name)
         self.slow_stop = slow_stop
         self.environ = environ or os.environ.copy()
         self.cwd = cwd or os.getcwd()
@@ -557,8 +576,8 @@ class ShellResult(namedtuple('Result', ('exitcode', 'stdout', 'stderr', 'json'))
     '''
     __slots__ = ()
 
-    def __new__(cls, exitcode, stdout, stderr, json):
-        return super(ShellResult, cls).__new__(cls, exitcode, stdout, stderr, json)
+    def __new__(cls, exitcode, stdout, stderr, _json):
+        return super(ShellResult, cls).__new__(cls, exitcode, stdout, stderr, _json)
 
     # These are copied from the namedtuple verbose output in order to quiet down PyLint
     exitcode = property(itemgetter(0), doc='Alias for field number 0')
@@ -673,8 +692,8 @@ class SaltCliScriptBase(SaltScriptBase):
                             args,
                             kwargs,
                             '[{}][{}] Timed out after {} seconds!'.format(self.log_prefix,
-                                                                             self.cli_display_name,
-                                                                             timeout)
+                                                                          self.cli_display_name,
+                                                                          timeout)
                         )
                     )
         except (SystemExit, KeyboardInterrupt):
