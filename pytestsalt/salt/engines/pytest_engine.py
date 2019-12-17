@@ -22,6 +22,10 @@ try:
     HAS_SALT_ASYNC = True
 except ImportError:
     HAS_SALT_ASYNC = False
+try:
+    import salt.ext.six as six
+except ImportError:
+    import six
 
 # Import 3rd-party libs
 from tornado import gen
@@ -104,13 +108,40 @@ class PyTestEngine(object):
         # 30 seconds should be more than enough to fire these events every second in order
         # for pytest-salt to pickup that the master is running
         timeout = 30
+        event_bus = None
+        call_destroy = False
+        try:
+            with salt.utils.event.get_master_event(self.opts,
+                                                   self.sock_dir,
+                                                   listen=False) as event_bus:
+                yield self._fire_master_started_event(event_bus,
+                                                      load,
+                                                      master_start_event_tag,
+                                                      timeout)
+        except AttributeError as exc:
+            if '__enter__' not in str(exc):
+                six.reraise(*sys.exc_info())
+            call_destroy = True
+            event_bus = salt.utils.event.get_master_event(self.opts,
+                                                          self.sock_dir,
+                                                          listen=False)
+            yield self._fire_master_started_event(event_bus,
+                                                  load,
+                                                  master_start_event_tag,
+                                                  timeout)
+        finally:
+            if call_destroy and event_bus is not None:
+                event_bus.destroy()
+
+    @gen.coroutine
+    def _fire_master_started_event(self, event_bus, load, tag, timeout):
         while True:
             if self.stop_sending_events_file and not os.path.exists(self.stop_sending_events_file):
                 log.info('The stop sending events file "marker" is done. Stop sending events...')
                 break
             timeout -= 1
             try:
-                event_bus.fire_event(load, master_start_event_tag, timeout=500)
+                event_bus.fire_event(load, tag, timeout=500)
                 if timeout <= 0:
                     break
                 yield gen.sleep(1)
