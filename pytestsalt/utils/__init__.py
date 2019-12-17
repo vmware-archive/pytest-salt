@@ -470,8 +470,6 @@ class SaltDaemonScriptBase(SaltScriptBase):
         '''
         Blocking call to wait for the daemon to start listening
         '''
-        # Late import
-        import salt.ext.six as six
         if self._connectable.is_set():
             return True
 
@@ -493,71 +491,57 @@ class SaltDaemonScriptBase(SaltScriptBase):
                 check_events
             )
         log.debug('Wait until running expire: %s  Timeout: %s  Current Time: %s', expire, timeout, time.time())
-        event_listener = EventListener(
-            self.event_listener_config_dir or self.config_dir,
-            self.log_prefix
-        )
-        try:
-            while True:
-                if self._running.is_set() is False:
-                    # No longer running, break
-                    log.warning('No longer running!')
-                    break
+        with EventListener(self.event_listener_config_dir or self.config_dir, self.log_prefix) as event_listener:
+            try:
+                while True:
+                    if self._running.is_set() is False:
+                        # No longer running, break
+                        log.warning('No longer running!')
+                        break
 
-                if time.time() > expire:
-                    # Timeout, break
-                    log.warning('Wait until running expired at %s(was set to %s)', time.time(), expire)
-                    break
+                    if time.time() > expire:
+                        # Timeout, break
+                        log.warning('Wait until running expired at %s(was set to %s)', time.time(), expire)
+                        break
 
-                if not check_ports and not check_events:
-                    self._connectable.set()
-                    break
+                    if not check_ports and not check_events:
+                        self._connectable.set()
+                        break
 
-                if check_events:
-                    for tag in event_listener.wait_for_events(check_events, timeout=timeout - 0.5):
-                        check_events.remove(tag)
+                    if check_events:
+                        for tag in event_listener.wait_for_events(check_events, timeout=timeout - 0.5):
+                            check_events.remove(tag)
 
-                if not check_events:
-                    stop_sending_events_file = self.config.get('pytest_stop_sending_events_file')
-                    if stop_sending_events_file and os.path.exists(stop_sending_events_file):
-                        log.info('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
-                        os.unlink(stop_sending_events_file)
+                    if not check_events:
+                        stop_sending_events_file = self.config.get('pytest_stop_sending_events_file')
+                        if stop_sending_events_file and os.path.exists(stop_sending_events_file):
+                            log.info('Removing pytest_stop_sending_events_file: %s', stop_sending_events_file)
+                            os.unlink(stop_sending_events_file)
 
-                for port in set(check_ports):
-                    if isinstance(port, int):
-                        log.debug('[%s][%s] Checking connectable status on port: %s',
-                                  self.log_prefix,
-                                  self.cli_display_name,
-                                  port)
-                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        conn = sock.connect_ex(('localhost', port))
-                        try:
-                            if conn == 0:
-                                log.debug('[%s][%s] Port %s is connectable!',
-                                          self.log_prefix,
-                                          self.cli_display_name,
-                                          port)
-                                check_ports.remove(port)
-                                sock.shutdown(socket.SHUT_RDWR)
-                        except socket.error:
-                            continue
-                        finally:
-                            sock.close()
-                            del sock
-                    elif isinstance(port, six.string_types):
-                        salt_run = self.get_salt_run_fixture()
-                        minions_joined = salt_run.run('manage.joined')
-                        if minions_joined.exitcode == 0:
-                            if minions_joined.json and port in minions_joined.json:
-                                check_ports.remove(port)
-                                log.info('Removed ID %r  Still left: %r', port, check_ports)
-                            elif minions_joined.json is None:
-                                log.debug('salt-run manage.join did not return any valid JSON: %s', minions_joined)
-                time.sleep(0.5)
-        except KeyboardInterrupt:
-            return self._connectable.is_set()
-        finally:
-            event_listener.terminate()
+                    for port in set(check_ports):
+                        if isinstance(port, int):
+                            log.debug('[%s][%s] Checking connectable status on port: %s',
+                                      self.log_prefix,
+                                      self.cli_display_name,
+                                      port)
+                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            conn = sock.connect_ex(('localhost', port))
+                            try:
+                                if conn == 0:
+                                    log.debug('[%s][%s] Port %s is connectable!',
+                                              self.log_prefix,
+                                              self.cli_display_name,
+                                              port)
+                                    check_ports.remove(port)
+                                    sock.shutdown(socket.SHUT_RDWR)
+                            except socket.error:
+                                continue
+                            finally:
+                                sock.close()
+                                del sock
+                    time.sleep(0.5)
+            except KeyboardInterrupt:
+                pass
         if self._connectable.is_set():
             log.info('[%s][%s] All ports checked. Running!', self.log_prefix, self.cli_display_name)
         return self._connectable.is_set()
@@ -865,7 +849,7 @@ class SaltRunEventListener(SaltCliScriptBase):
         return ShellResult(exitcode, stdout, stderr, json_out)
 
 
-class EventListener:
+class EventListener(object):
 
     DEFAULT_TIMEOUT = 60
 
@@ -904,7 +888,7 @@ class EventListener:
                 )
                 return matched_events
 
-            event = self.listener.get_event(full=True, auto_reconnect=True)
+            event = self._listener.get_event(full=True, auto_reconnect=True)
             if event is None:
                 continue
 
@@ -922,19 +906,23 @@ class EventListener:
                 last_log = time.time()
 
     def terminate(self):
-        listener = self.listener
-        self._listener = None
-        listener.destroy()
+        if self._listener is not None:
+            listener = self._listener
+            self._listener = None
+            listener.destroy()
 
-    @property
-    def listener(self):
+    def __enter__(self):
         if self._listener is None:
             # Late import
             import salt.config
             import salt.utils.event
             opts = salt.config.master_config(os.path.join(self.config_dir, 'master'))
             self._listener = salt.utils.event.get_event('master', opts=opts, listen=True)
-        return self._listener
+            atexit.register(self.terminate)
+        return self
+
+    def __exit__(self, *args):
+        self.terminate()
 
 
 @pytest.mark.trylast
