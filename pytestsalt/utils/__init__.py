@@ -79,6 +79,27 @@ def _get_cmdline(proc):
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             # OSX is more restrictive about the above information
             cmdline = None
+        except OSError:
+            # On Windows we've seen something like:
+            #   File " c: ... \lib\site-packages\pytestsalt\utils\__init__.py", line 182, in terminate_process
+            #     terminate_process_list(process_list, kill=slow_stop is False, slow_stop=slow_stop)
+            #   File " c: ... \lib\site-packages\pytestsalt\utils\__init__.py", line 130, in terminate_process_list
+            #     _terminate_process_list(process_list, kill=kill, slow_stop=slow_stop)
+            #   File " c: ... \lib\site-packages\pytestsalt\utils\__init__.py", line 78, in _terminate_process_list
+            #     cmdline = process.cmdline()
+            #   File " c: ... \lib\site-packages\psutil\__init__.py", line 786, in cmdline
+            #     return self._proc.cmdline()
+            #   File " c: ... \lib\site-packages\psutil\_pswindows.py", line 667, in wrapper
+            #     return fun(self, *args, **kwargs)
+            #   File " c: ... \lib\site-packages\psutil\_pswindows.py", line 745, in cmdline
+            #     ret = cext.proc_cmdline(self.pid, use_peb=True)
+            #   OSError: [WinError 299] Only part of a ReadProcessMemory or WriteProcessMemory request was completed: 'originated from ReadProcessMemory(ProcessParameters)
+
+            # Late import
+            import salt.ext.six as six
+            if not sys.platform.startswith('win'):
+                six.reraise(*sys.exc_info())
+            cmdline = None
         if not cmdline:
             try:
                 cmdline = proc.as_dict()
