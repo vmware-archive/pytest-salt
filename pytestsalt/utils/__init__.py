@@ -96,16 +96,13 @@ def _get_cmdline(proc):
             #   OSError: [WinError 299] Only part of a ReadProcessMemory or WriteProcessMemory request was completed: 'originated from ReadProcessMemory(ProcessParameters)
 
             # Late import
-            import salt.ext.six as six
-            if not sys.platform.startswith('win'):
-                six.reraise(*sys.exc_info())
             cmdline = None
         if not cmdline:
             try:
                 cmdline = proc.as_dict()
             except psutil.NoSuchProcess:
                 cmdline = '<could not be retrived; dead process: {}>'.format(proc)
-            except psutil.AccessDenied:
+            except (psutil.AccessDenied, OSError):
                 cmdline = weakref.proxy(proc)
         proc._cmdline = cmdline
     return proc._cmdline
