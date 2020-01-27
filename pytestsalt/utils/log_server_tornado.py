@@ -13,10 +13,17 @@ import threading
 
 # Import 3rd-party libs
 import msgpack
-from tornado import gen
-from tornado.ioloop import IOLoop
-from tornado.tcpserver import TCPServer
-from tornado.iostream import StreamClosedError
+
+try:
+    from salt.ext.tornado import gen
+    from salt.ext.tornado.ioloop import IOLoop
+    from salt.ext.tornado.tcpserver import TCPServer
+    from salt.ext.tornado.iostream import StreamClosedError
+except ImportError:
+    from tornado import gen
+    from tornado.ioloop import IOLoop
+    from tornado.tcpserver import TCPServer
+    from tornado.iostream import StreamClosedError
 
 log = logging.getLogger(__name__)
 
